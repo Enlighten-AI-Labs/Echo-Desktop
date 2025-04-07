@@ -1,0 +1,162 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(38, 38, 40, 0.7); /* Black with opacity */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #E9EDF3; /* Light Gray */
+}
+
+.modalTitle {
+  margin: 0;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.5rem;
+  color: #262628; /* Black */
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #262628; /* Black */
+}
+
+.modalBody {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.appName {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 1rem;
+  color: #262628; /* Black */
+  margin: 0 0 24px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #E9EDF3; /* Light Gray */
+}
+
+.platformsContainer {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.platformCard {
+  width: 160px;
+  height: 160px;
+  border: 2px solid #E9EDF3; /* Light Gray */
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #FFFFFF;
+  padding: 20px;
+}
+
+.platformCard:hover {
+  border-color: #9C54AD; /* Purple */
+  background-color: rgba(156, 84, 173, 0.05); /* Light Purple */
+}
+
+.platformCard.selected {
+  border-color: #9C54AD; /* Purple */
+  background-color: rgba(156, 84, 173, 0.1); /* Light Purple */
+}
+
+.platformIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #262628; /* Black */
+}
+
+.platformIcon svg {
+  transition: all 0.2s ease;
+}
+
+.selected .platformIcon svg {
+  color: #9C54AD; /* Purple */
+}
+
+.platformName {
+  margin: 0;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 1.2rem;
+  color: #262628; /* Black */
+  text-align: center;
+}
+
+.selected .platformName {
+  color: #9C54AD; /* Purple */
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid #E9EDF3; /* Light Gray */
+}
+
+.cancelButton, .selectButton {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-family: 'Travelia Bold', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton {
+  background-color: #E9EDF3; /* Light Gray */
+  border: none;
+  color: #262628; /* Black */
+}
+
+.cancelButton:hover {
+  background-color: #d0d7e2;
+}
+
+.selectButton {
+  background-color: #9C54AD; /* Purple */
+  border: none;
+  color: white;
+}
+
+.selectButton:hover {
+  background-color: #8a4899;
+}
+
+.selectButton:disabled {
+  background-color: #c8a9d2;
+  cursor: not-allowed;
+} 

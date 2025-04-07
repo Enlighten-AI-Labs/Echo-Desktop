@@ -1,0 +1,830 @@
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const url = require('url');
+const { exec, spawn } = require('child_process');
+const qrcode = require('qrcode');
+const os = require('os');
+const fs = require('fs');
+const https = require('https');
+const extract = require('extract-zip');
+const isDev = process.env.NODE_ENV === 'development';
+
+let mainWindow;
+let loadAttempts = 0;
+const MAX_LOAD_ATTEMPTS = 10;
+
+// Path to the app's user data directory
+const userDataPath = app.getPath('userData');
+const adbPath = path.join(userDataPath, 'platform-tools');
+const adbExecutable = process.platform === 'win32' ? 'adb.exe' : 'adb';
+const fullAdbPath = path.join(adbPath, adbExecutable);
+
+// Create temporary directory for QR codes if it doesn't exist
+const tmpDir = path.join(os.tmpdir(), 'echo-desktop');
+if (!fs.existsSync(tmpDir)) {
+  fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+// Download and extract Android platform tools if not already installed
+async function ensureAdbExists() {
+  // Check if platform-tools directory already exists
+  if (fs.existsSync(fullAdbPath)) {
+    console.log('ADB already installed at:', fullAdbPath);
+    return fullAdbPath;
+  }
+  
+  console.log('ADB not found, installing...');
+  
+  // Create directories if they don't exist
+  if (!fs.existsSync(adbPath)) {
+    fs.mkdirSync(adbPath, { recursive: true });
+  }
+  
+  // Determine platform-specific download URL
+  let downloadUrl;
+  switch (process.platform) {
+    case 'win32':
+      downloadUrl = 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip';
+      break;
+    case 'darwin':
+      downloadUrl = 'https://dl.google.com/android/repository/platform-tools-latest-darwin.zip';
+      break;
+    case 'linux':
+      downloadUrl = 'https://dl.google.com/android/repository/platform-tools-latest-linux.zip';
+      break;
+    default:
+      throw new Error('Unsupported platform: ' + process.platform);
+  }
+  
+  // Download and extract platform-tools
+  const zipPath = path.join(userDataPath, 'platform-tools.zip');
+  await downloadFile(downloadUrl, zipPath);
+  await extract(zipPath, { dir: userDataPath });
+  
+  // Make adb executable on Unix systems
+  if (process.platform !== 'win32') {
+    fs.chmodSync(fullAdbPath, '755');
+  }
+  
+  // Clean up zip file
+  fs.unlinkSync(zipPath);
+  
+  console.log('ADB installed successfully at:', fullAdbPath);
+  return fullAdbPath;
+}
+
+// Helper function to download a file
+function downloadFile(url, destination) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destination);
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(resolve);
+      });
+    }).on('error', (err) => {
+      fs.unlink(destination, () => {
+        reject(err);
+      });
+    });
+  });
+}
+
+// Execute an ADB command and return a promise
+function execAdbCommand(command) {
+  return new Promise((resolve, reject) => {
+    const cmd = `"${fullAdbPath}" ${command}`;
+    console.log('Executing ADB command:', cmd);
+    
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('ADB command error:', error);
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        console.warn('ADB stderr:', stderr);
+      }
+      resolve(stdout.trim());
+    });
+  });
+}
+
+// Parse ADB devices output into a structured format
+function parseDevicesOutput(output) {
+  const lines = output.split('\n');
+  const devices = [];
+  
+  // Skip the first line which is just the header "List of devices attached"
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === '') continue;
+    
+    // Parse device info
+    const [id, ...rest] = line.split(/\s+/);
+    const status = rest[0];
+    
+    // If the device is in device mode (not unauthorized or offline), get more info
+    if (status === 'device') {
+      const deviceInfo = {
+        id: id,
+        status: status,
+      };
+      devices.push(deviceInfo);
+    } else {
+      devices.push({
+        id: id,
+        status: status,
+      });
+    }
+  }
+  
+  return devices;
+}
+
+// Get additional device info for the connected devices
+async function getDeviceDetails(devices) {
+  const detailedDevices = [];
+  
+  for (const device of devices) {
+    // Only get details for devices in 'device' state
+    if (device.status === 'device') {
+      try {
+        // Get manufacturer
+        const manufacturer = await execAdbCommand(`-s ${device.id} shell getprop ro.product.manufacturer`);
+        
+        // Get model
+        const model = await execAdbCommand(`-s ${device.id} shell getprop ro.product.model`);
+        
+        // Get product name
+        const product = await execAdbCommand(`-s ${device.id} shell getprop ro.product.name`);
+        
+        detailedDevices.push({
+          ...device,
+          name: `${manufacturer} ${model}`.trim(),
+          model: model,
+          product: product,
+        });
+      } catch (error) {
+        console.error(`Error getting details for device ${device.id}:`, error);
+        detailedDevices.push(device);
+      }
+    } else {
+      detailedDevices.push(device);
+    }
+  }
+  
+  return detailedDevices;
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    show: false,
+    backgroundColor: '#262628',
+  });
+
+  const startUrl = isDev
+    ? 'http://localhost:3000'
+    : url.format({
+      pathname: path.join(__dirname, 'out/index.html'),
+      protocol: 'file:',
+      slashes: true
+    });
+  
+  // Load the URL with retry logic for development mode
+  if (isDev) {
+    loadWithRetry(startUrl);
+  } else {
+    mainWindow.loadURL(startUrl);
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
+  // Open DevTools if in dev mode
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+}
+
+function loadWithRetry(url) {
+  mainWindow.loadURL(url).catch(err => {
+    loadAttempts++;
+    console.log(`Attempt ${loadAttempts} failed. Retrying in 1 second...`);
+    
+    if (loadAttempts < MAX_LOAD_ATTEMPTS) {
+      setTimeout(() => {
+        loadWithRetry(url);
+      }, 1000);
+    } else {
+      console.error('Failed to load after maximum attempts. Please ensure Next.js is running.');
+      if (mainWindow) {
+        mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
+          <html>
+            <head>
+              <title>Error</title>
+              <style>
+                body {
+                  font-family: system-ui, -apple-system, sans-serif;
+                  background: #262628;
+                  color: white;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100vh;
+                  margin: 0;
+                  text-align: center;
+                }
+                .container {
+                  max-width: 500px;
+                  padding: 2rem;
+                }
+                h1 {
+                  font-weight: bold;
+                  margin-bottom: 1rem;
+                }
+                p {
+                  line-height: 1.5;
+                  margin-bottom: 1.5rem;
+                }
+                button {
+                  background: #3C76A9;
+                  color: white;
+                  border: none;
+                  padding: 0.75rem 1.5rem;
+                  border-radius: 4px;
+                  font-weight: bold;
+                  cursor: pointer;
+                }
+                button:hover {
+                  opacity: 0.9;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>Connection Error</h1>
+                <p>Unable to connect to the Next.js development server at http://localhost:3000.</p>
+                <p>Please ensure the Next.js server is running by executing <code>npm run dev:next</code> in a terminal window.</p>
+                <button onclick="window.location.reload()">Retry Connection</button>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+    }
+  });
+}
+
+app.whenReady().then(async () => {
+  try {
+    // Ensure ADB is installed before creating the window
+    await ensureAdbExists();
+  } catch (error) {
+    console.error('Failed to set up ADB:', error);
+  }
+  
+  createWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (mainWindow === null) {
+    createWindow();
+  }
+});
+
+// Handle ADB commands
+ipcMain.handle('adb:getDevices', async () => {
+  try {
+    console.log('Getting devices...');
+    // Make sure ADB server is started
+    await execAdbCommand('start-server');
+    const output = await execAdbCommand('devices');
+    const devices = parseDevicesOutput(output);
+    
+    // Get additional details for devices
+    const detailedDevices = await getDeviceDetails(devices);
+    console.log('Devices:', detailedDevices);
+    
+    return detailedDevices;
+  } catch (error) {
+    console.error('Error getting devices:', error);
+    throw new Error('Failed to connect to ADB. Make sure your Android device is connected and USB debugging is enabled.');
+  }
+});
+
+ipcMain.handle('adb:generateQRCode', async () => {
+  try {
+    // Start ADB server if not already running
+    await execAdbCommand('start-server');
+    
+    // Get local IP address
+    const hostIp = getLocalIpAddress();
+    
+    // Use a predefined name and password for pairing
+    const debugName = "enlighten";
+    const pairingCode = "123456";
+    
+    // Create a pairing port (between 30000-40000, consistent with Android expectations)
+    const pairingPort = Math.floor(Math.random() * 10000) + 30000;
+    
+    // Generate a QR code with the correct Android format
+    // Format: WIFI:T:ADB;S:{name};P:{password};;
+    const qrCodePath = path.join(tmpDir, 'pairing_qrcode.png');
+    const qrCodeContent = `WIFI:T:ADB;S:${debugName};P:${pairingCode};;`;
+    
+    console.log('Creating QR code with content:', qrCodeContent);
+    
+    // Generate the QR code image
+    await new Promise((resolve, reject) => {
+      qrcode.toFile(
+        qrCodePath, 
+        qrCodeContent,
+        { 
+          errorCorrectionLevel: 'H',
+          width: 300,
+          margin: 2
+        },
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+    
+    // For Electron's security model, convert to data URL
+    const qrImageBuffer = fs.readFileSync(qrCodePath);
+    const qrDataUrl = `data:image/png;base64,${qrImageBuffer.toString('base64')}`;
+    
+    console.log('Wireless debugging QR code generated');
+    console.log('Pairing info:', hostIp, pairingPort, pairingCode);
+    
+    return {
+      qrCodePath: qrDataUrl,
+      hostIp,
+      pairingPort, 
+      pairingCode,
+      message: 'Scan the QR code with your Android device to connect wirelessly.'
+    };
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    throw error;
+  }
+});
+
+// Connect to a device at the given IP and port
+ipcMain.handle('adb:connectDevice', async (event, ipAddress, port = 5555, pairingCode) => {
+  try {
+    // Start ADB server if not already running
+    await execAdbCommand('start-server');
+    
+    console.log(`Attempting to connect to device at ${ipAddress}:${port} with code ${pairingCode || 'not provided'}`);
+    
+    // If the pairing code is provided, pair first
+    if (pairingCode) {
+      console.log(`Pairing with device using code: ${pairingCode}`);
+      try {
+        const pairOutput = await execAdbCommand(`pair ${ipAddress}:${port} ${pairingCode}`);
+        console.log('Pairing output:', pairOutput);
+        
+        // Check if pairing was successful
+        if (pairOutput.includes('Successfully paired')) {
+          console.log('Pairing successful, now connecting...');
+        } else if (pairOutput.includes('error')) {
+          return { success: false, message: `Pairing failed: ${pairOutput}` };
+        }
+      } catch (pairError) {
+        console.error('Pairing error:', pairError);
+        return { success: false, message: `Pairing failed: ${pairError.message}` };
+      }
+    }
+    
+    // Try to connect to the device
+    const output = await execAdbCommand(`connect ${ipAddress}:${port}`);
+    console.log('ADB connect output:', output);
+    
+    if (output.includes('connected to') || output.includes('already connected')) {
+      return { success: true, message: output };
+    } else {
+      return { success: false, message: output };
+    }
+  } catch (error) {
+    console.error('Error connecting device:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle('adb:disconnectDevice', async (event, deviceId) => {
+  try {
+    const output = await execAdbCommand(`disconnect ${deviceId}`);
+    return { success: true, message: output };
+  } catch (error) {
+    console.error('Error disconnecting device:', error);
+    throw error;
+  }
+});
+
+// Start ADB pairing with a specific port
+ipcMain.handle('adb:startPairing', async () => {
+  try {
+    // Start ADB server if not already running
+    await execAdbCommand('start-server');
+    
+    // Get local IP address
+    const hostIp = getLocalIpAddress();
+    
+    // Generate random port between 30000-40000
+    const pairingPort = Math.floor(Math.random() * 10000) + 30000;
+    
+    // Start ADB pairing server
+    const pairingProcess = spawn(fullAdbPath, ['pair', `${hostIp}:${pairingPort}`], {
+      detached: true
+    });
+    
+    let pairingCode = null;
+    
+    // Return immediately with connection info
+    // The pairing server will run in the background
+    return {
+      hostIp,
+      pairingPort,
+      message: 'Pairing server started. Enter the pairing code displayed here on your device.'
+    };
+  } catch (error) {
+    console.error('Error starting pairing server:', error);
+    throw error;
+  }
+});
+
+// Helper function to get local IP address
+function getLocalIpAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1'; // Fallback to localhost
+}
+
+// Helper function to connect to a device at a specific IP and port
+async function connectToDevice(ip, port = 5555) {
+  try {
+    console.log(`Attempting to connect to device at ${ip}:${port}`);
+    
+    // First ensure the ADB server is running
+    await execAdbCommand('start-server');
+    
+    // Try the connection
+    const result = await execAdbCommand(`connect ${ip}:${port}`);
+    
+    console.log('Connection result:', result);
+    
+    // Check if the connection was successful
+    if (result.includes('connected to') || result.includes('already connected')) {
+      return { success: true, message: result };
+    } else {
+      return { success: false, message: result };
+    }
+  } catch (error) {
+    console.error('Failed to connect to device:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Expose the getLocalIpAddress function to the renderer
+ipcMain.handle('adb:getLocalIp', async () => {
+  return getLocalIpAddress();
+});
+
+// Get installed apps on a specific device
+ipcMain.handle('adb:getInstalledApps', async (event, deviceId) => {
+  try {
+    console.log(`Getting installed apps for device: ${deviceId}`);
+    
+    // First ensure the ADB server is running
+    await execAdbCommand('start-server');
+    
+    // Get package list using the pm list packages command
+    const output = await execAdbCommand(`-s ${deviceId} shell pm list packages -3`);
+    
+    // Process the output to get a list of package names
+    // The output format is "package:com.example.app"
+    const packageNames = output
+      .split('\n')
+      .filter(line => line.trim().startsWith('package:'))
+      .map(line => line.trim().substring(8));
+    
+    // Get app names for each package
+    const apps = [];
+    for (const packageName of packageNames) {
+        apps.push({
+          packageName,
+          appName: packageName // Fallback to package name
+        });
+    }
+    
+    console.log(`Found ${apps.length} installed apps`);
+    return apps;
+  } catch (error) {
+    console.error('Error getting installed apps:', error);
+    throw error;
+  }
+});
+
+// Launch an app on a specific device
+ipcMain.handle('adb:launchApp', async (event, deviceId, packageName) => {
+  try {
+    console.log(`Launching app ${packageName} on device ${deviceId}`);
+    
+    // First ensure the ADB server is running
+    await execAdbCommand('start-server');
+    
+    // Get the main activity of the package
+    const activityCmd = `-s ${deviceId} shell dumpsys package ${packageName} | grep -A 1 "android.intent.action.MAIN" | grep -v "android.intent.action.MAIN" | grep -v "^--$" | head -1`;
+    const activityOutput = await execAdbCommand(activityCmd);
+    
+    let launchCommand;
+    if (activityOutput && activityOutput.includes('/')) {
+      // Extract the activity name
+      const activityMatch = activityOutput.match(/([a-zA-Z0-9\.]+\/[a-zA-Z0-9\.]+)/);
+      if (activityMatch && activityMatch[1]) {
+        const activity = activityMatch[1].trim();
+        launchCommand = `-s ${deviceId} shell am start -n ${activity}`;
+      } else {
+        // Fallback to monkey command if we can't extract the activity
+        launchCommand = `-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`;
+      }
+    } else {
+      // Fallback to monkey command
+      launchCommand = `-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`;
+    }
+    
+    // Launch the app
+    const output = await execAdbCommand(launchCommand);
+    console.log('Launch app output:', output);
+    
+    return { success: true, message: `App ${packageName} launched successfully` };
+  } catch (error) {
+    console.error(`Error launching app ${packageName}:`, error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Enable analytics debugging for a specific package
+ipcMain.handle('adb:enableAnalyticsDebugging', async (event, deviceId, packageName) => {
+  try {
+    console.log(`Enabling analytics debugging for ${packageName} on device ${deviceId}`);
+    
+    // Fix and enhance Google Analytics debugging commands
+    try {
+      // Set the main package name debug property - ONLY ONCE
+      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app ${packageName}`);
+      console.log(`Set debug.firebase.analytics.app to ${packageName}`);
+      
+      // Set debug.firebase.analytics.app_instance_id to true
+      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app_instance_id true`);
+      
+      // Additional Firebase/Google Analytics debug flags
+      await execAdbCommand(`-s ${deviceId} shell setprop firebase.analytics.debug.enable true`);
+      console.log(`Set firebase.analytics.debug.enable to true`);
+      
+      // Force verbose logging for Firebase
+      await execAdbCommand(`-s ${deviceId} shell setprop log.tag.FA VERBOSE`);
+      await execAdbCommand(`-s ${deviceId} shell setprop log.tag.FA-SVC VERBOSE`);
+      
+      // Additional Firebase/Google Analytics debug flags - set package name instead of "true"
+      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app ${packageName}`);
+      
+      // Force debug mode
+      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.test.lab "true"`);
+      
+      // Broadcast analytics dispatch to force immediate sending
+      await execAdbCommand(`-s ${deviceId} shell am broadcast -a com.google.analytics.ANALYTICS_DISPATCH`);
+      
+      // Additional broadcasts that can help with some apps
+      await execAdbCommand(`-s ${deviceId} shell am broadcast -a ${packageName}.FLUSH_EVENTS`);
+      
+    } catch (error) {
+      console.warn(`Warning: Issue with Firebase Analytics debugging setup: ${error.message}`);
+    }
+    
+    // Try to enable Adobe Analytics debugging
+    try {
+      await execAdbCommand(`-s ${deviceId} shell setprop debug.adobe.analytics.app ${packageName}`);
+    } catch (error) {
+      console.warn(`Warning: Could not set debug.adobe.analytics.app: ${error.message}`);
+    }
+    
+    // Clear logcat to start with a clean slate
+    try {
+      await execAdbCommand(`-s ${deviceId} logcat -c`);
+    } catch (error) {
+      console.warn(`Warning: Could not clear logcat: ${error.message}`);
+    }
+    
+    return { 
+      success: true, 
+      message: `Analytics debugging enabled for ${packageName} (with some potential limitations)` 
+    };
+  } catch (error) {
+    console.error(`Error enabling analytics debugging for ${packageName}:`, error);
+    // Return success anyway since we want to proceed with log capture
+    return { 
+      success: true, 
+      message: `Proceeding with log capture (some debug features may be limited)`
+    };
+  }
+});
+
+// Update logcatProcesses object (remove raw)
+const logcatProcesses = {
+  ga4: null,
+  adobe: null
+};
+
+// Process log data for a specific analytics type
+function processLogData(data, analyticsType) {
+  try {
+    const lines = data.toString().split('\n').filter(line => line.trim());
+    console.log(`Processing ${lines.length} lines of ${analyticsType} data`);
+    
+    // Process each line to extract relevant information
+    const processedLines = lines.map(line => {
+      try {
+        // Parse line in threadtime format: "MM-DD HH:MM:SS.mmm PID TID LEVEL TAG: MESSAGE"
+        const timeMatch = line.match(/^(\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3})/);
+        const timestamp = timeMatch ? timeMatch[1] : '';
+        
+        // Extract tag and level if possible
+        const tagMatch = line.match(/\d+\s+\d+\s+([A-Z])\s+([^:]+):/);
+        const level = tagMatch ? tagMatch[1] : '';
+        const tag = tagMatch ? tagMatch[2].trim() : '';
+        
+        // Extract the message - everything after the first colon following the tag
+        const colonIndex = line.indexOf(':', line.indexOf(tag) + tag.length);
+        const message = colonIndex > -1 ? line.substring(colonIndex + 1).trim() : line;
+        
+        return {
+          timestamp,
+          tag,
+          level,
+          message,
+          analyticsType,
+          timestampMs: new Date().getTime(),
+          rawLine: line
+        };
+      } catch (e) {
+        console.error('Error processing log line:', e);
+        return {
+          timestamp: new Date().toLocaleString(),
+          message: line,
+          analyticsType,
+          timestampMs: new Date().getTime(),
+          rawLine: line
+        };
+      }
+    });
+    
+    return processedLines;
+  } catch (err) {
+    console.error(`Error processing ${analyticsType} logcat data:`, err);
+    return [];
+  }
+}
+
+// Start a logcat stream for the specified analytics type
+ipcMain.handle('adb:startLogcatStream', async (event, deviceId, analyticsType, filters) => {
+  try {
+    // Check if there's an existing logcat process for this type
+    if (logcatProcesses[analyticsType]) {
+      console.log(`Killing existing logcat process for ${analyticsType}`);
+      logcatProcesses[analyticsType].kill();
+      delete logcatProcesses[analyticsType];
+    }
+
+    // Clear the log first to avoid capturing old events
+    try {
+      console.log(`Clearing logcat for ${analyticsType}`);
+      await execAdbCommand(`-s ${deviceId} logcat -c`);
+    } catch (error) {
+      console.warn(`Warning: Could not clear logcat: ${error.message}`);
+    }
+    
+    // Wait a short time before starting new process
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log(`Starting logcat for ${analyticsType} without filters`);
+    
+    // Start the logcat process without filters to capture all logs
+    const adbArgs = [
+      '-s', deviceId, 
+      'logcat', 
+      '-v', 'threadtime',
+      '*:V'  // Capture all logs at verbose level
+    ];
+    
+    const logcatProcess = spawn(fullAdbPath, adbArgs);
+    
+    // Store the process reference for later cleanup
+    logcatProcesses[analyticsType] = logcatProcess;
+    
+    // Process log data
+    logcatProcess.stdout.on('data', (data) => {
+      const logData = processLogData(data.toString(), analyticsType);
+      if (logData.length > 0) {
+        mainWindow.webContents.send('logcat-data', logData);
+      }
+    });
+    
+    // Handle errors
+    logcatProcess.stderr.on('data', (data) => {
+      console.error(`Logcat stderr [${analyticsType}]:`, data.toString());
+    });
+    
+    logcatProcess.on('close', (code) => {
+      console.log(`Logcat process for ${analyticsType} exited with code ${code}`);
+      if (logcatProcesses[analyticsType]) {
+        delete logcatProcesses[analyticsType];
+      }
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error starting logcat stream:', error);
+    return { 
+      success: false, 
+      message: error.message
+    };
+  }
+});
+
+// Handle stopping a specific logcat stream
+ipcMain.handle('adb:stopLogcatStream', async (event, analyticsType) => {
+  try {
+    if (logcatProcesses[analyticsType]) {
+      logcatProcesses[analyticsType].kill();
+      logcatProcesses[analyticsType] = null;
+      return { success: true, message: `Stopped ${analyticsType} logcat stream` };
+    }
+    return { success: true, message: `No ${analyticsType} logcat process running` };
+  } catch (error) {
+    console.error(`Error stopping ${analyticsType} logcat stream:`, error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle stopping all logcat streams
+ipcMain.handle('adb:stopLogcatStreams', async (event) => {
+  try {
+    console.log('Stopping all logcat streams');
+    
+    // Loop through all logcat processes and kill them
+    for (const type in logcatProcesses) {
+      if (logcatProcesses[type]) {
+        logcatProcesses[type].kill();
+        logcatProcesses[type] = null;
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error stopping logcat streams:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle the original logcat command (for backward compatibility)
+ipcMain.handle('adb:getLogcat', async (event, deviceId, analyticsType, numLines = 200) => {
+  // Just return empty logs as we're using streaming now
+  return { success: true, logs: [], message: 'Using logcat streaming instead of polling' };
+});
+
+// Handle app launch
+// ... existing code ... 

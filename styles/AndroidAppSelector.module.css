@@ -1,0 +1,231 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(38, 38, 40, 0.7); /* Black with opacity */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #E9EDF3; /* Light Gray */
+}
+
+.modalTitle {
+  margin: 0;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.5rem;
+  color: #262628; /* Black */
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #262628; /* Black */
+}
+
+.modalBody {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.searchContainer {
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #E9EDF3; /* Light Gray */
+  border-radius: 6px;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
+  color: #262628; /* Black */
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #9C54AD; /* Purple */
+}
+
+.loading, .error, .noApps, .noResults {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  font-family: 'Azeret Mono Light', monospace;
+  color: #262628; /* Black */
+  text-align: center;
+}
+
+.spinnerContainer {
+  margin-bottom: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #E9EDF3; /* Light Gray */
+  border-radius: 50%;
+  border-top-color: #9C54AD; /* Purple */
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  color: #EB2726; /* Red */
+}
+
+.refreshButton {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background-color: #3C76A9; /* Blue */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Azeret Mono Regular', monospace;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.refreshButton:hover {
+  background-color: #2c5a86; /* Darker Blue */
+}
+
+.appList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.appItem {
+  border: 2px solid #E9EDF3; /* Light Gray */
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appItem:hover {
+  border-color: #9C54AD; /* Purple */
+  background-color: rgba(156, 84, 173, 0.05); /* Light Purple */
+}
+
+.appItem.selected {
+  border-color: #9C54AD; /* Purple */
+  background-color: rgba(156, 84, 173, 0.1); /* Light Purple */
+}
+
+.appIcon {
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: #3C76A9; /* Blue */
+  background-color: #E9EDF3; /* Light Gray */
+  border-radius: 8px;
+}
+
+.appInfo {
+  flex: 1;
+  overflow: hidden;
+}
+
+.appName {
+  margin: 0 0 4px 0;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 16px;
+  color: #262628; /* Black */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.packageName {
+  margin: 0;
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid #E9EDF3; /* Light Gray */
+}
+
+.cancelButton, .launchButton {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton {
+  background-color: #E9EDF3; /* Light Gray */
+  color: #262628; /* Black */
+  border: none;
+}
+
+.cancelButton:hover {
+  background-color: #d9dde3; /* Darker Light Gray */
+}
+
+.launchButton {
+  background-color: #9C54AD; /* Purple */
+  color: white;
+  border: none;
+}
+
+.launchButton:hover {
+  background-color: #8a4999; /* Darker Purple */
+}
+
+.launchButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+} 

@@ -1,0 +1,117 @@
+.authContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  background-color: var(--color-white);
+}
+
+.authTitle {
+  font-family: 'Travelia', sans-serif;
+  font-weight: 700; /* Bold as per guidelines */
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  color: var(--color-black);
+}
+
+.authForm {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  border-radius: 8px;
+  background-color: var(--color-white);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.formTitle {
+  font-family: 'Travelia', sans-serif;
+  font-weight: 500; /* Medium as per guidelines */
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-black);
+}
+
+.inputGroup {
+  margin-bottom: 1.5rem;
+}
+
+.inputLabel {
+  display: block;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 400; /* Regular as per guidelines */
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-black);
+}
+
+.inputField {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid var(--color-light-gray);
+  border-radius: 4px;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 300; /* Light as per guidelines */
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.inputField:focus {
+  outline: none;
+  border-color: var(--color-blue);
+}
+
+.message {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 300;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  color: var(--color-red);
+}
+
+.button {
+  width: 100%;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Travelia', sans-serif;
+  font-weight: 700; /* Bold as per guidelines */
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primaryButton {
+  background-color: var(--color-blue);
+  color: var(--color-white);
+}
+
+.primaryButton:hover {
+  background-color: #2e5e8a;
+}
+
+.primaryButton:disabled {
+  background-color: var(--color-light-gray);
+  cursor: not-allowed;
+}
+
+.toggleText {
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 300; /* Light as per guidelines */
+  font-size: 0.9rem;
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--color-black);
+}
+
+.toggleLink {
+  font-family: 'Doto', sans-serif;
+  font-weight: 600; /* Semi-Bold as per guidelines */
+  color: var(--color-purple);
+  cursor: pointer;
+}
+
+.toggleLink:hover {
+  text-decoration: underline;
+} 

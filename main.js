@@ -706,7 +706,6 @@ function startMitmproxy() {
 
     mitm.stdout.on('data', (data) => {
       const output = data.toString();
-      console.log(`mitmdump stdout: ${output}`);
       
       // Parse the output for interesting traffic
       parseAndStoreTraffic(output);

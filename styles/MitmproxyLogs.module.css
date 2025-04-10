@@ -235,6 +235,9 @@
   padding: 12px;
   position: relative;
   overflow: hidden;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
 }
 
 .requestEntry {
@@ -290,18 +293,25 @@
 }
 
 .entryPath {
-  display: inline-block;
+  display: block;
   font-family: monospace;
   word-break: break-all;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 5px 0;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.entryFullUrl {
+  font-weight: bold;
+  margin-bottom: 5px;
+  word-break: break-all;
 }
 
 .entryStatus {
   font-weight: 600;
   margin-right: 8px;
+  font-size: 14px;
 }
 
 .statusSuccess {
@@ -322,6 +332,8 @@
 
 .entryContent {
   word-break: break-all;
+  margin-top: 5px;
+  line-height: 1.4;
 }
 
 .entryConnection {

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/MitmproxyLogs.module.css';
 
@@ -32,13 +32,36 @@ export default function MitmproxyLogsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(true); // Auto-refresh toggle
-  const [lastRefresh, setLastRefresh] = useState(null); // Track last refresh time
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [lastEntryId, setLastEntryId] = useState(null);
+  const trafficListRef = useRef(null); // Reference to the traffic list container
+  const [scrollPos, setScrollPos] = useState(0); // Track scroll position
 
-  // Function to fetch the traffic data
-  const fetchTraffic = async () => {
+  // Save scroll position before update
+  const saveScrollPosition = useCallback(() => {
+    if (trafficListRef.current) {
+      setScrollPos(trafficListRef.current.scrollTop);
+    }
+  }, []);
+
+  // Restore scroll position after update
+  useEffect(() => {
+    if (trafficListRef.current && scrollPos > 0) {
+      trafficListRef.current.scrollTop = scrollPos;
+    }
+  }, [traffic, scrollPos]);
+
+  // Function to fetch only new traffic data
+  const fetchTraffic = async (initialLoad = false) => {
     try {
-      setIsLoading(true);
+      if (initialLoad) {
+        setIsLoading(true);
+      } else {
+        // Save scroll position before updating traffic data
+        saveScrollPosition();
+      }
+      
       const trafficData = await window.api.mitmproxy.getTraffic();
       
       if (trafficData && Array.isArray(trafficData)) {
@@ -46,17 +69,56 @@ export default function MitmproxyLogsPage() {
         const sortedTraffic = [...trafficData].sort((a, b) => 
           new Date(b.timestamp) - new Date(a.timestamp)
         );
-        setTraffic(sortedTraffic);
+        
+        if (initialLoad) {
+          // For initial load, replace the entire state
+          setTraffic(sortedTraffic);
+          if (sortedTraffic.length > 0) {
+            setLastEntryId(sortedTraffic[0].id);
+          }
+        } else {
+          // For subsequent loads, merge only new entries
+          if (sortedTraffic.length > 0 && lastEntryId) {
+            // Find the index of the last known entry
+            const lastKnownIndex = sortedTraffic.findIndex(entry => entry.id === lastEntryId);
+            
+            if (lastKnownIndex === -1) {
+              // Last known entry not found - likely old data was cleared
+              setTraffic(sortedTraffic);
+            } else if (lastKnownIndex > 0) {
+              // We have new entries (they appear before the last known entry)
+              const newEntries = sortedTraffic.slice(0, lastKnownIndex);
+              setTraffic(prevTraffic => [...newEntries, ...prevTraffic]);
+            }
+            
+            // Update last seen entry ID
+            if (sortedTraffic[0] && sortedTraffic[0].id !== lastEntryId) {
+              setLastEntryId(sortedTraffic[0].id);
+            }
+          } else {
+            // If we don't have a reference point, update the whole list
+            setTraffic(sortedTraffic);
+            if (sortedTraffic.length > 0) {
+              setLastEntryId(sortedTraffic[0].id);
+            }
+          }
+        }
+        
         setLastRefresh(new Date()); // Update last refresh time
       } else {
-        console.warn('Received invalid traffic data:', trafficData);
-        setTraffic([]);
+        if (initialLoad) {
+          setTraffic([]);
+        }
       }
       
-      setIsLoading(false);
+      if (initialLoad) {
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error('Failed to fetch traffic:', error);
-      setIsLoading(false);
+      if (initialLoad) {
+        setIsLoading(false);
+      }
     }
   };
   
@@ -69,7 +131,7 @@ export default function MitmproxyLogsPage() {
         
         if (status.running) {
           // Fetch initial traffic data
-          fetchTraffic();
+          fetchTraffic(true);
         } else {
           setIsLoading(false);
         }
@@ -81,12 +143,12 @@ export default function MitmproxyLogsPage() {
     
     checkMitmproxyStatus();
     
-    // Set up an interval to refresh the traffic data if proxy is running and auto-refresh is enabled
+    // Set up an interval for streaming updates if enabled
     let intervalId;
     if (proxyStatus.running && autoRefresh) {
       intervalId = setInterval(() => {
-        fetchTraffic();
-      }, 2000);
+        fetchTraffic(false);
+      }, 1000); // More frequent, lighter updates
     }
     
     // Clean up the interval when component unmounts or dependencies change
@@ -95,7 +157,7 @@ export default function MitmproxyLogsPage() {
         clearInterval(intervalId);
       }
     };
-  }, [proxyStatus.running, autoRefresh]); // Added autoRefresh to dependencies
+  }, [proxyStatus.running, autoRefresh, lastEntryId]);
   
   const handleBack = () => {
     router.push('/analytics-debugger');
@@ -133,9 +195,15 @@ export default function MitmproxyLogsPage() {
     try {
       await window.api.mitmproxy.clearTraffic();
       setTraffic([]);
+      setLastEntryId(null); // Reset the last entry ID
     } catch (error) {
       alert('Error clearing traffic: ' + error.message);
     }
+  };
+  
+  // Manual refresh that preserves user state
+  const handleManualRefresh = () => {
+    fetchTraffic(false);
   };
   
   // Filter traffic based on type and search term
@@ -266,7 +334,7 @@ export default function MitmproxyLogsPage() {
                   Last updated: {lastRefresh.toLocaleTimeString()}
                   <button 
                     className={styles.refreshButton}
-                    onClick={fetchTraffic}
+                    onClick={handleManualRefresh}
                     disabled={isLoading}
                   >
                     Refresh Now
@@ -274,7 +342,7 @@ export default function MitmproxyLogsPage() {
                 </div>
               )}
               
-              <div className={styles.trafficList}>
+              <div className={styles.trafficList} ref={trafficListRef}>
                 {isLoading ? (
                   <div className={styles.loadingContainer}>
                     <p>Loading traffic data...</p>
@@ -302,7 +370,10 @@ export default function MitmproxyLogsPage() {
                         {entry.type === 'request' ? (
                           <>
                             <div className={styles.entryMethod}>{entry.method}</div>
-                            <div className={styles.entryPath} title={entry.path}>
+                            {entry.fullUrl && (
+                              <div className={styles.entryFullUrl}>{entry.fullUrl}</div>
+                            )}
+                            <div className={styles.entryPath}>
                               {entry.destination} {entry.path}
                             </div>
                           </>

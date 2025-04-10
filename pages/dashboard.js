@@ -21,7 +21,6 @@ export default function Dashboard() {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [selectedAndroidApp, setSelectedAndroidApp] = useState(null);
   const [debuggingActive, setDebuggingActive] = useState(false);
-  const [showAnalyticsDebugger, setShowAnalyticsDebugger] = useState(false);
 
   // Redirect if not logged in
   if (!loading && !user) {
@@ -90,16 +89,6 @@ export default function Dashboard() {
     try {
       setSelectedAndroidApp(app);
       
-      // Enable analytics debugging for the app
-      const debugResult = await window.api.adb.enableAnalyticsDebugging(
-        selectedDevice.id, 
-        app.packageName
-      );
-      
-      if (!debugResult.success) {
-        console.error('Failed to enable analytics debugging:', debugResult.message);
-      }
-      
       // Launch the selected app on the device using ADB
       const launchResult = await window.api.adb.launchApp(selectedDevice.id, app.packageName);
       
@@ -112,7 +101,6 @@ export default function Dashboard() {
       // Close the app selector, start debugging, and show analytics
       setIsAndroidAppSelectorOpen(false);
       setDebuggingActive(true);
-      setShowAnalyticsDebugger(true);
       
       console.log('Selected app for debugging:', selectedApp);
       console.log('Selected platform for debugging:', selectedPlatform);
@@ -129,16 +117,11 @@ export default function Dashboard() {
     setSelectedPlatform(null);
     setSelectedDevice(null);
     setSelectedAndroidApp(null);
-    setShowAnalyticsDebugger(false);
-    
-    // Stop any ongoing logcat processes
-    window.api.adb.stopAllLogcatStreams().catch(err => {
-      console.error('Error stopping logcat streams:', err);
-    });
   };
 
   const handleToggleAnalyticsDebugger = () => {
-    setShowAnalyticsDebugger(prev => !prev);
+    // Navigate to analytics debugger page instead of showing/hiding sidebar
+    router.push(`/analytics-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}`);
   };
 
   return (
@@ -149,7 +132,7 @@ export default function Dashboard() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={`${styles.mainContainer} ${showAnalyticsDebugger ? styles.withAnalytics : ''}`}>
+      <main className={styles.mainContainer}>
         {/* Settings icon in top right */}
         <div className={styles.settingsContainer}>
           <button className={styles.settingsButton} aria-label="Settings">
@@ -205,10 +188,10 @@ export default function Dashboard() {
               <div className={styles.debuggingActions}>
                 {selectedPlatform === 'android' && selectedAndroidApp && (
                   <button 
-                    className={`${styles.analyticsButton} ${showAnalyticsDebugger ? styles.active : ''}`}
+                    className={styles.analyticsButton}
                     onClick={handleToggleAnalyticsDebugger}
                   >
-                    {showAnalyticsDebugger ? 'Hide Analytics' : 'Show Analytics'}
+                    Analytics Debugger
                   </button>
                 )}
                 <button 
@@ -259,17 +242,6 @@ export default function Dashboard() {
           deviceId={selectedDevice?.id}
           onSelectApp={handleSelectAndroidApp}
         />
-        
-        {/* Analytics Debugger */}
-        {selectedPlatform === 'android' && selectedAndroidApp && (
-          <div className={`${styles.analyticsContainer} ${showAnalyticsDebugger ? styles.show : ''}`}>
-            <AnalyticsDebugger
-              deviceId={selectedDevice?.id}
-              packageName={selectedAndroidApp?.packageName}
-              show={showAnalyticsDebugger}
-            />
-          </div>
-        )}
       </main>
     </>
   );

@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld(
       }
     },
     receive: (channel, func) => {
-      const validChannels = ['fromMain', 'logcat-data'];
+      const validChannels = ['fromMain'];
       if (validChannels.includes(channel)) {
         // Deliberately strip event as it includes `sender` 
         ipcRenderer.on(channel, (event, ...args) => func(...args));
@@ -31,14 +31,6 @@ contextBridge.exposeInMainWorld(
       getLocalIp: () => ipcRenderer.invoke('adb:getLocalIp'),
       getInstalledApps: (deviceId) => ipcRenderer.invoke('adb:getInstalledApps', deviceId),
       launchApp: (deviceId, packageName) => ipcRenderer.invoke('adb:launchApp', deviceId, packageName),
-      enableAnalyticsDebugging: (deviceId, packageName) => ipcRenderer.invoke('adb:enableAnalyticsDebugging', deviceId, packageName),
-      startLogcatStream: (deviceId, analyticsType) => ipcRenderer.invoke('adb:startLogcatStream', deviceId, analyticsType),
-      stopLogcatStream: (analyticsType) => ipcRenderer.invoke('adb:stopLogcatStream', analyticsType),
-      stopAllLogcatStreams: () => ipcRenderer.invoke('adb:stopLogcatStreams'),
-      // Keep these for backward compatibility, they now use the streaming implementation
-      startLogcat: (deviceId, analyticsType) => ipcRenderer.invoke('adb:startLogcat', deviceId, analyticsType),
-      stopLogcat: () => ipcRenderer.invoke('adb:stopLogcat'),
-      getLogcatData: (deviceId, analyticsType) => ipcRenderer.invoke('adb:getLogcatData', deviceId, analyticsType),
     }
   }
 ); 

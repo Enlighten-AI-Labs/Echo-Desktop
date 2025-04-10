@@ -600,184 +600,30 @@ ipcMain.handle('adb:launchApp', async (event, deviceId, packageName) => {
 // Enable analytics debugging for a specific package
 ipcMain.handle('adb:enableAnalyticsDebugging', async (event, deviceId, packageName) => {
   try {
-    console.log(`Enabling analytics debugging for ${packageName} on device ${deviceId}`);
-    
-    // Fix and enhance Google Analytics debugging commands
-    try {
-      // Set the main package name debug property - ONLY ONCE
-      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app ${packageName}`);
-      console.log(`Set debug.firebase.analytics.app to ${packageName}`);
-      
-      // Set debug.firebase.analytics.app_instance_id to true
-      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app_instance_id true`);
-      
-      // Additional Firebase/Google Analytics debug flags
-      await execAdbCommand(`-s ${deviceId} shell setprop firebase.analytics.debug.enable true`);
-      console.log(`Set firebase.analytics.debug.enable to true`);
-      
-      // Force verbose logging for Firebase
-      await execAdbCommand(`-s ${deviceId} shell setprop log.tag.FA VERBOSE`);
-      await execAdbCommand(`-s ${deviceId} shell setprop log.tag.FA-SVC VERBOSE`);
-      
-      // Additional Firebase/Google Analytics debug flags - set package name instead of "true"
-      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.analytics.app ${packageName}`);
-      
-      // Force debug mode
-      await execAdbCommand(`-s ${deviceId} shell setprop debug.firebase.test.lab "true"`);
-      
-      // Broadcast analytics dispatch to force immediate sending
-      await execAdbCommand(`-s ${deviceId} shell am broadcast -a com.google.analytics.ANALYTICS_DISPATCH`);
-      
-      // Additional broadcasts that can help with some apps
-      await execAdbCommand(`-s ${deviceId} shell am broadcast -a ${packageName}.FLUSH_EVENTS`);
-      
-    } catch (error) {
-      console.warn(`Warning: Issue with Firebase Analytics debugging setup: ${error.message}`);
-    }
-    
-    // Try to enable Adobe Analytics debugging
-    try {
-      await execAdbCommand(`-s ${deviceId} shell setprop debug.adobe.analytics.app ${packageName}`);
-    } catch (error) {
-      console.warn(`Warning: Could not set debug.adobe.analytics.app: ${error.message}`);
-    }
-    
-    // Clear logcat to start with a clean slate
-    try {
-      await execAdbCommand(`-s ${deviceId} logcat -c`);
-    } catch (error) {
-      console.warn(`Warning: Could not clear logcat: ${error.message}`);
-    }
-    
+    console.log(`Analytics debugging feature has been removed.`);
     return { 
       success: true, 
-      message: `Analytics debugging enabled for ${packageName} (with some potential limitations)` 
+      message: `Analytics debugging feature has been removed.` 
     };
   } catch (error) {
-    console.error(`Error enabling analytics debugging for ${packageName}:`, error);
-    // Return success anyway since we want to proceed with log capture
+    console.error(`Error:`, error);
     return { 
-      success: true, 
-      message: `Proceeding with log capture (some debug features may be limited)`
+      success: false, 
+      message: error.message
     };
   }
 });
 
-// Update logcatProcesses object (remove raw)
-const logcatProcesses = {
-  ga4: null,
-  adobe: null
-};
-
-// Process log data for a specific analytics type
-function processLogData(data, analyticsType) {
-  try {
-    const lines = data.toString().split('\n').filter(line => line.trim());
-    console.log(`Processing ${lines.length} lines of ${analyticsType} data`);
-    
-    // Process each line to extract relevant information
-    const processedLines = lines.map(line => {
-      try {
-        // Parse line in threadtime format: "MM-DD HH:MM:SS.mmm PID TID LEVEL TAG: MESSAGE"
-        const timeMatch = line.match(/^(\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3})/);
-        const timestamp = timeMatch ? timeMatch[1] : '';
-        
-        // Extract tag and level if possible
-        const tagMatch = line.match(/\d+\s+\d+\s+([A-Z])\s+([^:]+):/);
-        const level = tagMatch ? tagMatch[1] : '';
-        const tag = tagMatch ? tagMatch[2].trim() : '';
-        
-        // Extract the message - everything after the first colon following the tag
-        const colonIndex = line.indexOf(':', line.indexOf(tag) + tag.length);
-        const message = colonIndex > -1 ? line.substring(colonIndex + 1).trim() : line;
-        
-        return {
-          timestamp,
-          tag,
-          level,
-          message,
-          analyticsType,
-          timestampMs: new Date().getTime(),
-          rawLine: line
-        };
-      } catch (e) {
-        console.error('Error processing log line:', e);
-        return {
-          timestamp: new Date().toLocaleString(),
-          message: line,
-          analyticsType,
-          timestampMs: new Date().getTime(),
-          rawLine: line
-        };
-      }
-    });
-    
-    return processedLines;
-  } catch (err) {
-    console.error(`Error processing ${analyticsType} logcat data:`, err);
-    return [];
-  }
-}
-
 // Start a logcat stream for the specified analytics type
 ipcMain.handle('adb:startLogcatStream', async (event, deviceId, analyticsType, filters) => {
   try {
-    // Check if there's an existing logcat process for this type
-    if (logcatProcesses[analyticsType]) {
-      console.log(`Killing existing logcat process for ${analyticsType}`);
-      logcatProcesses[analyticsType].kill();
-      delete logcatProcesses[analyticsType];
-    }
-
-    // Clear the log first to avoid capturing old events
-    try {
-      console.log(`Clearing logcat for ${analyticsType}`);
-      await execAdbCommand(`-s ${deviceId} logcat -c`);
-    } catch (error) {
-      console.warn(`Warning: Could not clear logcat: ${error.message}`);
-    }
-    
-    // Wait a short time before starting new process
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log(`Starting logcat for ${analyticsType} without filters`);
-    
-    // Start the logcat process without filters to capture all logs
-    const adbArgs = [
-      '-s', deviceId, 
-      'logcat', 
-      '-v', 'threadtime',
-      '*:V'  // Capture all logs at verbose level
-    ];
-    
-    const logcatProcess = spawn(fullAdbPath, adbArgs);
-    
-    // Store the process reference for later cleanup
-    logcatProcesses[analyticsType] = logcatProcess;
-    
-    // Process log data
-    logcatProcess.stdout.on('data', (data) => {
-      const logData = processLogData(data.toString(), analyticsType);
-      if (logData.length > 0) {
-        mainWindow.webContents.send('logcat-data', logData);
-      }
-    });
-    
-    // Handle errors
-    logcatProcess.stderr.on('data', (data) => {
-      console.error(`Logcat stderr [${analyticsType}]:`, data.toString());
-    });
-    
-    logcatProcess.on('close', (code) => {
-      console.log(`Logcat process for ${analyticsType} exited with code ${code}`);
-      if (logcatProcesses[analyticsType]) {
-        delete logcatProcesses[analyticsType];
-      }
-    });
-    
-    return { success: true };
+    console.log('Logcat streaming feature has been removed.');
+    return { 
+      success: false, 
+      message: 'Logcat streaming feature has been removed.'
+    };
   } catch (error) {
-    console.error('Error starting logcat stream:', error);
+    console.error('Error:', error);
     return { 
       success: false, 
       message: error.message
@@ -787,43 +633,17 @@ ipcMain.handle('adb:startLogcatStream', async (event, deviceId, analyticsType, f
 
 // Handle stopping a specific logcat stream
 ipcMain.handle('adb:stopLogcatStream', async (event, analyticsType) => {
-  try {
-    if (logcatProcesses[analyticsType]) {
-      logcatProcesses[analyticsType].kill();
-      logcatProcesses[analyticsType] = null;
-      return { success: true, message: `Stopped ${analyticsType} logcat stream` };
-    }
-    return { success: true, message: `No ${analyticsType} logcat process running` };
-  } catch (error) {
-    console.error(`Error stopping ${analyticsType} logcat stream:`, error);
-    return { success: false, message: error.message };
-  }
+  return { success: true, message: 'Logcat streaming feature has been removed.' };
 });
 
 // Handle stopping all logcat streams
 ipcMain.handle('adb:stopLogcatStreams', async (event) => {
-  try {
-    console.log('Stopping all logcat streams');
-    
-    // Loop through all logcat processes and kill them
-    for (const type in logcatProcesses) {
-      if (logcatProcesses[type]) {
-        logcatProcesses[type].kill();
-        logcatProcesses[type] = null;
-      }
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error stopping logcat streams:', error);
-    return { success: false, message: error.message };
-  }
+  return { success: true, message: 'Logcat streaming feature has been removed.' };
 });
 
 // Handle the original logcat command (for backward compatibility)
 ipcMain.handle('adb:getLogcat', async (event, deviceId, analyticsType, numLines = 200) => {
-  // Just return empty logs as we're using streaming now
-  return { success: true, logs: [], message: 'Using logcat streaming instead of polling' };
+  return { success: true, logs: [], message: 'Logcat feature has been removed.' };
 });
 
 // Handle app launch

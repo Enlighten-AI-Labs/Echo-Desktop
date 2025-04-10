@@ -31,6 +31,16 @@ contextBridge.exposeInMainWorld(
       getLocalIp: () => ipcRenderer.invoke('adb:getLocalIp'),
       getInstalledApps: (deviceId) => ipcRenderer.invoke('adb:getInstalledApps', deviceId),
       launchApp: (deviceId, packageName) => ipcRenderer.invoke('adb:launchApp', deviceId, packageName),
+    },
+    
+    // MitmProxy specific methods
+    mitmproxy: {
+      status: () => ipcRenderer.invoke('mitmproxy:status'),
+      startCapturing: () => ipcRenderer.invoke('mitmproxy:startCapturing'),
+      stopCapturing: () => ipcRenderer.invoke('mitmproxy:stopCapturing'),
+      getProxyIp: () => ipcRenderer.invoke('mitmproxy:getProxyIp'),
+      getTraffic: () => ipcRenderer.invoke('mitmproxy:getTraffic'),
+      clearTraffic: () => ipcRenderer.invoke('mitmproxy:clearTraffic'),
     }
   }
 ); 

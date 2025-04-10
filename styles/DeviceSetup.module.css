@@ -1,0 +1,264 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-black);
+  color: var(--color-white);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background-color: #262628;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-family: 'Travelia', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.backButton svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke: var(--color-white);
+}
+
+.pageTitle {
+  margin-left: 2rem;
+  font-family: 'Travelia', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--color-white);
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1c;
+}
+
+.platformsContainer {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+}
+
+.platformCard {
+  width: 200px;
+  height: 200px;
+  border: 2px solid #3a3a3c;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #262628;
+  padding: 1.5rem;
+}
+
+.platformCard:hover {
+  border-color: #9C54AD; /* Purple */
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.platformCard.selected {
+  border-color: #9C54AD; /* Purple */
+  background-color: rgba(156, 84, 173, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.platformIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e0e0e0;
+}
+
+.platformIcon svg {
+  transition: all 0.2s ease;
+}
+
+.selected .platformIcon svg {
+  color: #9C54AD; /* Purple */
+}
+
+.platformName {
+  margin: 0;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 1.4rem;
+  color: #e0e0e0;
+  text-align: center;
+}
+
+.selected .platformName {
+  color: #9C54AD; /* Purple */
+}
+
+.actionsContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.continueButton {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.1rem;
+  background-color: #9C54AD; /* Purple */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 2.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(156, 84, 173, 0.3);
+}
+
+.continueButton:hover {
+  background-color: #8a4899; /* Slightly darker purple */
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(156, 84, 173, 0.4);
+}
+
+.continueButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(156, 84, 173, 0.2);
+}
+
+.continueButton:disabled {
+  background-color: #6b476d;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* iOS Setup Instructions Styles */
+.instructionsContainer {
+  max-width: 700px;
+  width: 100%;
+  background-color: #262628;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.instructionsTitle {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.8rem;
+  color: #e0e0e0;
+  margin: 0 0 2rem 0;
+  text-align: center;
+}
+
+.instructionsStep {
+  display: flex;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.instructionsStep:not(:last-of-type)::after {
+  content: '';
+  position: absolute;
+  left: 25px;
+  top: 55px;
+  bottom: -10px;
+  width: 2px;
+  background-color: #9C54AD;
+}
+
+.stepNumber {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #9C54AD;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-right: 1.5rem;
+}
+
+.stepContent {
+  flex: 1;
+}
+
+.stepContent h3 {
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 1.3rem;
+  color: #e0e0e0;
+  margin: 0 0 0.8rem 0;
+}
+
+.stepContent p {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.95rem;
+  color: #b0b0b0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.stepContent strong {
+  color: #9C54AD;
+  font-weight: bold;
+}
+
+.proxyDetails {
+  background-color: rgba(156, 84, 173, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-left: 3px solid #9C54AD;
+}
+
+.proxyItem {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.proxyItem:last-child {
+  margin-bottom: 0;
+}
+
+.proxyLabel {
+  width: 80px;
+  font-family: 'Azeret Mono Bold', monospace;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+}
+
+.proxyValue {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.9rem;
+  color: #9C54AD;
+  font-weight: bold;
+} 

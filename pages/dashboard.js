@@ -39,7 +39,8 @@ export default function Dashboard() {
   }
 
   const handleStartDebugging = () => {
-    setIsAppSelectorOpen(true);
+    // Instead of opening the app selector, navigate directly to the analytics debugger
+    router.push('/analytics-debugger');
   };
 
   const handleCloseAppSelector = () => {

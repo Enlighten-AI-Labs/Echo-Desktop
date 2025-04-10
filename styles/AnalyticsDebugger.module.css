@@ -12,10 +12,51 @@
 
 .header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid #E9EDF3; /* Light Gray */
   background-color: #FFFFFF;
+}
+
+.header h2 {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 20px;
+  color: #262628; /* Black */
+  margin: 0;
+}
+
+.viewLogsButton {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
+  background-color: #9C54AD; /* Purple */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewLogsButton:hover {
+  background-color: #8a4899; /* Slightly darker purple */
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(156, 84, 173, 0.3);
+}
+
+.viewLogsButton:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(156, 84, 173, 0.2);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .title {
@@ -628,4 +669,61 @@
 .messagesHeader {
   border-left-color: #9C54AD; /* Purple - Lighter */
   background-color: rgba(156, 84, 173, 0.05);
+}
+
+.messageContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  padding: 48px 24px;
+}
+
+.message {
+  text-align: center;
+  max-width: 500px;
+  padding: 32px;
+  background-color: #F8F9FC;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message h3 {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 24px;
+  color: #262628;
+  margin: 0 0 16px 0;
+}
+
+.message p {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.connectButton {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 16px;
+  background-color: #9C54AD; /* Purple */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 16px;
+  box-shadow: 0 4px 12px rgba(156, 84, 173, 0.3);
+}
+
+.connectButton:hover {
+  background-color: #8a4899; /* Slightly darker purple */
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(156, 84, 173, 0.4);
+}
+
+.connectButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(156, 84, 173, 0.2);
 } 

@@ -12,12 +12,20 @@ const isDev = process.env.NODE_ENV === 'development';
 let mainWindow;
 let loadAttempts = 0;
 const MAX_LOAD_ATTEMPTS = 10;
+let mitmProxyProcess = null;
+let mitmProxyTraffic = [];
+const MAX_TRAFFIC_ENTRIES = 1000; // Limit to prevent memory issues
 
 // Path to the app's user data directory
 const userDataPath = app.getPath('userData');
 const adbPath = path.join(userDataPath, 'platform-tools');
 const adbExecutable = process.platform === 'win32' ? 'adb.exe' : 'adb';
 const fullAdbPath = path.join(adbPath, adbExecutable);
+
+// MitmProxy paths
+const mitmproxyPath = process.platform === 'win32' ? 'mitmproxy.exe' : 'mitmproxy';
+const mitmwebPath = process.platform === 'win32' ? 'mitmweb.exe' : 'mitmweb';
+const mitmdumpPath = process.platform === 'win32' ? 'mitmdump.exe' : 'mitmdump';
 
 // Create temporary directory for QR codes if it doesn't exist
 const tmpDir = path.join(os.tmpdir(), 'echo-desktop');
@@ -294,6 +302,16 @@ app.whenReady().then(async () => {
   try {
     // Ensure ADB is installed before creating the window
     await ensureAdbExists();
+    
+    // Check if mitmproxy is installed
+    const mitmproxyInstalled = await checkMitmproxyInstalled();
+    if (!mitmproxyInstalled) {
+      console.warn('mitmproxy is not installed. Some features will not work.');
+      // We could show a dialog to the user here or handle it in the UI
+    } else {
+      // Start mitmproxy automatically
+      startMitmproxy();
+    }
   } catch (error) {
     console.error('Failed to set up ADB:', error);
   }
@@ -646,5 +664,198 @@ ipcMain.handle('adb:getLogcat', async (event, deviceId, analyticsType, numLines 
   return { success: true, logs: [], message: 'Logcat feature has been removed.' };
 });
 
-// Handle app launch
-// ... existing code ... 
+// Function to check if mitmproxy is installed
+async function checkMitmproxyInstalled() {
+  return new Promise((resolve) => {
+    const command = process.platform === 'win32' ? 'where mitmdump' : 'which mitmdump';
+    exec(command, (error) => {
+      if (error) {
+        console.log('mitmdump not found:', error.message);
+        resolve(false);
+      } else {
+        console.log('mitmdump found');
+        resolve(true);
+      }
+    });
+  });
+}
+
+// Function to start mitmproxy
+function startMitmproxy() {
+  if (mitmProxyProcess) {
+    console.log('mitmproxy already running');
+    return { success: true, message: 'mitmproxy already running' };
+  }
+
+  try {
+    console.log('Starting mitmdump...');
+    
+    // Clear previous traffic
+    mitmProxyTraffic = [];
+    
+    // Use mitmdump which is designed for console output without UI
+    const mitm = spawn(mitmdumpPath, [
+      '--listen-port', '8080',  // Set the port to listen on
+      '-v',                    // Standard verbosity level
+      '--flow-detail', '2',    // Medium level of flow detail
+      '--no-http2',            // Disable HTTP/2 for clearer logs
+      '--anticache',           // Disable caching to see all requests
+    ]);
+
+    mitmProxyProcess = mitm;
+
+    mitm.stdout.on('data', (data) => {
+      const output = data.toString();
+      console.log(`mitmdump stdout: ${output}`);
+      
+      // Parse the output for interesting traffic
+      parseAndStoreTraffic(output);
+    });
+
+    mitm.stderr.on('data', (data) => {
+      const output = data.toString();
+      console.error(`mitmdump stderr: ${output}`);
+    });
+
+    mitm.on('close', (code) => {
+      console.log(`mitmdump process exited with code ${code}`);
+      mitmProxyProcess = null;
+    });
+
+    return { success: true, message: 'mitmdump started successfully' };
+  } catch (error) {
+    console.error('Failed to start mitmdump:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Parse mitmproxy output and store interesting traffic
+function parseAndStoreTraffic(output) {
+  // Remove [electron-wait] prefix if present
+  const cleanOutput = output.replace(/\[electron-wait\] /g, '');
+  
+  // Request pattern for mitmdump's actual output format 
+  // Example: "192.168.0.190:55359: POST https://analytics.google.com/g/collect?v=2&tid=G-2JRDBY3PKD..."
+  const requestMatch = cleanOutput.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+):\s+([A-Z]+)\s+(https?:\/\/[^\s]+)/);
+  
+  // Response pattern for mitmdump's actual output format
+  // Example: " << 204 No Content 0b"
+  const responseMatch = cleanOutput.match(/<<\s+(\d{3})\s+([^0-9]+)\s+(\d+[kb]?)/);
+  
+  // Headers pattern
+  const headerMatch = cleanOutput.match(/\s{4}([^:]+):\s+(.+)/);
+  
+  // Capture request
+  if (requestMatch) {
+    const [, source, method, url] = requestMatch;
+    const timestamp = new Date().toISOString();
+    
+    // Parse URL to get host and path
+    let host = '';
+    let path = '';
+    
+    try {
+      const urlObj = new URL(url);
+      host = urlObj.host;
+      path = urlObj.pathname + urlObj.search;
+    } catch (e) {
+      host = url;
+      path = '/';
+    }
+    
+    mitmProxyTraffic.push({
+      id: `req_${timestamp}_${Math.random().toString(36).substring(2, 10)}`,
+      timestamp,
+      type: 'request',
+      source,
+      destination: host,
+      method,
+      path,
+      details: output,
+      fullUrl: url
+    });
+    
+    // Limit the array size
+    if (mitmProxyTraffic.length > MAX_TRAFFIC_ENTRIES) {
+      mitmProxyTraffic.shift();
+    }
+  }
+  
+  // Capture response
+  if (responseMatch) {
+    const [, status, statusText, size] = responseMatch;
+    const timestamp = new Date().toISOString();
+    
+    // Find the most recent request to associate this response with
+    const lastRequest = [...mitmProxyTraffic]
+      .filter(item => item.type === 'request')
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+      
+    const source = lastRequest?.destination || 'server';
+    const destination = lastRequest?.source || 'client';
+    
+    mitmProxyTraffic.push({
+      id: `res_${timestamp}_${Math.random().toString(36).substring(2, 10)}`,
+      timestamp,
+      type: 'response',
+      source,
+      destination,
+      status,
+      content: `${statusText.trim()} (${size})`,
+      details: output,
+      relatedRequest: lastRequest?.id
+    });
+    
+    // Limit the array size
+    if (mitmProxyTraffic.length > MAX_TRAFFIC_ENTRIES) {
+      mitmProxyTraffic.shift();
+    }
+  }
+}
+
+// Check the MitmProxy status
+ipcMain.handle('mitmproxy:status', () => {
+  return { running: !!mitmProxyProcess };
+});
+
+// MitmProxy: Start capturing
+ipcMain.handle('mitmproxy:startCapturing', async () => {
+  return startMitmproxy();
+});
+
+// MitmProxy: Stop capturing
+ipcMain.handle('mitmproxy:stopCapturing', () => {
+  return stopMitmproxy();
+});
+
+// Get proxy IP address for configuration
+ipcMain.handle('mitmproxy:getProxyIp', () => {
+  return getLocalIpAddress();
+});
+
+// Get the captured traffic
+ipcMain.handle('mitmproxy:getTraffic', () => {
+  return mitmProxyTraffic;
+});
+
+// Clear the captured traffic
+ipcMain.handle('mitmproxy:clearTraffic', () => {
+  mitmProxyTraffic = [];
+  return { success: true, message: 'Traffic cleared' };
+});
+
+// Function to stop mitmproxy
+function stopMitmproxy() {
+  if (mitmProxyProcess) {
+    console.log('Stopping mitmproxy...');
+    mitmProxyProcess.kill();
+    mitmProxyProcess = null;
+    return { success: true, message: 'mitmproxy stopped successfully' };
+  }
+  return { success: true, message: 'mitmproxy was not running' };
+}
+
+// Make sure to clean up mitmproxy on app quit
+app.on('will-quit', () => {
+  stopMitmproxy();
+}); 

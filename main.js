@@ -27,6 +27,9 @@ const mitmproxyPath = process.platform === 'win32' ? 'mitmproxy.exe' : 'mitmprox
 const mitmwebPath = process.platform === 'win32' ? 'mitmweb.exe' : 'mitmweb';
 const mitmdumpPath = process.platform === 'win32' ? 'mitmdump.exe' : 'mitmdump';
 
+// Path for mitmproxy installation
+const mitmproxyBinPath = path.join(userDataPath, 'mitmproxy', 'bin');
+
 // Create temporary directory for QR codes if it doesn't exist
 const tmpDir = path.join(os.tmpdir(), 'echo-desktop');
 if (!fs.existsSync(tmpDir)) {
@@ -79,6 +82,186 @@ async function ensureAdbExists() {
   
   console.log('ADB installed successfully at:', fullAdbPath);
   return fullAdbPath;
+}
+
+// Download and install mitmproxy if not already installed
+async function ensureMitmproxyExists() {
+  // Check if mitmproxy is already installed in the system
+  const systemInstalled = await checkMitmproxyInstalled();
+  if (systemInstalled) {
+    console.log('mitmproxy already installed in the system');
+    return true;
+  }
+  
+  console.log('mitmproxy not found in system, installing...');
+  
+  try {
+    // Use different installation methods based on platform
+    if (process.platform === 'darwin') {
+      // Check if Homebrew is installed on macOS
+      console.log('Checking if Homebrew is installed...');
+      try {
+        await new Promise((resolve, reject) => {
+          exec('which brew', (error) => {
+            if (error) {
+              console.error('Homebrew is not installed.');
+              reject(new Error('Homebrew is not installed. Please install it from https://brew.sh/'));
+              return;
+            }
+            resolve();
+          });
+        });
+        
+        // Install mitmproxy using Homebrew
+        console.log('Installing mitmproxy using Homebrew...');
+        await new Promise((resolve, reject) => {
+          exec('brew install mitmproxy', (error, stdout, stderr) => {
+            if (error) {
+              console.error('Failed to install mitmproxy using Homebrew:', stderr);
+              reject(error);
+              return;
+            }
+            console.log('Homebrew install output:', stdout);
+            resolve();
+          });
+        });
+        
+        // Set paths for macOS Homebrew installation
+        global.mitmdumpPath = '/usr/local/bin/mitmdump';
+        global.mitmproxyPath = '/usr/local/bin/mitmproxy';
+        global.mitmwebPath = '/usr/local/bin/mitmweb';
+        
+        // Check for Apple Silicon Macs which use a different path
+        if (!fs.existsSync(global.mitmdumpPath)) {
+          global.mitmdumpPath = '/opt/homebrew/bin/mitmdump';
+          global.mitmproxyPath = '/opt/homebrew/bin/mitmproxy';
+          global.mitmwebPath = '/opt/homebrew/bin/mitmweb';
+        }
+        
+      } catch (error) {
+        console.error('Homebrew installation error:', error);
+        throw error;
+      }
+    } else if (process.platform === 'win32') {
+      // Windows installation using pip
+      console.log('Installing mitmproxy using pip on Windows...');
+      await new Promise((resolve, reject) => {
+        exec('pip install mitmproxy', (error, stdout, stderr) => {
+          if (error) {
+            console.error('Failed to install mitmproxy using pip:', stderr);
+            reject(error);
+            return;
+          }
+          console.log('pip install output:', stdout);
+          resolve();
+        });
+      });
+      
+      // Set paths for Windows
+      global.mitmdumpPath = 'mitmdump.exe';
+      global.mitmproxyPath = 'mitmproxy.exe';
+      global.mitmwebPath = 'mitmweb.exe';
+      
+    } else {
+      // Linux installation using pip
+      console.log('Installing mitmproxy using pip on Linux...');
+      await new Promise((resolve, reject) => {
+        exec('pip3 install --user mitmproxy', (error, stdout, stderr) => {
+          if (error) {
+            console.error('Failed to install mitmproxy using pip:', stderr);
+            reject(error);
+            return;
+          }
+          console.log('pip install output:', stdout);
+          resolve();
+        });
+      });
+      
+      // Get the path from which command
+      const installedPath = await new Promise((resolve, reject) => {
+        exec('which mitmdump', (error, stdout) => {
+          if (error) {
+            // Try to find in ~/.local/bin
+            if (fs.existsSync(path.join(os.homedir(), '.local/bin/mitmdump'))) {
+              resolve(path.join(os.homedir(), '.local/bin/mitmdump'));
+            } else {
+              console.error('mitmproxy was not installed correctly.');
+              reject(error);
+            }
+            return;
+          }
+          resolve(stdout.trim());
+        });
+      });
+      
+      // Set paths for Linux
+      global.mitmdumpPath = installedPath;
+      global.mitmproxyPath = installedPath.replace('mitmdump', 'mitmproxy');
+      global.mitmwebPath = installedPath.replace('mitmdump', 'mitmweb');
+    }
+    
+    console.log('mitmproxy installed successfully at:', global.mitmdumpPath);
+    return true;
+  } catch (error) {
+    console.error('Failed to install mitmproxy:', error);
+    
+    // Show a message to the user about manual installation
+    if (mainWindow) {
+      let instructions;
+      
+      if (process.platform === 'darwin') {
+        instructions = [
+          '1. Install Homebrew from https://brew.sh/',
+          '2. Open Terminal',
+          '3. Run: brew install mitmproxy',
+          '4. Restart this application'
+        ];
+      } else if (process.platform === 'win32') {
+        instructions = [
+          '1. Install Python from https://www.python.org/downloads/',
+          '2. Open Command Prompt',
+          '3. Run: pip install mitmproxy',
+          '4. Restart this application'
+        ];
+      } else {
+        instructions = [
+          '1. Open Terminal',
+          '2. Run: pip3 install --user mitmproxy',
+          '3. Restart this application'
+        ];
+      }
+      
+      mainWindow.webContents.send('installation-error', {
+        title: 'mitmproxy Installation Failed',
+        message: 'Please install mitmproxy manually:',
+        instructions
+      });
+    }
+    
+    return false;
+  }
+}
+
+// Helper function to find executables recursively
+function findExecutablesRecursively(dir) {
+  const results = [];
+  const list = fs.readdirSync(dir);
+  
+  list.forEach(file => {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    
+    if (stat && stat.isDirectory()) {
+      results.push(...findExecutablesRecursively(filePath));
+    } else {
+      if ((file.includes('mitm') && !file.endsWith('.py')) || 
+          (process.platform === 'win32' && file.endsWith('.exe'))) {
+        results.push(filePath);
+      }
+    }
+  });
+  
+  return results;
 }
 
 // Helper function to download a file
@@ -303,17 +486,16 @@ app.whenReady().then(async () => {
     // Ensure ADB is installed before creating the window
     await ensureAdbExists();
     
-    // Check if mitmproxy is installed
-    const mitmproxyInstalled = await checkMitmproxyInstalled();
-    if (!mitmproxyInstalled) {
-      console.warn('mitmproxy is not installed. Some features will not work.');
-      // We could show a dialog to the user here or handle it in the UI
-    } else {
+    // Ensure mitmproxy is installed
+    const mitmproxyInstalled = await ensureMitmproxyExists();
+    if (mitmproxyInstalled) {
       // Start mitmproxy automatically
       startMitmproxy();
+    } else {
+      console.warn('Failed to install mitmproxy. Some features will not work.');
     }
   } catch (error) {
-    console.error('Failed to set up ADB:', error);
+    console.error('Failed to set up dependencies:', error);
   }
   
   createWindow();
@@ -666,14 +848,28 @@ ipcMain.handle('adb:getLogcat', async (event, deviceId, analyticsType, numLines 
 
 // Function to check if mitmproxy is installed
 async function checkMitmproxyInstalled() {
+  // First check if mitmproxy is installed in the system path
   return new Promise((resolve) => {
     const command = process.platform === 'win32' ? 'where mitmdump' : 'which mitmdump';
     exec(command, (error) => {
       if (error) {
-        console.log('mitmdump not found:', error.message);
-        resolve(false);
+        console.log('mitmdump not found in system path:', error.message);
+        
+        // Check for local installation
+        const localMitmdumpPath = path.join(mitmproxyBinPath, process.platform === 'win32' ? 'mitmdump.exe' : 'mitmdump');
+        if (fs.existsSync(localMitmdumpPath)) {
+          console.log('Found local mitmdump at:', localMitmdumpPath);
+          // Set the global paths
+          global.mitmdumpPath = localMitmdumpPath;
+          global.mitmproxyPath = path.join(mitmproxyBinPath, process.platform === 'win32' ? 'mitmproxy.exe' : 'mitmproxy');
+          global.mitmwebPath = path.join(mitmproxyBinPath, process.platform === 'win32' ? 'mitmweb.exe' : 'mitmweb');
+          resolve(true);
+        } else {
+          console.log('mitmdump not found locally either');
+          resolve(false);
+        }
       } else {
-        console.log('mitmdump found');
+        console.log('mitmdump found in system path');
         resolve(true);
       }
     });
@@ -693,8 +889,12 @@ function startMitmproxy() {
     // Clear previous traffic
     mitmProxyTraffic = [];
     
+    // Determine which mitmdump path to use
+    const executablePath = global.mitmdumpPath || mitmdumpPath;
+    console.log('Using mitmdump at:', executablePath);
+    
     // Use mitmdump which is designed for console output without UI
-    const mitm = spawn(mitmdumpPath, [
+    const mitm = spawn(executablePath, [
       '--listen-port', '8080',  // Set the port to listen on
       '-v',                    // Standard verbosity level
       '--flow-detail', '2',    // Medium level of flow detail

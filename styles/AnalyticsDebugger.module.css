@@ -858,47 +858,4 @@
 .connectButton:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(156, 84, 173, 0.2);
-}
-
-.beaconItem {
-  display: flex;
-  padding: 12px;
-  border-bottom: 1px solid #E9EDF3;
-  border-right: 3px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.beaconItem:hover:not(.selected) {
-  background-color: rgba(60, 118, 169, 0.03);
-}
-
-.beaconItem.selected {
-  background-color: rgba(60, 118, 169, 0.08);
-  border-right: 3px solid #3C76A9;
-}
-
-.beaconItem.selected:hover {
-  background-color: rgba(60, 118, 169, 0.12);
-}
-
-.beaconNumber {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #F6F8FA;
-  border-radius: 4px;
-  font-family: 'Doto Semi-Bold', monospace;
-  font-size: 14px;
-  color: #9C54AD;
-  margin-right: 12px;
-}
-
-.beaconContent {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 } 

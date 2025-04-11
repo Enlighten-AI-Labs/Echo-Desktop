@@ -1,0 +1,62 @@
+Enlighten Web Application Design Prompt
+When designing my web application, please follow these brand guidelines carefully:
+Typography System
+Primary Typeface
+Use Travelia as the primary typeface for all main elements
+Travelia is a dynamic sans serif family with specific weights for different purposes:
+Travelia Bold: For headers (200pt) and the secondary logo
+Travelia Black: For business cards and placements with minimal copy
+Travelia Medium: For subheaders (50pt, or 25% of header size)
+Body Copy Typeface
+Azeret Mono Light: Primary body copy (30pt with 42pt line spacing - 40% more than font size)
+Azeret Mono Regular: For body copy categories, section titles, and more display-oriented text
+Supporting Typefaces
+Doto Semi-Bold: Exclusively for subject lines, footers, and page numbers (30pt)
+Can also be used for design elements like quotation marks
+Never use for headlines, subheaders, or body copy
+BN Hightide with glyphs: For display applications and titles only
+Embrace the alternate glyphs (especially for 'a' and 'n')
+Use only for title pages in decks, never for formal applications
+Type Hierarchy
+Headers: Travelia Bold (200pt)
+Sub-headers: Travelia Medium (50pt)
+Body copy categories: Azeret Mono Regular (30pt)
+Body copy: Azeret Mono Light (30pt)
+Subject lines & page numbers: Doto Semi-Bold (30pt)
+Logo Guidelines
+The word "enlighten" must only be spelled using Travelia Bold
+Never represent the brand in isolation using Azeret Mono, Doto, or BN Hightide
+Never spell "enlighten" in a display setting with any typeface other than Travelia Bold
+Color Palette
+Primary Colors
+Black (#262628, RGB: 38, 38, 40)
+Purple (#9C54AD, RGB: 156, 84, 173)
+Red (#EB2726, RGB: 235, 39, 38)
+Blue (#3C76A9, RGB: 60, 118, 169)
+Green (#6DC19C, RGB: 109, 193, 156)
+Orange (#F69757, RGB: 246, 151, 87)
+Yellow (#FFCF4F, RGB: 255, 207, 79)
+Light Gray (#E9EDF3, RGB: 233, 237, 243)
+Color Usage
+Prioritize legibility when using colors
+Avoid stacking light and dark colors in ways that reduce readability
+Black and white should be the only colors used for type unless an alternate color is needed for proper contrast
+You may use the brand colors as backgrounds with white or black text for contrast
+Brand Voice
+Positioning: Data-Driven. Results-Focused. AI-Powered.
+Messaging Tone: Professional, knowledgeable, innovative
+Design Principles
+Maintain clean, intentional lines throughout the interface
+Embrace a modern, digital-first aesthetic
+Create clear visual hierarchy using the type system
+Ensure all text is highly legible regardless of placement
+Use the pixelated elements (via Doto) sparingly to acknowledge the foundational elements of computing
+Web Application Specific Guidelines
+Navigation: Use Travelia Medium for main navigation items
+Buttons: Travelia Bold on solid brand colors with appropriate contrast
+Headers: Travelia Bold in black (or white on dark backgrounds)
+Body text: Azeret Mono Light for readability
+UI elements like tabs, form labels: Azeret Mono Regular
+Footers, small UI elements: Doto Semi-Bold
+Background colors: Primarily white with brand colors as accents
+Call to action elements: Utilize brand colors (particularly blue, purple, or red) for emphasis 

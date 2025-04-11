@@ -5,6 +5,7 @@ import styles from '@/styles/DeviceSetup.module.css';
 
 export default function DeviceSetup() {
   const router = useRouter();
+  const { deviceId, packageName } = router.query;
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [localIp, setLocalIp] = useState('Loading...');
@@ -58,8 +59,14 @@ export default function DeviceSetup() {
       // If showing iOS instructions, go back to platform selection
       setShowIOSInstructions(false);
     } else {
-      // Otherwise, return to analytics debugger
-      router.push('/analytics-debugger');
+      // Otherwise, return to analytics debugger with preserved parameters
+      const query = {};
+      if (deviceId) query.deviceId = deviceId;
+      if (packageName) query.packageName = packageName;
+      router.push({
+        pathname: '/analytics-debugger',
+        query
+      });
     }
   };
 
@@ -68,8 +75,16 @@ export default function DeviceSetup() {
     window.api.mitmproxy.startCapturing()
       .then(result => {
         if (result.success) {
-          // Redirect to analytics debugger with mitmproxy status
-          router.push('/analytics-debugger?mitmproxy=true');
+          // Redirect to analytics debugger with preserved parameters
+          const query = {
+            mitmproxy: 'true'
+          };
+          if (deviceId) query.deviceId = deviceId;
+          if (packageName) query.packageName = packageName;
+          router.push({
+            pathname: '/analytics-debugger',
+            query
+          });
         } else {
           alert('Failed to start MitmProxy: ' + result.message);
         }

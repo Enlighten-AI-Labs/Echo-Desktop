@@ -206,12 +206,25 @@ export default function MitmproxyLogsPage() {
     fetchTraffic(false);
   };
   
-  // Filter traffic based on type and search term
+  // Filter traffic based on selected filter and search term
   const filteredTraffic = traffic.filter(entry => {
-    const matchesFilter = filter === 'all' || entry.type === filter;
-    const matchesSearch = searchTerm === '' || 
-                          JSON.stringify(entry).toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    // Apply filter
+    if (filter === 'ga4' && !entry.isGA4Request) {
+      return false;
+    }
+    
+    // Apply search term if provided
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        entry.destination?.toLowerCase().includes(searchLower) ||
+        entry.path?.toLowerCase().includes(searchLower) ||
+        entry.method?.toLowerCase().includes(searchLower) ||
+        entry.fullUrl?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return true;
   });
   
   return (
@@ -300,8 +313,7 @@ export default function MitmproxyLogsPage() {
                       onChange={(e) => setFilter(e.target.value)}
                     >
                       <option value="all">All Traffic</option>
-                      <option value="request">Requests</option>
-                      <option value="response">Responses</option>
+                      <option value="ga4">GA4 Analytics</option>
                     </select>
                   </div>
                   
@@ -355,11 +367,12 @@ export default function MitmproxyLogsPage() {
                   filteredTraffic.map((entry) => (
                     <div 
                       key={entry.id} 
-                      className={`${styles.trafficEntry} ${entry.type === 'request' ? styles.requestEntry : styles.responseEntry}`}
+                      className={`${styles.trafficEntry} ${entry.type === 'request' ? styles.requestEntry : styles.responseEntry} ${entry.isGA4Request ? styles.ga4Entry : ''}`}
                     >
                       <div className={styles.entryHeader}>
                         <div className={styles.entryType}>
                           {entry.type === 'request' ? 'REQUEST' : 'RESPONSE'}
+                          {entry.isGA4Request && <span className={styles.ga4Badge}>GA4</span>}
                         </div>
                         <div className={styles.entryTimestamp}>
                           {new Date(entry.timestamp).toLocaleTimeString()}
@@ -376,6 +389,19 @@ export default function MitmproxyLogsPage() {
                             <div className={styles.entryPath}>
                               {entry.destination} {entry.path}
                             </div>
+                            {entry.isGA4Request && entry.ga4Params && (
+                              <div className={styles.ga4Params}>
+                                <h4>GA4 Parameters:</h4>
+                                <div className={styles.ga4ParamsList}>
+                                  {Object.entries(entry.ga4Params).map(([key, value]) => (
+                                    <div key={key} className={styles.ga4Param}>
+                                      <span className={styles.ga4ParamKey}>{key}:</span>
+                                      <span className={styles.ga4ParamValue}>{value}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>

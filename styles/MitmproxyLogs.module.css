@@ -403,4 +403,52 @@
 .refreshButton:disabled {
   background-color: #9e9e9e;
   cursor: not-allowed;
+}
+
+/* GA4-specific styles that work with the original design */
+.ga4Entry {
+  border-left: 4px solid #4285f4; /* Google blue */
+}
+
+.ga4Badge {
+  background-color: #4285f4;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.ga4Params {
+  margin: 8px 0;
+  padding: 8px;
+  background-color: rgba(66, 133, 244, 0.1);
+  border-radius: 4px;
+}
+
+.ga4Params h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #4285f4;
+}
+
+.ga4ParamsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.ga4Param {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.ga4ParamKey {
+  font-weight: bold;
+  color: #4285f4;
+}
+
+.ga4ParamValue {
+  word-break: break-all;
 } 

@@ -8,6 +8,8 @@ const fs = require('fs');
 const https = require('https');
 const extract = require('extract-zip');
 const isDev = process.env.NODE_ENV === 'development';
+const mDnsSd = require('node-dns-sd');
+const { nanoid } = require('nanoid');
 
 let mainWindow;
 let loadAttempts = 0;
@@ -533,6 +535,7 @@ ipcMain.handle('adb:getDevices', async () => {
   }
 });
 
+// Generate QR code for wireless debugging
 ipcMain.handle('adb:generateQRCode', async () => {
   try {
     // Start ADB server if not already running
@@ -594,6 +597,224 @@ ipcMain.handle('adb:generateQRCode', async () => {
     throw error;
   }
 });
+
+// Add a custom implementation for QR codes in the UI with device discovery
+ipcMain.handle('adb:generateAdbWifiQRCode', async () => {
+  try {
+    // Start ADB server if not already running
+    await execAdbCommand('start-server');
+    
+    // Get local IP address
+    const hostIp = getLocalIpAddress();
+    
+    // Use a random name and password for pairing
+    const debugName = "echo_debug_" + nanoid(6);
+    const pairingCode = nanoid(8); // Random string for pairing code
+    
+    // Create a pairing port (between 30000-40000, consistent with Android expectations)
+    const pairingPort = Math.floor(Math.random() * 10000) + 30000;
+    
+    // Generate a QR code with the correct Android format
+    // Format: WIFI:T:ADB;S:{name};P:{password};;
+    const qrCodeContent = `WIFI:T:ADB;S:${debugName};P:${pairingCode};;`;
+    
+    console.log('Creating QR code with content:', qrCodeContent);
+    
+    // Create QR code image for UI display
+    const qrCodePath = path.join(tmpDir, 'adb_pairing_qrcode.png');
+    
+    // Generate the QR code image
+    await new Promise((resolve, reject) => {
+      qrcode.toFile(
+        qrCodePath, 
+        qrCodeContent,
+        { 
+          errorCorrectionLevel: 'H',
+          width: 300,
+          margin: 2
+        },
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+    
+    // For Electron's security model, convert to data URL
+    const qrImageBuffer = fs.readFileSync(qrCodePath);
+    const qrDataUrl = `data:image/png;base64,${qrImageBuffer.toString('base64')}`;
+    
+    // Also log to console for debugging
+    console.log('Android wireless debugging QR code generated');
+    console.log('Pairing info:', hostIp, pairingPort, pairingCode);
+    
+    // Start device discovery in the background
+    startDeviceDiscovery(pairingCode);
+    
+    // Return all information including the QR code image
+    return {
+      qrCodePath: qrDataUrl,
+      hostIp,
+      pairingPort,
+      pairingCode,
+      message: 'Scan the QR code with your Android device to connect wirelessly. Waiting for device to appear...'
+    };
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    
+    // If there was an error, still return connection info
+    const hostIp = getLocalIpAddress();
+    console.log('Returning fallback connection info due to error');
+    return {
+      usingTerminalQr: false, // We're not using a terminal QR code
+      hostIp,
+      pairingPort: 5555,
+      pairingCode: '123456',
+      message: 'Failed to generate QR code. Please try manual connection.'
+    };
+  }
+});
+
+// Add device discovery functionality
+let discoveryInProgress = false;
+let deviceDiscoveryTimeout = null;
+
+// Function to start discovering ADB devices over the network
+function startDeviceDiscovery(pairingCode) {
+  if (discoveryInProgress) {
+    console.log('Device discovery already in progress, restarting...');
+    stopDeviceDiscovery();
+  }
+  
+  discoveryInProgress = true;
+  console.log('Starting device discovery...');
+  
+  // Set a timeout to stop discovery after 60 seconds
+  deviceDiscoveryTimeout = setTimeout(() => {
+    console.log('Device discovery timeout after 60 seconds');
+    stopDeviceDiscovery();
+  }, 60000);
+  
+  // Start the discovery process
+  discoverAndConnectDevice(pairingCode);
+}
+
+// Function to stop device discovery
+function stopDeviceDiscovery() {
+  if (deviceDiscoveryTimeout) {
+    clearTimeout(deviceDiscoveryTimeout);
+    deviceDiscoveryTimeout = null;
+  }
+  discoveryInProgress = false;
+  console.log('Device discovery stopped');
+}
+
+// Function to discover and connect to a device
+async function discoverAndConnectDevice(pairingCode) {
+  if (!discoveryInProgress) return;
+  
+  try {
+    console.log('Searching for ADB pairing devices...');
+    
+    // Use mDnsSd to discover devices
+    const deviceList = await mDnsSd.discover({
+      name: '_adb-tls-pairing._tcp.local'
+    });
+    
+    console.log('Device discovery result:', deviceList);
+    
+    if (deviceList.length === 0) {
+      // If no devices found, retry after a short delay
+      setTimeout(() => {
+        if (discoveryInProgress) {
+          discoverAndConnectDevice(pairingCode);
+        }
+      }, 2000);
+      return;
+    }
+    
+    // Get the first discovered device
+    const device = deviceList[0];
+    const address = device.address;
+    
+    // Make sure we get the port correctly from the discovered service
+    const port = device.service.port;
+    
+    console.log(`Device found! Address: ${address}, Port: ${port}`);
+    
+    // Try to pair with the device
+    const pairingSuccess = await pairWithDevice(address, port, pairingCode);
+    
+    // Connection attempt completed, stop discovery
+    stopDeviceDiscovery();
+    
+    // Notify the UI that a device has been paired
+    if (mainWindow) {
+      mainWindow.webContents.send('adb:devicePaired', {
+        success: pairingSuccess,
+        message: pairingSuccess 
+          ? `Successfully paired with device at ${address}:${port}`
+          : `Failed to pair with device at ${address}:${port}`
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error discovering devices:', error);
+    
+    // Retry after delay if discovery is still active
+    setTimeout(() => {
+      if (discoveryInProgress) {
+        discoverAndConnectDevice(pairingCode);
+      }
+    }, 3000);
+  }
+}
+
+// Function to pair with a discovered device
+async function pairWithDevice(address, port, pairingCode) {
+  try {
+    console.log(`Attempting to pair with device at ${address}:${port} using code: ${pairingCode}`);
+    
+    // Pair with the device using ADB
+    const pairOutput = await execAdbCommand(`pair ${address}:${port} ${pairingCode}`);
+    console.log('Pairing output:', pairOutput);
+    let guid = pairOutput.match(/\[guid=([^\]]+)\]/)?.[1];
+    if (pairOutput.includes('Successfully paired')) {
+      console.log('Pairing successful, now connecting...');
+      
+      // The pairing output might include a GUID in the format:
+      // Successfully paired to 192.168.0.X:XXXXX [guid=adb-XXXX-XXXX]
+      let connectAddress = address;
+      let connectPort = port;
+      
+      // First try connecting to the same port used for pairing
+      console.log(`Trying to connect using pairing port: ${address}:${port}`);
+      let connectOutput = await execAdbCommand(`connect ${address}:${port}`);
+      console.log('Connect output:', connectOutput);
+      
+      if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
+        return true;
+      }
+      let getDevicesOutput = await execAdbCommand(`devices -l`);
+      console.log('Devices output:', getDevicesOutput);
+      if (getDevicesOutput.includes(guid)) {
+        return true;
+      }
+      
+      console.error('All connection attempts failed');
+      return false;
+    } else {
+      console.error('Pairing failed:', pairOutput);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error pairing with device:', error);
+    return false;
+  }
+}
 
 // Connect to a device at the given IP and port
 ipcMain.handle('adb:connectDevice', async (event, ipAddress, port = 5555, pairingCode) => {
@@ -1124,4 +1345,32 @@ function stopMitmproxy() {
 // Make sure to clean up mitmproxy on app quit
 app.on('will-quit', () => {
   stopMitmproxy();
+});
+
+// Execute an arbitrary ADB command for a specific device
+ipcMain.handle('adb:executeCommand', async (event, deviceId, command) => {
+  try {
+    // Make sure ADB server is running
+    await execAdbCommand('start-server');
+    
+    // If command doesn't include a specific device, add the device ID
+    let fullCommand = command;
+    if (deviceId && !command.includes('-s') && command.startsWith('shell')) {
+      fullCommand = `-s ${deviceId} ${command}`;
+    }
+    
+    console.log(`Executing custom ADB command: ${fullCommand}`);
+    const output = await execAdbCommand(fullCommand);
+    
+    return {
+      success: true,
+      output: output
+    };
+  } catch (error) {
+    console.error('Error executing ADB command:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }); 

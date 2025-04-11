@@ -13,10 +13,17 @@ contextBridge.exposeInMainWorld(
       }
     },
     receive: (channel, func) => {
-      const validChannels = ['fromMain'];
+      const validChannels = ['fromMain', 'adb:devicePaired'];
       if (validChannels.includes(channel)) {
         // Deliberately strip event as it includes `sender` 
         ipcRenderer.on(channel, (event, ...args) => func(...args));
+      }
+    },
+    
+    removeListener: (channel) => {
+      const validChannels = ['fromMain', 'adb:devicePaired'];
+      if (validChannels.includes(channel)) {
+        ipcRenderer.removeAllListeners(channel);
       }
     },
     
@@ -27,10 +34,12 @@ contextBridge.exposeInMainWorld(
       connectDevice: (ipAddress, port, pairingCode) => ipcRenderer.invoke('adb:connectDevice', ipAddress, port, pairingCode),
       disconnectDevice: (deviceId) => ipcRenderer.invoke('adb:disconnectDevice', deviceId),
       generateQRCode: () => ipcRenderer.invoke('adb:generateQRCode'),
+      generateAdbWifiQRCode: () => ipcRenderer.invoke('adb:generateAdbWifiQRCode'),
       startPairing: () => ipcRenderer.invoke('adb:startPairing'),
       getLocalIp: () => ipcRenderer.invoke('adb:getLocalIp'),
       getInstalledApps: (deviceId) => ipcRenderer.invoke('adb:getInstalledApps', deviceId),
       launchApp: (deviceId, packageName) => ipcRenderer.invoke('adb:launchApp', deviceId, packageName),
+      executeCommand: (deviceId, command) => ipcRenderer.invoke('adb:executeCommand', deviceId, command),
     },
     
     // MitmProxy specific methods

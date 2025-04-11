@@ -8,18 +8,44 @@ export default function DeviceSetup() {
   const { deviceId, packageName } = router.query;
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [showAndroidInstructions, setShowAndroidInstructions] = useState(false);
+  const [androidConnectionMethod, setAndroidConnectionMethod] = useState(null);
+  const [connectedDevices, setConnectedDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState(null);
+  const [manualIpAddress, setManualIpAddress] = useState('');
+  const [manualPort, setManualPort] = useState('5555');
+  const [pairingCode, setPairingCode] = useState('');
   const [localIp, setLocalIp] = useState('Loading...');
+  const [connectionError, setConnectionError] = useState('');
+  const [pairingInProgress, setPairingInProgress] = useState(false);
+  const [discoveryStatus, setDiscoveryStatus] = useState(null);
+
+  // Helper function to get local IP address if needed during timeout
+  const getLocalIpAddress = async () => {
+    // If we already have it in state, use that
+    if (localIp !== 'Loading...' && localIp !== 'Failed to detect') {
+      return localIp;
+    }
+    
+    // Otherwise, try to get it from the API
+    try {
+      const ipAddress = await window.api.adb.getLocalIp();
+      // Update the state for future calls
+      setLocalIp(ipAddress);
+      return ipAddress;
+    } catch (error) {
+      console.error('Failed to get local IP address from API:', error);
+      return 'Unknown';
+    }
+  };
 
   useEffect(() => {
     // Get the local IP address when component mounts
     async function fetchLocalIp() {
-      try {
-        const ipAddress = await window.api.mitmproxy.getProxyIp();
-        setLocalIp(ipAddress);
-      } catch (error) {
-        console.error('Failed to get local IP address:', error);
-        setLocalIp('Failed to detect');
-      }
+      // Use the improved getLocalIpAddress function which already handles errors
+      await getLocalIpAddress();
     }
     
     fetchLocalIp();
@@ -40,7 +66,187 @@ export default function DeviceSetup() {
     if (showIOSInstructions) {
       checkMitmproxyStatus();
     }
+
+    // Listen for device paired events from main process
+    if (typeof window !== 'undefined' && window.api && window.api.receive) {
+      window.api.receive('adb:devicePaired', (data) => {
+        console.log('Device paired event received:', data);
+        if (data.success) {
+          setDiscoveryStatus({
+            status: 'success',
+            message: data.message
+          });
+          // Fetch the devices list to show the newly connected device
+          fetchConnectedDevices();
+        } else {
+          setDiscoveryStatus({
+            status: 'error',
+            message: data.message || 'Failed to pair with device'
+          });
+        }
+      });
+    }
+
+    // Cleanup listener when component unmounts
+    return () => {
+      if (typeof window !== 'undefined' && window.api && window.api.removeListener) {
+        window.api.removeListener('adb:devicePaired');
+      }
+    };
   }, [showIOSInstructions, selectedPlatform]);
+
+  // Fetch connected Android devices
+  const fetchConnectedDevices = async () => {
+    setIsLoadingDevices(true);
+    setConnectionError('');
+    try {
+      const devices = await window.api.adb.getDevices();
+      setConnectedDevices(devices);
+      // If we have devices and none are selected, select the first one
+      if (devices.length > 0 && !selectedDevice) {
+        setSelectedDevice(devices[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to get ADB devices:', error);
+      setConnectionError('Failed to get connected devices. Make sure ADB is working properly.');
+    } finally {
+      setIsLoadingDevices(false);
+    }
+  };
+
+  // Generate QR code for wireless debugging
+  const generateQrCode = async () => {
+    setPairingInProgress(true);
+    setConnectionError('');
+    setDiscoveryStatus(null);
+    
+    // Get IP address early so it's available for the timeout handler
+    const localIpAddress = await getLocalIpAddress();
+    
+    // Set a timeout to prevent the UI from being stuck indefinitely
+    const timeoutId = setTimeout(async () => {
+      console.log('QR code generation timed out');
+      setQrCodeData({
+        usingTerminalQr: false,
+        hostIp: localIpAddress || "Unknown",
+        pairingPort: "5555",
+        message: "QR code generation timed out. Please try again or use manual connection."
+      });
+      setPairingInProgress(false);
+    }, 10000); // Increase timeout to 10 seconds for slower systems
+    
+    try {
+      console.log('Attempting to generate QR code');
+      
+      // Execute our custom QR code generator
+      const result = await window.api.adb.generateAdbWifiQRCode();
+      
+      // Clear the timeout since we got a response
+      clearTimeout(timeoutId);
+      
+      console.log('QR code generation successful, received result:', result);
+      
+      // Set the discovery status to "waiting"
+      setDiscoveryStatus({
+        status: 'waiting',
+        message: 'Waiting for device to connect... Scan the QR code with your Android device.'
+      });
+      
+      // Set the qrCodeData with connection information and QR code image
+      setQrCodeData({
+        usingTerminalQr: false, // We're using a UI QR code now
+        qrCodePath: result.qrCodePath,
+        hostIp: result.hostIp || localIpAddress || "Unknown",
+        pairingPort: result.pairingPort || "5555",
+        pairingCode: result.pairingCode,
+        message: result.message || "Scan the QR code with your Android device to connect wirelessly."
+      });
+    } catch (error) {
+      // Clear the timeout since we got an error
+      clearTimeout(timeoutId);
+      
+      console.error('Failed to generate QR code:', error);
+      setConnectionError('Failed to generate QR code for wireless debugging. Trying fallback method...');
+      
+      // Fall back to the original method if our QR code method fails
+      try {
+        console.log('Using fallback QR code generation method');
+        const qrData = await window.api.adb.generateQRCode();
+        
+        if (qrData && qrData.qrCodePath) {
+          console.log('Fallback QR code generation successful');
+          setQrCodeData(qrData);
+        } else {
+          // If the fallback didn't provide a QR code path, use minimal info
+          console.warn('Fallback QR code did not include image data, using available info');
+          setQrCodeData({
+            usingTerminalQr: false,
+            hostIp: qrData?.hostIp || localIpAddress || "Unknown",
+            pairingPort: qrData?.pairingPort || "5555",
+            pairingCode: qrData?.pairingCode,
+            message: "Failed to generate QR code image. Please try manual connection."
+          });
+        }
+      } catch (fallbackError) {
+        console.error('Fallback QR code generation also failed:', fallbackError);
+        setConnectionError('Failed to generate QR code for wireless debugging. Please use manual connection.');
+        
+        // Set minimal QR data to prevent UI from being stuck in loading state
+        setQrCodeData({
+          usingTerminalQr: false,
+          hostIp: localIpAddress || "Unknown",
+          pairingPort: "5555",
+          message: "Failed to generate QR code. Please use manual connection."
+        });
+      }
+    } finally {
+      // Make sure we're not stuck in the loading state
+      setPairingInProgress(false);
+    }
+  };
+
+  // Connect to device with manual IP
+  const connectToDevice = async () => {
+    if (!manualIpAddress) {
+      setConnectionError('Please enter an IP address');
+      return;
+    }
+    
+    setPairingInProgress(true);
+    setConnectionError('');
+    
+    try {
+      // If pairing code is provided, use it to pair first
+      if (pairingCode) {
+        const pairResult = await window.api.adb.connectDevice(
+          manualIpAddress, 
+          manualPort, 
+          pairingCode
+        );
+        
+        if (!pairResult.success) {
+          setConnectionError(`Pairing failed: ${pairResult.message}`);
+          setPairingInProgress(false);
+          return;
+        }
+      }
+      
+      // Now connect to the device
+      const result = await window.api.adb.connectDevice(manualIpAddress, manualPort);
+      
+      if (result.success) {
+        // Refresh the device list
+        await fetchConnectedDevices();
+      } else {
+        setConnectionError(`Failed to connect: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Failed to connect to device:', error);
+      setConnectionError(`Connection error: ${error.message}`);
+    } finally {
+      setPairingInProgress(false);
+    }
+  };
 
   const handleContinue = () => {
     if (!selectedPlatform) return;
@@ -49,8 +255,10 @@ export default function DeviceSetup() {
       // For iOS, show MitmProxy setup instructions
       setShowIOSInstructions(true);
     } else {
-      // For Android, just go back to the analytics debugger
-      router.push('/analytics-debugger');
+      // For Android, show Android ADB setup instructions
+      setShowAndroidInstructions(true);
+      // Fetch connected devices on initial load
+      fetchConnectedDevices();
     }
   };
 
@@ -58,6 +266,12 @@ export default function DeviceSetup() {
     if (showIOSInstructions) {
       // If showing iOS instructions, go back to platform selection
       setShowIOSInstructions(false);
+    } else if (showAndroidInstructions) {
+      // If showing Android instructions, go back to platform selection
+      setShowAndroidInstructions(false);
+      setAndroidConnectionMethod(null);
+      setQrCodeData(null);
+      setSelectedDevice(null);
     } else {
       // Otherwise, return to analytics debugger with preserved parameters
       const query = {};
@@ -93,6 +307,377 @@ export default function DeviceSetup() {
         alert('Error starting MitmProxy: ' + error.message);
       });
   };
+
+  const handleAndroidContinue = () => {
+    // If no device is selected, show an error
+    if (!selectedDevice) {
+      setConnectionError('Please connect and select a device');
+      return;
+    }
+
+    // Redirect to app selection page with the selected device
+    router.push({
+      pathname: '/app-selection',
+      query: {
+        deviceId: selectedDevice
+      }
+    });
+  };
+
+  // Android ADB setup instructions view
+  if (showAndroidInstructions) {
+    return (
+      <>
+        <Head>
+          <title>Android Setup | Echo Desktop</title>
+          <meta name="description" content="Android ADB Setup" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <button 
+              className={styles.backButton}
+              onClick={handleBack}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+              Back
+            </button>
+            <h1 className={styles.pageTitle}>Android Device Setup</h1>
+          </div>
+          
+          <div className={styles.content}>
+            <div className={styles.instructionsContainer}>
+              <h2 className={styles.instructionsTitle}>Connect Your Android Device</h2>
+              
+              {!androidConnectionMethod ? (
+                // Connection method selection
+                <>
+                  <div className={styles.instructionsStep}>
+                    <div className={styles.stepNumber}>1</div>
+                    <div className={styles.stepContent}>
+                      <h3>Enable USB Debugging</h3>
+                      <p>On your Android device, go to <strong>Settings &gt; About phone</strong> and tap <strong>Build number</strong> 7 times to enable Developer Options.</p>
+                      <p>Then go to <strong>Settings &gt; Developer options</strong> and enable <strong>USB debugging</strong>.</p>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.instructionsStep}>
+                    <div className={styles.stepNumber}>2</div>
+                    <div className={styles.stepContent}>
+                      <h3>Choose Connection Method</h3>
+                      <div className={styles.connectionMethods}>
+                        <button 
+                          className={styles.connectionMethodButton}
+                          onClick={() => {
+                            setAndroidConnectionMethod('usb');
+                            fetchConnectedDevices();
+                          }}
+                        >
+                          <div className={styles.methodIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                              <path d="M15 7h2c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V9c0-1.1.9-2 2-2h2V5c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v2zm-2-2h-2v2h2V5zm2 14H7V9h8v8z"/>
+                            </svg>
+                          </div>
+                          <span>USB Connection</span>
+                        </button>
+                        <button 
+                          className={styles.connectionMethodButton}
+                          onClick={() => {
+                            setAndroidConnectionMethod('wireless');
+                            generateQrCode();
+                          }}
+                        >
+                          <div className={styles.methodIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                              <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                            </svg>
+                          </div>
+                          <span>Wireless Connection</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : androidConnectionMethod === 'usb' ? (
+                // USB connection section
+                <>
+                  <div className={styles.instructionsStep}>
+                    <div className={styles.stepNumber}>1</div>
+                    <div className={styles.stepContent}>
+                      <h3>Connect your device via USB</h3>
+                      <p>Connect your Android device to this computer using a USB cable.</p>
+                      <p>If prompted on your device, allow USB debugging for this computer.</p>
+                      
+                      <div className={styles.deviceListContainer}>
+                        <div className={styles.deviceListHeader}>
+                          <h4>Connected Devices</h4>
+                          <button 
+                            className={styles.refreshButton}
+                            onClick={fetchConnectedDevices}
+                            disabled={isLoadingDevices}
+                          >
+                            {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
+                          </button>
+                        </div>
+                        
+                        {connectionError && (
+                          <div className={styles.errorMessage}>{connectionError}</div>
+                        )}
+                        
+                        {connectedDevices.length > 0 ? (
+                          <div className={styles.deviceItems}>
+                            {connectedDevices.map(device => (
+                              <div 
+                                key={device.id}
+                                className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
+                                onClick={() => setSelectedDevice(device.id)}
+                              >
+                                <div className={styles.deviceIcon}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M17.523 15.3414c-.5511 0-.998-.4478-.998-.998v-5.3438c0-.5511.4478-.998.998-.998.5511 0 .998.4478.998.998v5.3438c0 .5511-.4478.998-.998.998m-11.046 0c-.5511 0-.998-.4478-.998-.998v-5.3438c0-.5511.4478-.998.998-.998.5511 0 .998.4478.998.998v5.3438c0 .5511-.4478.998-.998.998m7.0098-14.291.8899-1.6631c.0394-.0738.0116-.1662-.0622-.2061-.0739-.0398-.1663-.0119-.2061.0622l-.9003 1.6827c-.7057-.3099-1.4976-.4817-2.33-.4817-.8325 0-1.6245.1718-2.33.4817l-.9003-1.6827c-.0398-.074-.1322-.102-.2061-.0622-.0739.0398-.1016.1323-.0622.2061l.8899 1.6631C4.6414 2.3295 1.7382 5.6783 1.7382 9.6047h20.5236c0-3.9264-2.9032-7.2752-8.7138-8.5543"></path>
+                                  </svg>
+                                </div>
+                                <div className={styles.deviceInfo}>
+                                  <div className={styles.deviceName}>
+                                    {device.name || device.id}
+                                  </div>
+                                  <div className={styles.deviceStatus}>
+                                    {device.status === 'device' ? 'Connected' : device.status}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={styles.noDevices}>
+                            {isLoadingDevices ? 
+                              'Searching for devices...' : 
+                              'No devices found. Make sure USB debugging is enabled and your device is connected.'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // Wireless connection section
+                <>
+                  <div className={styles.instructionsStep}>
+                    <div className={styles.stepNumber}>1</div>
+                    <div className={styles.stepContent}>
+                      <h3>Connect Wirelessly</h3>
+                      <p>Make sure your Android device and this computer are on the same WiFi network.</p>
+
+                      <div className={styles.wirelessConnectionContainer}>
+                        {/* QR Code Section */}
+                        <div className={styles.qrCodeArea}>
+                          <h4>Scan QR Code (Android 11+)</h4>
+                          
+                          {qrCodeData ? (
+                            <div className={styles.qrCodeContainer}>
+                              {qrCodeData.qrCodePath ? (
+                                <img 
+                                  src={qrCodeData.qrCodePath} 
+                                  alt="ADB Pairing QR Code"
+                                  className={styles.qrCode}
+                                />
+                              ) : (
+                                <div className={styles.noQrPlaceholder}>
+                                  <p>No QR code available</p>
+                                </div>
+                              )}
+
+                              {discoveryStatus && (
+                                <div className={`${styles.discoveryStatus} ${styles[discoveryStatus.status]}`}>
+                                  {discoveryStatus.status === 'waiting' && (
+                                    <div className={styles.spinner}></div>
+                                  )}
+                                  {discoveryStatus.status === 'success' && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                  )}
+                                  {discoveryStatus.status === 'error' && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="10"></circle>
+                                      <line x1="15" y1="9" x2="9" y2="15"></line>
+                                      <line x1="9" y1="9" x2="15" y2="15"></line>
+                                    </svg>
+                                  )}
+                                  <p>{discoveryStatus.message}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className={styles.loadingQrContainer}>
+                              <div className={styles.loadingQR}>
+                                {pairingInProgress ? 'Generating QR code...' : 'Failed to generate QR code'}
+                              </div>
+                              {!pairingInProgress && (
+                                <button 
+                                  className={styles.refreshButton}
+                                  onClick={generateQrCode}
+                                >
+                                  Try Again
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className={styles.connectionInstructions}>
+                            <ol className={styles.instructionsList}>
+                              <li>Go to <strong>Settings</strong> → <strong>Developer options</strong> → <strong>Wireless debugging</strong></li>
+                              <li>Turn on Wireless debugging</li>
+                              <li>Tap <strong>Pair device with QR code</strong></li>
+                              <li>Scan the QR code above</li>
+                            </ol>
+                          </div>
+                        </div>
+
+                        {/* Connection Info Section */}
+                        <div className={styles.connectionInfoArea}>
+                          {qrCodeData && (
+                            <div className={styles.connectionDetails}>
+                              <h4>Connection Details</h4>
+                              <div className={styles.pairingInfo}>
+                                <div className={styles.pairingDetail}>
+                                  <span className={styles.pairingLabel}>IP Address:</span>
+                                  <span className={styles.pairingValue}>{qrCodeData.hostIp}</span>
+                                </div>
+                                <div className={styles.pairingDetail}>
+                                  <span className={styles.pairingLabel}>Port:</span>
+                                  <span className={styles.pairingValue}>{qrCodeData.pairingPort || 5555}</span>
+                                </div>
+                                {qrCodeData.pairingCode && (
+                                  <div className={styles.pairingDetail}>
+                                    <span className={styles.pairingLabel}>Pairing Code:</span>
+                                    <span className={styles.pairingValue}>{qrCodeData.pairingCode}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className={styles.manualConnectForm}>
+                                <h4>Manual Connection</h4>
+                                <div className={styles.formField}>
+                                  <label htmlFor="ipAddress">IP Address:</label>
+                                  <input
+                                    id="ipAddress"
+                                    type="text"
+                                    value={manualIpAddress}
+                                    onChange={(e) => setManualIpAddress(e.target.value)}
+                                    placeholder="192.168.1.100"
+                                    className={styles.formInput}
+                                  />
+                                </div>
+                                <div className={styles.formFields}>
+                                  <div className={styles.formField}>
+                                    <label htmlFor="port">Port:</label>
+                                    <input
+                                      id="port"
+                                      type="text"
+                                      value={manualPort}
+                                      onChange={(e) => setManualPort(e.target.value)}
+                                      placeholder="5555"
+                                      className={styles.formInput}
+                                    />
+                                  </div>
+                                  <div className={styles.formField}>
+                                    <label htmlFor="pairingCode">Pairing Code:</label>
+                                    <input
+                                      id="pairingCode"
+                                      type="text"
+                                      value={pairingCode}
+                                      onChange={(e) => setPairingCode(e.target.value)}
+                                      placeholder="123456"
+                                      className={styles.formInput}
+                                    />
+                                  </div>
+                                </div>
+                                <button 
+                                  className={styles.connectButton}
+                                  onClick={connectToDevice}
+                                  disabled={pairingInProgress || !manualIpAddress}
+                                >
+                                  {pairingInProgress ? 'Connecting...' : 'Connect'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {connectionError && (
+                            <div className={styles.errorMessage}>{connectionError}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.deviceListContainer}>
+                        <div className={styles.deviceListHeader}>
+                          <h4>Connected Devices</h4>
+                          <button 
+                            className={styles.refreshButton}
+                            onClick={fetchConnectedDevices}
+                            disabled={isLoadingDevices}
+                          >
+                            {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
+                          </button>
+                        </div>
+                        
+                        {connectedDevices.length > 0 ? (
+                          <div className={styles.deviceItems}>
+                            {connectedDevices.map(device => (
+                              <div 
+                                key={device.id}
+                                className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
+                                onClick={() => setSelectedDevice(device.id)}
+                              >
+                                <div className={styles.deviceIcon}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M17.523 15.3414c-.5511 0-.998-.4478-.998-.998v-5.3438c0-.5511.4478-.998.998-.998.5511 0 .998.4478.998.998v5.3438c0 .5511-.4478.998-.998.998m-11.046 0c-.5511 0-.998-.4478-.998-.998v-5.3438c0-.5511.4478-.998.998-.998.5511 0 .998.4478.998.998v5.3438c0 .5511-.4478.998-.998.998m7.0098-14.291.8899-1.6631c.0394-.0738.0116-.1662-.0622-.2061-.0739-.0398-.1663-.0119-.2061.0622l-.9003 1.6827c-.7057-.3099-1.4976-.4817-2.33-.4817-.8325 0-1.6245.1718-2.33.4817l-.9003-1.6827c-.0398-.074-.1322-.102-.2061-.0622-.0739.0398-.1016.1323-.0622.2061l.8899 1.6631C4.6414 2.3295 1.7382 5.6783 1.7382 9.6047h20.5236c0-3.9264-2.9032-7.2752-8.7138-8.5543"></path>
+                                  </svg>
+                                </div>
+                                <div className={styles.deviceInfo}>
+                                  <div className={styles.deviceName}>
+                                    {device.name || device.id}
+                                  </div>
+                                  <div className={styles.deviceStatus}>
+                                    {device.status === 'device' ? 'Connected' : device.status}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={styles.noDevices}>
+                            {isLoadingDevices ? 
+                              'Searching for devices...' : 
+                              'No devices found. Connect using the options above.'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {androidConnectionMethod && (
+                <button 
+                  className={styles.continueButton}
+                  onClick={handleAndroidContinue}
+                  disabled={!selectedDevice}
+                >
+                  Continue with Selected Device
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // iOS MitmProxy setup instructions view
   if (showIOSInstructions) {

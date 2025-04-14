@@ -23,7 +23,7 @@ export default function AnalyticsDebuggerPage() {
   };
   
   const handleViewLogs = () => {
-    // Implementation for viewing logs
+    router.push('/mitmproxy-logs');
   };
   
   const handleSetupDevice = () => {

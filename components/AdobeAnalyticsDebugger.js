@@ -296,7 +296,7 @@ export default function AnalyticsDebugger() {
             path: result.screenshotPath,
             timestamp: new Date(result.timestamp).toISOString(),
             width: 720,
-            height: 1604,
+            height: null, // Height will be calculated based on aspect ratio
             dataUrl: null, // We'll load this when the beacon is selected
             cached: result.cached || false
           }
@@ -329,12 +329,14 @@ export default function AnalyticsDebugger() {
       const result = await window.api.rtmp.getScreenshotDataUrl(screenshots[beaconId].fileName);
       
       if (result.success) {
-        // Update the screenshot with the data URL
+        // Update the screenshot with the data URL and dimensions from backend
         setScreenshots(prev => ({
           ...prev,
           [beaconId]: {
             ...prev[beaconId],
-            dataUrl: result.dataUrl
+            dataUrl: result.dataUrl,
+            width: result.dimensions?.width || prev[beaconId].width || 720,
+            height: result.dimensions?.height || prev[beaconId].height || null
           }
         }));
       } else {
@@ -751,7 +753,10 @@ export default function AnalyticsDebugger() {
     };
 
     return (
-      <div className={styles.beaconCard} onClick={() => setSelectedBeacon(beacon)}>
+      <div 
+        className={`${styles.beaconCard} ${selectedBeacon && selectedBeacon.id === beacon.id ? styles.selected : ''}`} 
+        onClick={() => setSelectedBeacon(beacon)}
+      >
         <div className={styles.beaconCardHeader}>
           <div className={styles.beaconEventName}>
             <span className={styles.beaconNumber}>{index}</span>
@@ -933,11 +938,13 @@ export default function AnalyticsDebugger() {
             <>
               {selectedScreenshot.dataUrl ? (
                 <>
-                  <img 
-                    src={selectedScreenshot.dataUrl} 
-                    alt="Screenshot for selected beacon"
-                    className={styles.screenshot}
-                  />
+                  <div className={styles.screenshotWrapper}>
+                    <img 
+                      src={selectedScreenshot.dataUrl} 
+                      alt="Screenshot for selected beacon"
+                      className={styles.screenshot}
+                    />
+                  </div>
                   <div className={styles.screenshotInfo}>
                     <span className={styles.dimensions}>
                       {selectedScreenshot.width} x {selectedScreenshot.height}

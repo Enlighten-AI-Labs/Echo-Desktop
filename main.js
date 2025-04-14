@@ -1549,8 +1549,9 @@ ipcMain.handle('rtmp:captureScreenshot', async (event, beaconId) => {
           }
         }
         
-        // Now detect crop values using cropdetect filter
-        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf cropdetect -f null -`, async (err, stdout, stderr) => {
+        // Now detect crop values using cropdetect filter with very aggressive settings
+        // Using threshold=24 (very low = more aggressive cropping), round to 16 (even numbers), and skip 0 pixels from edges
+        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf "cropdetect=24:16:0" -f null -`, async (err, stdout, stderr) => {
           try {
             // Clean up temp file
             if (fs.existsSync(cropDetectPath)) {
@@ -1579,10 +1580,30 @@ ipcMain.handle('rtmp:captureScreenshot', async (event, beaconId) => {
             if (lastMatch) {
               cropParams = lastMatch[0];
               console.log(`Detected crop parameters: ${cropParams}`);
+              
+              // Extract dimensions from the crop parameters
+              const dimensions = cropParams.match(/crop=([0-9]+):([0-9]+):([0-9]+):([0-9]+)/);
+              if (dimensions && dimensions.length === 5) {
+                const [_, width, height, x, y] = dimensions;
+                
+                // Apply a very aggressive crop - add additional padding to crop more from each side
+                const newWidth = parseInt(width) - 32;
+                const newHeight = parseInt(height) - 32;
+                const newX = parseInt(x) + 16;
+                const newY = parseInt(y) + 16;
+                
+                // Ensure dimensions are positive
+                if (newWidth > 0 && newHeight > 0) {
+                  cropParams = `crop=${newWidth}:${newHeight}:${newX}:${newY}`;
+                  console.log(`Adjusted crop parameters: ${cropParams}`);
+                }
+              }
             }
             
-            // Second pass: capture with cropping
-            exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vf "${cropParams}" -vframes 1 "${screenshotPath}"`, (error) => {
+            // Second pass: capture with cropping and apply a better scaling filter
+            // This ensures we don't have any black borders and fixes aspect ratio
+            const filterComplex = `${cropParams},scale=720:-1`;
+            exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vf "${filterComplex}" -vframes 1 "${screenshotPath}"`, (error) => {
               if (error) {
                 console.error('Error capturing cropped screenshot:', error);
                 // If cropped capture fails, try without cropping
@@ -1652,6 +1673,33 @@ ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
       };
     }
     
+    // Get image dimensions using ffmpeg
+    const ffmpegPath = process.platform === 'win32' ? 
+            path.join(app.getAppPath(), 'bin', 'ffmpeg.exe') : 
+            '/opt/homebrew/bin/ffmpeg';
+    
+    // Use ffprobe to get image dimensions
+    let dimensions = { width: 720, height: 720 }; // Default fallback
+    
+    try {
+      const { stdout, stderr } = await require('util').promisify(exec)(
+        `"${ffmpegPath}" -i "${filePath}" -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0`
+      );
+      
+      if (stdout) {
+        const parts = stdout.trim().split(',');
+        if (parts.length === 2) {
+          dimensions = {
+            width: parseInt(parts[0]),
+            height: parseInt(parts[1])
+          };
+          console.log(`Image dimensions: ${dimensions.width}x${dimensions.height}`);
+        }
+      }
+    } catch (e) {
+      console.error('Error getting image dimensions:', e);
+    }
+    
     // Read the file and convert to data URL
     const data = fs.readFileSync(filePath);
     const base64Data = data.toString('base64');
@@ -1659,7 +1707,8 @@ ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
     
     return {
       success: true,
-      dataUrl: dataUrl
+      dataUrl: dataUrl,
+      dimensions: dimensions
     };
   } catch (error) {
     console.error('Error getting screenshot data URL:', error);

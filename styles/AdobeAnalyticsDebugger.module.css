@@ -207,15 +207,18 @@
 
 .content {
   flex: 1;
-  padding: 24px;
+  padding: 24px 0 24px 24px;
   overflow-y: auto;
+  max-width: 100%;
 }
 
 .beaconDetails {
   background-color: #ffffff;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 24px;
+  padding: 24px 24px 24px 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .beaconTitle {
@@ -383,6 +386,7 @@
 .parameterTable {
   width: 100%;
   background-color: #f7f8fa;
+  max-width: 100%;
 }
 
 .parameterTableHeader {
@@ -391,6 +395,7 @@
   padding: 8px 16px;
   background-color: #dddddd;
   font-weight: 600;
+  width: 100%;
 }
 
 .parameterTableHeader span {
@@ -404,6 +409,7 @@
   display: grid;
   grid-template-columns: 200px 1fr;
   background-color: #f7f8fa;
+  width: 100%;
 }
 
 .parameterRow:nth-child(even) {
@@ -730,4 +736,22 @@
   color: #F69757;
   font-family: 'Azeret Mono', monospace;
   font-weight: 300;
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: calc(100% - 65px); /* Account for beaconCommand width */
+  scrollbar-width: thin;
+  scrollbar-color: #F69757 #262628;
+}
+
+.beaconOutput::-webkit-scrollbar {
+  height: 4px;
+}
+
+.beaconOutput::-webkit-scrollbar-track {
+  background: #262628;
+}
+
+.beaconOutput::-webkit-scrollbar-thumb {
+  background-color: #F69757;
+  border-radius: 2px;
 } 

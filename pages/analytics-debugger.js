@@ -26,6 +26,16 @@ export default function AnalyticsDebuggerPage() {
     // Implementation for viewing logs
   };
   
+  const handleSetupDevice = () => {
+    const query = {};
+    if (deviceId) query.deviceId = deviceId;
+    if (packageName) query.packageName = packageName;
+    router.push({
+      pathname: '/device-setup',
+      query
+    });
+  };
+  
   return (
     <>
       <Head>
@@ -48,12 +58,20 @@ export default function AnalyticsDebuggerPage() {
             </button>
             <h1 className={styles.pageTitle}>Analytics Debugger</h1>
           </div>
-          <button 
-            className={styles.viewLogsButton}
-            onClick={handleViewLogs}
-          >
-            View Logs
-          </button>
+          <div className={styles.headerButtons}>
+            <button 
+              className={styles.viewLogsButton}
+              onClick={handleSetupDevice}
+            >
+              Setup Device
+            </button>
+            <button 
+              className={styles.viewLogsButton}
+              onClick={handleViewLogs}
+            >
+              View Logs
+            </button>
+          </div>
         </div>
         <div className={styles.debuggerContainer}>
           <AnalyticsDebugger

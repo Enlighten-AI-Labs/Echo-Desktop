@@ -154,6 +154,16 @@ export default function AnalyticsDebugger({ deviceId, packageName, show }) {
   
   return (
     <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.headerControls}>
+          <button 
+            className={styles.connectButton}
+            onClick={handleConnectDevice}
+          >
+            Setup Device
+          </button>
+        </div>
+      </div>
       <div className={styles.content}>
         <AdobeAnalyticsDebugger analyticsData={analyticsData} />
       </div>

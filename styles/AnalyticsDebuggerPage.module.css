@@ -19,6 +19,12 @@
   gap: 16px;
 }
 
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .backButton {
   display: flex;
   align-items: center;

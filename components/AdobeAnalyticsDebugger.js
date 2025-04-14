@@ -479,6 +479,13 @@ export default function AnalyticsDebugger() {
   return (
     <div className={styles.container}>
       <div className={styles.sidebar}>
+        <div className={styles.logoContainer}>
+          <img 
+            src="/logo.png" 
+            alt="Enlighten Logo" 
+            className={styles.logo}
+          />
+        </div>
         <div className={styles.filters}>
           <div className={styles.sourceToggle}>
             <button 
@@ -505,23 +512,13 @@ export default function AnalyticsDebugger() {
           </div>
           <input
             type="text"
-            placeholder="Filter by Source/Event/Page..."
+            placeholder="Enter keywords..."
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className={styles.filterInput}
-          />
-          <input
-            type="text"
-            placeholder="Filter by Parameter Name..."
-            value={parameterFilter}
-            onChange={(e) => setParameterFilter(e.target.value)}
-            className={styles.filterInput}
-          />
-          <input
-            type="text"
-            placeholder="Filter by Parameter Value..."
-            value={parameterValueFilter}
-            onChange={(e) => setParameterValueFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setParameterFilter(e.target.value);
+              setParameterValueFilter(e.target.value);
+            }}
             className={styles.filterInput}
           />
           <label className={styles.autoRefreshLabel}>
@@ -552,99 +549,61 @@ export default function AnalyticsDebugger() {
 
       <div className={styles.content}>
         {selectedBeacon ? (
-          <div className={styles.beaconDetails}>
-            {renderBeaconDetails(selectedBeacon)}
+          <>
+            <h1 className={styles.pageTitle}>
+              {selectedBeacon.source === 'Adobe' 
+                ? `${selectedBeacon.type === 's.tl' ? 'Custom Event' : 'Page View'} (Adobe Analytics)`
+                : `${selectedBeacon.eventName} (GA4)`
+              }
+            </h1>
             
             <div className={styles.beaconSection}>
-              <div 
-                className={styles.accordionHeader}
-                onClick={() => setExpandedSections(prev => ({
-                  ...prev,
-                  parameters: !prev.parameters
-                }))}
-              >
-                <h3>All Parameters</h3>
-                <span className={`${styles.accordionIcon} ${expandedSections.parameters ? styles.expanded : ''}`}>
-                  {expandedSections.parameters ? '−' : '+'}
-                </span>
+              <h3>Event Details</h3>
+              <div className={styles.infoRow}>
+                <div className={styles.label}>Type:</div>
+                <div className={styles.value}>{selectedBeacon.type}</div>
               </div>
-              {expandedSections.parameters && (
-                <div className={styles.beaconInfo}>
-                  <div className={styles.parameterControls}>
-                    <div className={styles.parameterSearchContainer}>
-                      <input
-                        type="text"
-                        placeholder="Search parameters..."
-                        value={parameterSearch}
-                        onChange={(e) => setParameterSearch(e.target.value)}
-                        className={styles.parameterSearchInput}
-                      />
-                      {parameterSearch && (
-                        <button 
-                          className={styles.clearSearchButton}
-                          onClick={() => setParameterSearch('')}
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <button 
-                      className={`${styles.toggleDataButton} ${showFullData ? styles.active : ''}`}
-                      onClick={() => setShowFullData(!showFullData)}
-                    >
-                      {showFullData ? 'Hide System Parameters' : 'Show Full Data'}
-                    </button>
-                  </div>
-                  <div className={styles.parametersList}>
-                    {filterParameters(selectedBeacon.parameters).map(([key, value]) => (
-                      <div key={key} className={styles.parameterRow}>
-                        <span className={styles.parameterName}>{key}</span>
-                        <span className={styles.parameterValue}>
-                          {typeof value === 'object' ? JSON.stringify(value) : value}
-                        </span>
-                      </div>
-                    ))}
-                    {filterParameters(selectedBeacon.parameters).length === 0 && (
-                      <div className={styles.noResults}>
-                        No parameters match your search
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className={styles.infoRow}>
+                <div className={styles.label}>Event ID:</div>
+                <div className={styles.value}>{selectedBeacon.id}</div>
+              </div>
+              <div className={styles.infoRow}>
+                <div className={styles.label}>Timestamp:</div>
+                <div className={styles.value}>{selectedBeacon.timestamp}</div>
+              </div>
             </div>
 
-            {/* Raw Data Section */}
             <div className={styles.beaconSection}>
-              <div 
-                className={styles.accordionHeader}
-                onClick={() => setExpandedSections(prev => ({
-                  ...prev,
-                  rawData: !prev.rawData
-                }))}
-              >
-                <h3>Raw Data</h3>
-                <span className={`${styles.accordionIcon} ${expandedSections.rawData ? styles.expanded : ''}`}>
-                  {expandedSections.rawData ? '−' : '+'}
-                </span>
+              <h3>All Parameters</h3>
+              <div className={styles.parameterControls}>
+                <input
+                  type="text"
+                  placeholder="Search parameters..."
+                  className={styles.parameterSearchInput}
+                  value={parameterSearch}
+                  onChange={(e) => setParameterSearch(e.target.value)}
+                />
+                <button 
+                  className={styles.showFullDataButton}
+                  onClick={() => setShowFullData(!showFullData)}
+                >
+                  Show Full Data
+                </button>
               </div>
-              {expandedSections.rawData && (
-                <div className={styles.beaconInfo}>
-                  <div className={styles.rawDataContainer}>
-                    <button 
-                      className={styles.copyButton}
-                      onClick={() => copyToClipboard(selectedBeacon.rawRequest)}
-                    >
-                      Copy Request
-                    </button>
-                    <pre className={styles.codeBox}>
-                      <code>{selectedBeacon.rawRequest}</code>
-                    </pre>
-                  </div>
+              <div className={styles.parameterTable}>
+                <div className={styles.parameterTableHeader}>
+                  <span>Parameter</span>
+                  <span>Value</span>
                 </div>
-              )}
+                {filterParameters(selectedBeacon.parameters || {}).map(([key, value]) => (
+                  <div key={key} className={styles.parameterRow}>
+                    <div className={styles.parameterName}>{key}</div>
+                    <div className={styles.parameterValue}>{String(value)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <div className={styles.noSelection}>
             <p>Select a beacon from the list to view details</p>

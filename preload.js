@@ -50,6 +50,14 @@ contextBridge.exposeInMainWorld(
       getProxyIp: () => ipcRenderer.invoke('mitmproxy:getProxyIp'),
       getTraffic: () => ipcRenderer.invoke('mitmproxy:getTraffic'),
       clearTraffic: () => ipcRenderer.invoke('mitmproxy:clearTraffic'),
+    },
+    
+    // RTMP server specific methods
+    rtmp: {
+      status: () => ipcRenderer.invoke('rtmp:status'),
+      start: (config) => ipcRenderer.invoke('rtmp:start', config),
+      stop: () => ipcRenderer.invoke('rtmp:stop'),
+      getConfig: () => ipcRenderer.invoke('rtmp:getConfig'),
     }
   }
 ); 

@@ -10,6 +10,7 @@ const extract = require('extract-zip');
 const isDev = process.env.NODE_ENV === 'development';
 const mDnsSd = require('node-dns-sd');
 const { nanoid } = require('nanoid');
+const NodeMediaServer = require('node-media-server');
 
 let mainWindow;
 let loadAttempts = 0;
@@ -17,6 +18,7 @@ const MAX_LOAD_ATTEMPTS = 10;
 let mitmProxyProcess = null;
 let mitmProxyTraffic = [];
 const MAX_TRAFFIC_ENTRIES = 1000; // Limit to prevent memory issues
+let rtmpServer = null;
 
 // Path to the app's user data directory
 const userDataPath = app.getPath('userData');
@@ -37,6 +39,47 @@ const tmpDir = path.join(os.tmpdir(), 'echo-desktop');
 if (!fs.existsSync(tmpDir)) {
   fs.mkdirSync(tmpDir, { recursive: true });
 }
+
+// Create media directory for RTMP server if it doesn't exist
+const rtmpMediaPath = path.join(userDataPath, 'media');
+if (!fs.existsSync(rtmpMediaPath)) {
+  try {
+    fs.mkdirSync(rtmpMediaPath, { recursive: true });
+    console.log('Created RTMP media directory at:', rtmpMediaPath);
+  } catch (error) {
+    console.error('Failed to create RTMP media directory:', error);
+  }
+}
+
+// RTMP server configuration
+const rtmpConfig = {
+  rtmp: {
+    port: 1935,
+    chunk_size: 60000,
+    gop_cache: false,  // Disable GOP cache to reduce latency
+    ping: 30,
+    ping_timeout: 60
+  },
+  http: {
+    port: 8000,
+    allow_origin: '*',
+    mediaroot: rtmpMediaPath // Store media files temporarily
+  },
+  trans: {
+    ffmpeg: process.platform === 'win32' ? 
+            path.join(app.getAppPath(), 'bin', 'ffmpeg.exe') : 
+            '/opt/homebrew/bin/ffmpeg',  // Path to FFmpeg on macOS
+    tasks: [
+      {
+        app: 'live',
+        hls: true,
+        hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments+append_list:hls_allow_cache=false]',
+        dash: true,
+        dashFlags: '[f=dash:window_size=3:extra_window_size=5]'
+      }
+    ]
+  }
+};
 
 // Download and extract Android platform tools if not already installed
 async function ensureAdbExists() {
@@ -496,6 +539,9 @@ app.whenReady().then(async () => {
     } else {
       console.warn('Failed to install mitmproxy. Some features will not work.');
     }
+
+    // Auto-start RTMP server
+    startRtmpServer();
   } catch (error) {
     console.error('Failed to set up dependencies:', error);
   }
@@ -1318,6 +1364,7 @@ function stopMitmproxy() {
 // Make sure to clean up mitmproxy on app quit
 app.on('will-quit', () => {
   stopMitmproxy();
+  stopRtmpServer();
 });
 
 // Execute an arbitrary ADB command for a specific device
@@ -1346,4 +1393,77 @@ ipcMain.handle('adb:executeCommand', async (event, deviceId, command) => {
       error: error.message
     };
   }
+});
+
+// Function to start RTMP server
+function startRtmpServer(customConfig = {}) {
+  if (rtmpServer) {
+    console.log('RTMP server already running');
+    return { success: true, message: 'RTMP server already running' };
+  }
+
+  try {
+    // Merge default config with any custom config
+    const config = { ...rtmpConfig, ...customConfig };
+    console.log('Starting RTMP server with config:', config);
+    
+    rtmpServer = new NodeMediaServer(config);
+    rtmpServer.run();
+    
+    console.log('RTMP server started successfully');
+    return { 
+      success: true, 
+      message: 'RTMP server started successfully',
+      rtmpUrl: `rtmp://${getLocalIpAddress()}:${config.rtmp.port}`,
+      httpUrl: `http://${getLocalIpAddress()}:${config.http.port}`
+    };
+  } catch (error) {
+    console.error('Failed to start RTMP server:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Function to stop RTMP server
+function stopRtmpServer() {
+  if (!rtmpServer) {
+    console.log('RTMP server not running');
+    return { success: true, message: 'RTMP server not running' };
+  }
+
+  try {
+    rtmpServer.stop();
+    rtmpServer = null;
+    console.log('RTMP server stopped successfully');
+    return { success: true, message: 'RTMP server stopped successfully' };
+  } catch (error) {
+    console.error('Failed to stop RTMP server:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Function to get RTMP server status
+function getRtmpServerStatus() {
+  return { 
+    running: !!rtmpServer,
+    config: rtmpServer ? rtmpConfig : null,
+    rtmpUrl: rtmpServer ? `rtmp://${getLocalIpAddress()}:${rtmpConfig.rtmp.port}` : null,
+    httpUrl: rtmpServer ? `http://${getLocalIpAddress()}:${rtmpConfig.http.port}` : null
+  };
+}
+
+// RTMP server handlers
+ipcMain.handle('rtmp:status', () => {
+  return getRtmpServerStatus();
+});
+
+ipcMain.handle('rtmp:start', (event, customConfig) => {
+  return startRtmpServer(customConfig);
+});
+
+ipcMain.handle('rtmp:stop', () => {
+  return stopRtmpServer();
+});
+
+ipcMain.handle('rtmp:getConfig', () => {
+  return rtmpConfig;
 }); 

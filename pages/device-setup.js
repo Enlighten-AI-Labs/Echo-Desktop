@@ -254,11 +254,20 @@ export default function DeviceSetup() {
     if (selectedPlatform === 'ios') {
       // For iOS, show MitmProxy setup instructions
       setShowIOSInstructions(true);
-    } else {
+    } else if (selectedPlatform === 'android') {
       // For Android, show Android ADB setup instructions
       setShowAndroidInstructions(true);
       // Fetch connected devices on initial load
       fetchConnectedDevices();
+    } else if (selectedPlatform === 'rtmp') {
+      // For RTMP, redirect to the RTMP setup page
+      const query = {};
+      if (deviceId) query.deviceId = deviceId;
+      if (packageName) query.packageName = packageName;
+      router.push({
+        pathname: '/rtmp-setup',
+        query
+      });
     }
   };
 
@@ -818,6 +827,18 @@ export default function DeviceSetup() {
                 </svg>
               </div>
               <h3 className={styles.platformName}>iOS</h3>
+            </div>
+
+            <div 
+              className={`${styles.platformCard} ${selectedPlatform === 'rtmp' ? styles.selected : ''}`}
+              onClick={() => setSelectedPlatform('rtmp')}
+            >
+              <div className={styles.platformIcon}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
+                </svg>
+              </div>
+              <h3 className={styles.platformName}>RTMP Streaming</h3>
             </div>
           </div>
           

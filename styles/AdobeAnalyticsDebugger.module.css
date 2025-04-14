@@ -47,7 +47,7 @@
   background-color: transparent;
   border: none;
   cursor: pointer;
-  font-family: 'Travelia Medium', sans-serif;
+  font-family: 'Travelia', sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: #262628;
@@ -62,7 +62,8 @@
 .toggleButton.active {
   background-color: transparent;
   color: #9C54AD;
-  font-family: 'Travelia Bold', sans-serif;
+  font-family: 'Travelia', sans-serif;
+  font-weight: 700;
 }
 
 .toggleButton.active::after {
@@ -96,7 +97,7 @@
   border: 1px solid #e0e8f8;
   border-radius: 4px;
   font-size: 14px;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   color: #262628;
   background-color: #ffffff;
   transition: all 0.2s ease;
@@ -120,7 +121,8 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  font-family: 'Doto Semi-Bold', monospace;
+  font-family: 'Doto', monospace;
+  font-weight: 600;
   color: #262628;
   cursor: pointer;
   margin-top: 8px;
@@ -157,7 +159,7 @@
   border-radius: 12px;
   color: #3C76A9;
   font-size: 12px;
-  font-family: 'Doto Semi-Bold', monospace;
+  font-family: 'Doto', monospace;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -357,14 +359,14 @@
   border: 1px solid #e0e8f8;
   border-radius: 4px;
   font-size: 14px;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   color: #262628;
   background-color: #ffffff;
 }
 
 .parameterSearchInput::placeholder {
   color: #666;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
 }
 
 .showFullDataButton {
@@ -372,7 +374,7 @@
   background-color: #f5f7fa;
   border: none;
   border-radius: 4px;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 14px;
   color: #262628;
   cursor: pointer;
@@ -392,7 +394,7 @@
 }
 
 .parameterTableHeader span {
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 14px;
   color: #262628;
   font-weight: 600;
@@ -410,14 +412,14 @@
 
 .parameterName {
   padding: 8px 16px;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 14px;
   color: #262628;
 }
 
 .parameterValue {
   padding: 8px 16px;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 14px;
   color: #0366d6;
   word-break: break-word;
@@ -425,7 +427,7 @@
 
 .eventType, .eventId, .timestamp {
   color: #0366d6;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   text-decoration: none;
 }
 
@@ -543,7 +545,7 @@
   padding: 16px;
   text-align: center;
   color: #9C54AD;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 14px;
   background-color: #F3E5F5;
   border-radius: 4px;
@@ -623,7 +625,7 @@
   margin: 0;
   overflow-x: auto;
   position: relative;
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono', monospace;
   font-size: 13px;
   line-height: 1.4;
 }
@@ -644,4 +646,88 @@
   width: 40px;
   background: linear-gradient(to right, transparent, #262628);
   pointer-events: none;
+}
+
+.beaconCard {
+  background-color: #262628;
+  color: #E9EDF3;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  font-family: 'Azeret Mono', monospace;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.beaconCard:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+.beaconCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.beaconEventName {
+  color: #FFCF4F;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'Doto', monospace;
+  display: flex;
+  align-items: center;
+}
+
+.beaconNumber {
+  display: inline-block;
+  background-color: #9C54AD;
+  color: white;
+  padding: 0 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+  font-family: 'Doto', monospace;
+  font-weight: 600;
+}
+
+.platformBadge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: white;
+  font-family: 'Doto', monospace;
+  font-weight: 500;
+}
+
+.platformBadge.adobe {
+  background-color: #3C76A9;
+}
+
+.platformBadge.ga4 {
+  background-color: #FFCF4F;
+  color: #262628;
+}
+
+.platformBadge.mixpanel {
+  background-color: #EB2726;
+}
+
+.beaconLine {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-family: 'Azeret Mono', monospace;
+}
+
+.beaconCommand {
+  color: #3C76A9;
+  width: 65px;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 500;
+}
+
+.beaconOutput {
+  color: #F69757;
+  font-family: 'Azeret Mono', monospace;
+  font-weight: 300;
 } 

@@ -476,6 +476,102 @@ export default function AnalyticsDebugger() {
     return filteredEntries;
   };
 
+  const BeaconCard = ({ beacon, index }) => {
+    const getPlatformBadgeClass = (platform) => {
+      switch (platform.toLowerCase()) {
+        case 'adobe': return styles.adobe;
+        case 'ga4': return styles.ga4;
+        case 'mixpanel': return styles.mixpanel;
+        default: return '';
+      }
+    };
+
+    const getPageName = (beacon) => {
+      if (beacon.source === 'Adobe') {
+        return beacon.pageName || beacon.linkName || 'Unknown Page';
+      }
+      return beacon.pageTitle || beacon.parameters?.page_title || beacon.pageLocation || beacon.parameters?.page_location || 'Unknown Page';
+    };
+
+    const getBeaconId = (beacon) => {
+      const generateHash = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash);
+      };
+
+      if (beacon.source === 'Adobe') {
+        // Create a unique string based on key Adobe beacon properties
+        const keyProperties = [
+          beacon.type, // 's.t' or 's.tl'
+          beacon.pageName || '',
+          beacon.linkName || '',
+          beacon.linkType || '',
+          beacon.rsid || ''
+        ].join('|');
+
+        const hash = generateHash(keyProperties);
+        
+        // Format as XX.YY.ZZ
+        const num = hash % 1000000; // Keep it within 6 digits
+        const num1 = String(Math.floor(num / 10000)).padStart(2, '0');
+        const num2 = String(Math.floor((num % 10000) / 100)).padStart(2, '0');
+        const num3 = String(num % 100).padStart(2, '0');
+        
+        return `${num1}.${num2}.${num3}`;
+      } else if (beacon.source === 'GA4') {
+        // Create a unique string based on key GA4 beacon properties
+        const keyProperties = [
+          beacon.eventName || '',
+          beacon.pageTitle || beacon.parameters?.page_title || '',
+          beacon.pageLocation || beacon.parameters?.page_location || ''
+        ].join('|');
+
+        const hash = generateHash(keyProperties);
+        
+        // Format as XX.YY.ZZ
+        const num = hash % 1000000; // Keep it within 6 digits
+        const num1 = String(Math.floor(num / 10000)).padStart(2, '0');
+        const num2 = String(Math.floor((num % 10000) / 100)).padStart(2, '0');
+        const num3 = String(num % 100).padStart(2, '0');
+        
+        return `${num1}.${num2}.${num3}`;
+      }
+      
+      return beacon.id || `${String(index).padStart(2, '0')}`;
+    };
+
+    return (
+      <div className={styles.beaconCard} onClick={() => setSelectedBeacon(beacon)}>
+        <div className={styles.beaconCardHeader}>
+          <div className={styles.beaconEventName}>
+            <span className={styles.beaconNumber}>{index}</span>
+            {beacon.source === 'Adobe' ? (beacon.type === 's.tl' ? 'custom' : 'page_view') : (beacon.eventName || 'Unknown Event')}
+          </div>
+          <span className={`${styles.platformBadge} ${getPlatformBadgeClass(beacon.source)}`}>
+            {beacon.source}
+          </span>
+        </div>
+        <div className={styles.beaconLine}>
+          <span className={styles.beaconCommand}>time:</span>
+          <span className={styles.beaconOutput}>{new Date(beacon.timestamp).toLocaleTimeString()}</span>
+        </div>
+        <div className={styles.beaconLine}>
+          <span className={styles.beaconCommand}>beacon:</span>
+          <span className={styles.beaconOutput}>{getBeaconId(beacon)}</span>
+        </div>
+        <div className={styles.beaconLine}>
+          <span className={styles.beaconCommand}>page:</span>
+          <span className={styles.beaconOutput}>{getPageName(beacon)}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.sidebar}>
@@ -533,16 +629,7 @@ export default function AnalyticsDebugger() {
 
         <div className={styles.beaconList}>
           {[...filteredBeacons].reverse().map((beacon, index) => (
-            <div
-              key={`${beacon.timestamp}-${index}`}
-              className={`${styles.beaconItem} ${selectedBeacon === beacon ? styles.selected : ''} ${styles[`beacon${beacon.source}`]}`}
-              onClick={() => setSelectedBeacon(beacon)}
-            >
-              <div className={styles.beaconNumber}>{filteredBeacons.length - index}</div>
-              <div className={styles.beaconContent}>
-                {renderBeaconContent(beacon)}
-              </div>
-            </div>
+            <BeaconCard key={`${beacon.timestamp}-${index}`} beacon={beacon} index={index + 1} />
           ))}
         </div>
       </div>

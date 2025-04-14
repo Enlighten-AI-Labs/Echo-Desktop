@@ -1,0 +1,98 @@
+/* Travelia Font Family */
+@font-face {
+  font-family: 'Travelia';
+  src: url('/fonts/Travelia-Regular.ttf') format('truetype'),
+       url('/fonts/Travelia-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Travelia';
+  src: url('/fonts/Travelia-Medium.ttf') format('truetype'),
+       url('/fonts/Travelia-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Travelia';
+  src: url('/fonts/Travelia-SemiBold.ttf') format('truetype'),
+       url('/fonts/Travelia-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Travelia';
+  src: url('/fonts/Travelia-Bold.ttf') format('truetype'),
+       url('/fonts/Travelia-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Azeret Mono Font Family */
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/fonts/AzeretMono-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/fonts/AzeretMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/fonts/AzeretMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+/* Doto Font Family */
+@font-face {
+  font-family: 'Doto';
+  src: url('/fonts/Doto-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Doto';
+  src: url('/fonts/Doto-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Doto';
+  src: url('/fonts/Doto-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* Doto Rounded Font Family */
+@font-face {
+  font-family: 'Doto Rounded';
+  src: url('/fonts/Doto_Rounded-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Doto Rounded';
+  src: url('/fonts/Doto_Rounded-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Doto Rounded';
+  src: url('/fonts/Doto_Rounded-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+} 

@@ -1174,97 +1174,70 @@ function parseAndStoreTraffic(output) {
     const [, source, method, url] = requestMatch;
     const timestamp = new Date().toISOString();
     
-    // Parse URL to get host and path
-    let host = '';
-    let path = '';
-    let isGA4Request = false;
-    let ga4Params = {};
+    // Check for duplicate request within the last 5 seconds
+    const isDuplicate = mitmProxyTraffic.some(entry => 
+      entry.type === 'request' && 
+      entry.fullUrl === url && 
+      Math.abs(new Date(entry.timestamp) - new Date(timestamp)) < 5000
+    );
     
-    try {
-      const urlObj = new URL(url);
-      host = urlObj.host;
-      path = urlObj.pathname + urlObj.search;
+    if (!isDuplicate) {
+      // Parse URL to get host and path
+      let host = '';
+      let path = '';
+      let isGA4Request = false;
+      let ga4Params = {};
       
-      // Check if this is a GA4 request
-      if (url.includes('google-analytics.com/g/collect') || 
-          url.includes('analytics.google.com/g/collect') ||
-          url.includes('app-measurement.com/a') ||
-          url.includes('firebase.googleapis.com/firebase/analytics') ||
-          url.includes('google-analytics.com/collect') ||
-          url.includes('analytics.google.com/collect') ||
-          url.includes('google-analytics.com/mp/collect') ||
-          url.includes('analytics.google.com/mp/collect') ||
-          url.includes('google-analytics.com/debug/mp/collect') ||
-          url.includes('analytics.google.com/debug/mp/collect') ||
-          url.includes('google-analytics.com/batch') ||
-          url.includes('analytics.google.com/batch') ||
-          url.includes('google-analytics.com/gtm/post') ||
-          url.includes('analytics.google.com/gtm/post')) {
-        isGA4Request = true;
+      try {
+        const urlObj = new URL(url);
+        host = urlObj.host;
+        path = urlObj.pathname + urlObj.search;
         
-        // Extract GA4 parameters
-        for (const [key, value] of urlObj.searchParams.entries()) {
-          ga4Params[key] = value;
+        // Check if this is a GA4 request
+        if (url.includes('google-analytics.com/g/collect') || 
+            url.includes('analytics.google.com/g/collect') ||
+            url.includes('app-measurement.com/a') ||
+            url.includes('firebase.googleapis.com/firebase/analytics') ||
+            url.includes('google-analytics.com/collect') ||
+            url.includes('analytics.google.com/collect') ||
+            url.includes('google-analytics.com/mp/collect') ||
+            url.includes('analytics.google.com/mp/collect') ||
+            url.includes('google-analytics.com/debug/mp/collect') ||
+            url.includes('analytics.google.com/debug/mp/collect') ||
+            url.includes('google-analytics.com/batch') ||
+            url.includes('analytics.google.com/batch') ||
+            url.includes('google-analytics.com/gtm/post') ||
+            url.includes('analytics.google.com/gtm/post')) {
+          isGA4Request = true;
+          
+          // Parse GA4 parameters
+          const params = new URLSearchParams(urlObj.search);
+          params.forEach((value, key) => {
+            ga4Params[key] = value;
+          });
         }
-        
-        // Also check for GA4 parameters in the request body for POST requests
-        if (method === 'POST') {
-          // Extract form data from the request body
-          const bodyMatch = output.match(/Content-Length: \d+\r\n\r\n([\s\S]*?)(?=\r\n\r\n|$)/);
-          if (bodyMatch && bodyMatch[1]) {
-            try {
-              // Try to parse as form data
-              const formData = new URLSearchParams(bodyMatch[1]);
-              for (const [key, value] of formData.entries()) {
-                ga4Params[key] = value;
-              }
-              
-              // Check for JSON data
-              if (output.includes('Content-Type: application/json')) {
-                try {
-                  const jsonData = JSON.parse(bodyMatch[1]);
-                  // Extract GA4 parameters from JSON
-                  if (jsonData.events) {
-                    ga4Params.events = JSON.stringify(jsonData.events);
-                  }
-                  if (jsonData.client_id) {
-                    ga4Params.client_id = jsonData.client_id;
-                  }
-                  if (jsonData.timestamp_micros) {
-                    ga4Params.timestamp_micros = jsonData.timestamp_micros;
-                  }
-                } catch (e) {
-                  // Not valid JSON, ignore
-                }
-              }
-            } catch (e) {
-              console.error('Error parsing GA4 request body:', e);
-            }
-          }
-        }
+      } catch (error) {
+        console.error('Error parsing URL:', error);
       }
-    } catch (e) {
-      host = url;
-      path = '/';
-    }
-    
-    mitmProxyTraffic.push({
-      id: `req_${timestamp}_${Math.random().toString(36).substring(2, 10)}`,
-      timestamp,
-      type: 'request',
-      source,
-      destination: host,
-      method,
-      path,
-      details: output,
-      fullUrl: url,
-      isGA4Request,
-      ga4Params: Object.keys(ga4Params).length > 0 ? ga4Params : null
-    });
-    
-    // Limit the array size
-    if (mitmProxyTraffic.length > MAX_TRAFFIC_ENTRIES) {
-      mitmProxyTraffic.shift();
+      
+      mitmProxyTraffic.push({
+        id: `req_${timestamp}_${Math.random().toString(36).substring(2, 10)}`,
+        timestamp,
+        type: 'request',
+        source,
+        destination: host,
+        method,
+        path,
+        details: output,
+        fullUrl: url,
+        isGA4Request,
+        ga4Params: Object.keys(ga4Params).length > 0 ? ga4Params : null
+      });
+      
+      // Limit the array size
+      if (mitmProxyTraffic.length > MAX_TRAFFIC_ENTRIES) {
+        mitmProxyTraffic.shift();
+      }
     }
   }
   

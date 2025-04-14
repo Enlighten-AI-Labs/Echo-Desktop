@@ -141,26 +141,38 @@ export default function AnalyticsDebugger() {
               entry.fullUrl.includes('/g/collect') // GA4 alternative endpoint
             )
           )
-          .map(entry => {
-            if (entry.fullUrl.includes('/b/ss/')) {
-              return { 
-                ...parseAdobeAnalyticsBeacon(entry.fullUrl), 
-                source: 'Adobe',
-                rawRequest: entry.fullUrl,  // Store the original request URL
-                timestamp: entry.timestamp || new Date().toISOString()  // Use the original timestamp
-              };
-            } else if (entry.fullUrl.includes('/collect') || entry.fullUrl.includes('/g/collect')) {
-              const url = new URL(entry.fullUrl);
-              return { 
-                ...parseGA4Beacon(entry.fullUrl, url.search), 
-                source: 'GA4',
-                rawRequest: entry.fullUrl,  // Store the original request URL
-                timestamp: entry.timestamp || new Date().toISOString()  // Use the original timestamp
-              };
+          .reduce((acc, entry) => {
+            // Check for duplicates within the last 5 seconds
+            const isDuplicate = acc.some(beacon => 
+              beacon.rawRequest === entry.fullUrl && 
+              Math.abs(new Date(beacon.timestamp) - new Date(entry.timestamp)) < 5000
+            );
+            
+            if (!isDuplicate) {
+              let parsedBeacon = null;
+              if (entry.fullUrl.includes('/b/ss/')) {
+                parsedBeacon = { 
+                  ...parseAdobeAnalyticsBeacon(entry.fullUrl), 
+                  source: 'Adobe',
+                  rawRequest: entry.fullUrl,
+                  timestamp: entry.timestamp || new Date().toISOString()
+                };
+              } else if (entry.fullUrl.includes('/collect') || entry.fullUrl.includes('/g/collect')) {
+                const url = new URL(entry.fullUrl);
+                parsedBeacon = { 
+                  ...parseGA4Beacon(entry.fullUrl, url.search), 
+                  source: 'GA4',
+                  rawRequest: entry.fullUrl,
+                  timestamp: entry.timestamp || new Date().toISOString()
+                };
+              }
+              
+              if (parsedBeacon) {
+                acc.push(parsedBeacon);
+              }
             }
-            return null;
-          })
-          .filter(beacon => beacon !== null);
+            return acc;
+          }, []);
 
         setBeacons(analyticsBeacons);
       } catch (error) {

@@ -1466,4 +1466,206 @@ ipcMain.handle('rtmp:stop', () => {
 
 ipcMain.handle('rtmp:getConfig', () => {
   return rtmpConfig;
+});
+
+// New function to capture screenshots from RTMP stream
+ipcMain.handle('rtmp:captureScreenshot', async (event, beaconId) => {
+  if (!rtmpServer) {
+    return {
+      success: false,
+      message: 'RTMP server is not running'
+    };
+  }
+
+  try {
+    console.log(`Capturing screenshot for beacon ${beaconId}`);
+    
+    // Create screenshots directory if it doesn't exist
+    const screenshotsDir = path.join(userDataPath, 'screenshots');
+    if (!fs.existsSync(screenshotsDir)) {
+      fs.mkdirSync(screenshotsDir, { recursive: true });
+    }
+    
+    // Generate screenshot filename
+    const timestamp = Date.now();
+    const screenshotFileName = `${beaconId}_${timestamp}.jpg`;
+    const screenshotPath = path.join(screenshotsDir, screenshotFileName);
+    
+    // Check if we already have a recent screenshot for this beacon (within last 60 seconds)
+    // to avoid unnecessary captures during UI refreshes
+    const existingFiles = fs.readdirSync(screenshotsDir)
+      .filter(file => file.startsWith(`${beaconId}_`))
+      .map(file => {
+        const filePath = path.join(screenshotsDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          path: filePath,
+          timestamp: parseInt(file.split('_')[1].replace('.jpg', '')),
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp); // Most recent first
+    
+    // If we have a recent screenshot (last 60 seconds), use it instead of capturing a new one
+    if (existingFiles.length > 0 && 
+        (Date.now() - existingFiles[0].timestamp < 60000) && 
+        !screenshotFileName.includes(existingFiles[0].name)) {
+      
+      console.log(`Using existing screenshot for beacon ${beaconId}: ${existingFiles[0].name}`);
+      
+      return {
+        success: true,
+        screenshotPath: existingFiles[0].path,
+        fileName: existingFiles[0].name,
+        timestamp: existingFiles[0].timestamp,
+        url: `file://${existingFiles[0].path}`,
+        cached: true
+      };
+    }
+    
+    // Use ffmpeg to capture a frame from the RTMP stream with auto-cropping
+    const rtmpUrl = `rtmp://${getLocalIpAddress()}:${rtmpConfig.rtmp.port}/live/live`;
+    const ffmpegPath = process.platform === 'win32' ? 
+            path.join(app.getAppPath(), 'bin', 'ffmpeg.exe') : 
+            '/opt/homebrew/bin/ffmpeg';
+    
+    // Two-pass approach to detect and crop black borders
+    // First pass: detect crop dimensions
+    const cropDetectPath = path.join(screenshotsDir, `temp_${timestamp}.jpg`);
+    await new Promise((resolve, reject) => {
+      // First we capture a frame for crop detection
+      exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vframes 1 "${cropDetectPath}"`, async (error) => {
+        if (error) {
+          console.error('Error capturing frame for crop detection:', error);
+          // If crop detection fails, try a regular capture without cropping
+          try {
+            await execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath);
+            resolve();
+            return;
+          } catch (e) {
+            reject(error);
+            return;
+          }
+        }
+        
+        // Now detect crop values using cropdetect filter
+        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf cropdetect -f null -`, async (err, stdout, stderr) => {
+          try {
+            // Clean up temp file
+            if (fs.existsSync(cropDetectPath)) {
+              fs.unlinkSync(cropDetectPath);
+            }
+            
+            if (err) {
+              console.error('Error detecting crop:', err);
+              // If crop detection fails, try without cropping
+              await execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath);
+              resolve();
+              return;
+            }
+            
+            // Parse the crop parameters from stderr
+            let cropParams = 'crop=in_w:in_h';
+            const cropRegex = /crop=([0-9]+):([0-9]+):([0-9]+):([0-9]+)/g;
+            const matches = stderr.matchAll(cropRegex);
+            let lastMatch = null;
+            
+            // Get the last (most accurate) crop detection
+            for (const match of matches) {
+              lastMatch = match;
+            }
+            
+            if (lastMatch) {
+              cropParams = lastMatch[0];
+              console.log(`Detected crop parameters: ${cropParams}`);
+            }
+            
+            // Second pass: capture with cropping
+            exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vf "${cropParams}" -vframes 1 "${screenshotPath}"`, (error) => {
+              if (error) {
+                console.error('Error capturing cropped screenshot:', error);
+                // If cropped capture fails, try without cropping
+                execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath)
+                  .then(resolve)
+                  .catch(reject);
+                return;
+              }
+              resolve();
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    });
+    
+    // Double-check that the file was created successfully
+    if (!fs.existsSync(screenshotPath) || fs.statSync(screenshotPath).size === 0) {
+      throw new Error('Screenshot file was not created properly');
+    }
+    
+    // Return the path and metadata
+    return {
+      success: true,
+      screenshotPath: screenshotPath,
+      fileName: screenshotFileName,
+      timestamp: timestamp,
+      url: `file://${screenshotPath}`,
+      cached: false
+    };
+  } catch (error) {
+    console.error('Error capturing screenshot:', error);
+    
+    // Return failed result
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+});
+
+// Helper function for simple capture without cropping
+async function execSimpleCapture(ffmpegPath, rtmpUrl, outputPath) {
+  return new Promise((resolve, reject) => {
+    exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vframes 1 "${outputPath}"`, (error) => {
+      if (error) {
+        console.error('Error in simple capture:', error);
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+// Add a new handler to get screenshot as data URL
+ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
+  try {
+    const screenshotsDir = path.join(userDataPath, 'screenshots');
+    const filePath = path.join(screenshotsDir, fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return {
+        success: false,
+        message: 'Screenshot file not found'
+      };
+    }
+    
+    // Read the file and convert to data URL
+    const data = fs.readFileSync(filePath);
+    const base64Data = data.toString('base64');
+    const dataUrl = `data:image/jpeg;base64,${base64Data}`;
+    
+    return {
+      success: true,
+      dataUrl: dataUrl
+    };
+  } catch (error) {
+    console.error('Error getting screenshot data URL:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
 }); 

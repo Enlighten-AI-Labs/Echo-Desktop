@@ -58,6 +58,8 @@ contextBridge.exposeInMainWorld(
       start: (config) => ipcRenderer.invoke('rtmp:start', config),
       stop: () => ipcRenderer.invoke('rtmp:stop'),
       getConfig: () => ipcRenderer.invoke('rtmp:getConfig'),
+      captureScreenshot: (beaconId) => ipcRenderer.invoke('rtmp:captureScreenshot', beaconId),
+      getScreenshotDataUrl: (fileName) => ipcRenderer.invoke('rtmp:getScreenshotDataUrl', fileName),
     }
   }
 ); 

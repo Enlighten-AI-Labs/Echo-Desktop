@@ -661,4 +661,158 @@
   color: #aaa;
   margin-bottom: 8px;
   text-align: center;
+}
+
+/* XML Viewer Styles */
+.xmlViewer {
+  margin-top: 1rem;
+  border-top: 1px solid #444;
+  padding-top: 1rem;
+}
+
+.xmlViewer h4 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+.xmlContent {
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  border: 1px solid #333;
+  padding: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.xmlContent pre {
+  margin: 0;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #e0e0e0;
+  line-height: 1.5;
+}
+
+/* XML Popup Styles */
+.xmlPopupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.xmlPopup {
+  width: 90%;
+  max-width: 1200px;
+  height: 85vh;
+  background-color: #262626;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popupFadeIn 0.2s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.xmlPopupHeader {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #2c2c2c;
+  border-bottom: 1px solid #333;
+}
+
+.xmlPopupHeader h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 500;
+  flex-grow: 0;
+}
+
+.xmlPopupInfo {
+  margin: 0 auto 0 1rem;
+  font-size: 0.85rem;
+  color: #bbb;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xmlPopupClose {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.xmlPopupClose:hover {
+  background-color: #333;
+  color: #f44336;
+}
+
+.xmlPopupContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background-color: #1a1a1a;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.xmlPopupContent pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #e0e0e0;
 } 

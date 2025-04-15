@@ -18,6 +18,42 @@ const { MiniMap, Controls, Background, MarkerType } = dynamic(
 
 import '@xyflow/react/dist/style.css';
 
+// Helper function to beautify XML
+function beautifyXml(xml) {
+  if (!xml) return '';
+  
+  // Replace self-closing tags to make them more readable
+  let formatted = xml.replace(/<([a-zA-Z0-9_.-]+)([^>]*)\/>/g, '<$1$2></$1>');
+  
+  // Create proper indentation
+  let indent = '';
+  let result = '';
+  const lines = formatted.split(/>\s*</);
+  
+  if (lines.length) {
+    // Add back the > and < characters
+    result = lines[0];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check if this is a closing tag
+      if (line.match(/^\/\w/)) {
+        indent = indent.substring(2);
+      }
+      
+      result += '>\n' + indent + '<' + line;
+      
+      // Check if this is not a closing tag and not a self-closing tag
+      if (!line.match(/^\//) && !line.match(/\/$/)) {
+        indent += '  ';
+      }
+    }
+  }
+  
+  return result.trim();
+}
+
 export default function AppCrawlerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
@@ -34,6 +70,7 @@ export default function AppCrawlerPage() {
   const [flowEdges, setFlowEdges] = useState([]);
   const [flowReady, setFlowReady] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showXmlPopup, setShowXmlPopup] = useState(false);
   
   const [crawlSettings, setCrawlSettings] = useState({
     maxScreens: 20,
@@ -255,6 +292,37 @@ export default function AppCrawlerPage() {
       setShowFlow(true);
     }
   }, [viewType]);
+  
+  // Toggle XML popup
+  const toggleXmlPopup = () => {
+    setShowXmlPopup(!showXmlPopup);
+  };
+  
+  // Close popup if Escape key is pressed
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && showXmlPopup) {
+        setShowXmlPopup(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscKey);
+    return () => {
+      window.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showXmlPopup]);
+  
+  // Prevent scrolling when popup is open
+  useEffect(() => {
+    if (showXmlPopup) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showXmlPopup]);
   
   return (
     <>
@@ -556,6 +624,26 @@ export default function AppCrawlerPage() {
                               <p><strong>Activity:</strong> {currentScreen.activityName}</p>
                               <p><strong>Elements:</strong> {currentScreen.elementCount}</p>
                               <p><strong>Clickable:</strong> {currentScreen.clickableCount}</p>
+                              
+                              {currentScreen.xml && (
+                                <div className={styles.xmlViewer}>
+                                  <h4>
+                                    UI Structure (XML)
+                                    <button 
+                                      className={styles.expandButton}
+                                      onClick={toggleXmlPopup}
+                                      title="Expand XML View"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                                      </svg>
+                                    </button>
+                                  </h4>
+                                  <div className={styles.xmlContent}>
+                                    <pre>{beautifyXml(currentScreen.xml).substring(0, 2000)}...</pre>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
@@ -583,6 +671,33 @@ export default function AppCrawlerPage() {
           </div>
         </div>
       </div>
+      
+      {/* XML Popup */}
+      {showXmlPopup && currentScreen && currentScreen.xml && (
+        <div className={styles.xmlPopupOverlay} onClick={toggleXmlPopup}>
+          <div className={styles.xmlPopup} onClick={e => e.stopPropagation()}>
+            <div className={styles.xmlPopupHeader}>
+              <h3>UI Structure XML</h3>
+              <span className={styles.xmlPopupInfo}>
+                {currentScreen.activityName}
+              </span>
+              <button 
+                className={styles.xmlPopupClose}
+                onClick={toggleXmlPopup}
+                title="Close"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className={styles.xmlPopupContent}>
+              <pre>{beautifyXml(currentScreen.xml)}</pre>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 } 

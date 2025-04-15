@@ -1466,4 +1466,957 @@ ipcMain.handle('rtmp:stop', () => {
 
 ipcMain.handle('rtmp:getConfig', () => {
   return rtmpConfig;
-}); 
+});
+
+// New function to capture screenshots from RTMP stream
+ipcMain.handle('rtmp:captureScreenshot', async (event, beaconId) => {
+  if (!rtmpServer) {
+    return {
+      success: false,
+      message: 'RTMP server is not running'
+    };
+  }
+
+  try {
+    console.log(`Capturing screenshot for beacon ${beaconId}`);
+    
+    // Create screenshots directory if it doesn't exist
+    const screenshotsDir = path.join(userDataPath, 'screenshots');
+    if (!fs.existsSync(screenshotsDir)) {
+      fs.mkdirSync(screenshotsDir, { recursive: true });
+    }
+    
+    // Generate screenshot filename
+    const timestamp = Date.now();
+    const screenshotFileName = `${beaconId}_${timestamp}.jpg`;
+    const screenshotPath = path.join(screenshotsDir, screenshotFileName);
+    
+    // Check if we already have a recent screenshot for this beacon (within last 60 seconds)
+    // to avoid unnecessary captures during UI refreshes
+    const existingFiles = fs.readdirSync(screenshotsDir)
+      .filter(file => file.startsWith(`${beaconId}_`))
+      .map(file => {
+        const filePath = path.join(screenshotsDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          path: filePath,
+          timestamp: parseInt(file.split('_')[1].replace('.jpg', '')),
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp); // Most recent first
+    
+    // If we have a recent screenshot (last 60 seconds), use it instead of capturing a new one
+    if (existingFiles.length > 0 && 
+        (Date.now() - existingFiles[0].timestamp < 60000) && 
+        !screenshotFileName.includes(existingFiles[0].name)) {
+      
+      console.log(`Using existing screenshot for beacon ${beaconId}: ${existingFiles[0].name}`);
+      
+      return {
+        success: true,
+        screenshotPath: existingFiles[0].path,
+        fileName: existingFiles[0].name,
+        timestamp: existingFiles[0].timestamp,
+        url: `file://${existingFiles[0].path}`,
+        cached: true
+      };
+    }
+    
+    // Use ffmpeg to capture a frame from the RTMP stream with auto-cropping
+    const rtmpUrl = `rtmp://${getLocalIpAddress()}:${rtmpConfig.rtmp.port}/live/live`;
+    const ffmpegPath = process.platform === 'win32' ? 
+            path.join(app.getAppPath(), 'bin', 'ffmpeg.exe') : 
+            '/opt/homebrew/bin/ffmpeg';
+    
+    // Two-pass approach to detect and crop black borders
+    // First pass: detect crop dimensions
+    const cropDetectPath = path.join(screenshotsDir, `temp_${timestamp}.jpg`);
+    await new Promise((resolve, reject) => {
+      // First we capture a frame for crop detection
+      exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vframes 1 "${cropDetectPath}"`, async (error) => {
+        if (error) {
+          console.error('Error capturing frame for crop detection:', error);
+          // If crop detection fails, try a regular capture without cropping
+          try {
+            await execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath);
+            resolve();
+            return;
+          } catch (e) {
+            reject(error);
+            return;
+          }
+        }
+        
+        // Now detect crop values using cropdetect filter with very aggressive settings
+        // Using threshold=24 (very low = more aggressive cropping), round to 16 (even numbers), and skip 0 pixels from edges
+        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf "cropdetect=24:16:0" -f null -`, async (err, stdout, stderr) => {
+          try {
+            // Clean up temp file
+            if (fs.existsSync(cropDetectPath)) {
+              fs.unlinkSync(cropDetectPath);
+            }
+            
+            if (err) {
+              console.error('Error detecting crop:', err);
+              // If crop detection fails, try without cropping
+              await execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath);
+              resolve();
+              return;
+            }
+            
+            // Parse the crop parameters from stderr
+            let cropParams = 'crop=in_w:in_h';
+            const cropRegex = /crop=([0-9]+):([0-9]+):([0-9]+):([0-9]+)/g;
+            const matches = stderr.matchAll(cropRegex);
+            let lastMatch = null;
+            
+            // Get the last (most accurate) crop detection
+            for (const match of matches) {
+              lastMatch = match;
+            }
+            
+            if (lastMatch) {
+              cropParams = lastMatch[0];
+              console.log(`Detected crop parameters: ${cropParams}`);
+              
+              // Extract dimensions from the crop parameters
+              const dimensions = cropParams.match(/crop=([0-9]+):([0-9]+):([0-9]+):([0-9]+)/);
+              if (dimensions && dimensions.length === 5) {
+                const [_, width, height, x, y] = dimensions;
+                
+                // Apply a very aggressive crop - add additional padding to crop more from each side
+                const newWidth = parseInt(width) - 32;
+                const newHeight = parseInt(height) - 32;
+                const newX = parseInt(x) + 16;
+                const newY = parseInt(y) + 16;
+                
+                // Ensure dimensions are positive
+                if (newWidth > 0 && newHeight > 0) {
+                  cropParams = `crop=${newWidth}:${newHeight}:${newX}:${newY}`;
+                  console.log(`Adjusted crop parameters: ${cropParams}`);
+                }
+              }
+            }
+            
+            // Second pass: capture with cropping and apply a better scaling filter
+            // This ensures we don't have any black borders and fixes aspect ratio
+            const filterComplex = `${cropParams},scale=720:-1`;
+            exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vf "${filterComplex}" -vframes 1 "${screenshotPath}"`, (error) => {
+              if (error) {
+                console.error('Error capturing cropped screenshot:', error);
+                // If cropped capture fails, try without cropping
+                execSimpleCapture(ffmpegPath, rtmpUrl, screenshotPath)
+                  .then(resolve)
+                  .catch(reject);
+                return;
+              }
+              resolve();
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    });
+    
+    // Double-check that the file was created successfully
+    if (!fs.existsSync(screenshotPath) || fs.statSync(screenshotPath).size === 0) {
+      throw new Error('Screenshot file was not created properly');
+    }
+    
+    // Return the path and metadata
+    return {
+      success: true,
+      screenshotPath: screenshotPath,
+      fileName: screenshotFileName,
+      timestamp: timestamp,
+      url: `file://${screenshotPath}`,
+      cached: false
+    };
+  } catch (error) {
+    console.error('Error capturing screenshot:', error);
+    
+    // Return failed result
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+});
+
+// Helper function for simple capture without cropping
+async function execSimpleCapture(ffmpegPath, rtmpUrl, outputPath) {
+  return new Promise((resolve, reject) => {
+    exec(`"${ffmpegPath}" -y -i "${rtmpUrl}" -vframes 1 "${outputPath}"`, (error) => {
+      if (error) {
+        console.error('Error in simple capture:', error);
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+// Add a new handler to get screenshot as data URL
+ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
+  try {
+    const screenshotsDir = path.join(userDataPath, 'screenshots');
+    const filePath = path.join(screenshotsDir, fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return {
+        success: false,
+        message: 'Screenshot file not found'
+      };
+    }
+    
+    // Get image dimensions using ffmpeg
+    const ffmpegPath = process.platform === 'win32' ? 
+            path.join(app.getAppPath(), 'bin', 'ffmpeg.exe') : 
+            '/opt/homebrew/bin/ffmpeg';
+    
+    // Use ffprobe to get image dimensions
+    let dimensions = { width: 720, height: 720 }; // Default fallback
+    
+    try {
+      const { stdout, stderr } = await require('util').promisify(exec)(
+        `"${ffmpegPath}" -i "${filePath}" -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0`
+      );
+      
+      if (stdout) {
+        const parts = stdout.trim().split(',');
+        if (parts.length === 2) {
+          dimensions = {
+            width: parseInt(parts[0]),
+            height: parseInt(parts[1])
+          };
+          console.log(`Image dimensions: ${dimensions.width}x${dimensions.height}`);
+        }
+      }
+    } catch (e) {
+      console.error('Error getting image dimensions:', e);
+    }
+    
+    // Read the file and convert to data URL
+    const data = fs.readFileSync(filePath);
+    const base64Data = data.toString('base64');
+    const dataUrl = `data:image/jpeg;base64,${base64Data}`;
+    
+    return {
+      success: true,
+      dataUrl: dataUrl,
+      dimensions: dimensions
+    };
+  } catch (error) {
+    console.error('Error getting screenshot data URL:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+});
+
+// CRAWLER FUNCTIONALITY
+let crawlerRunning = false;
+let crawlerDeviceId = null;
+let crawlerPackageName = null;
+let crawlerSettings = null;
+let visitedScreens = new Set();
+let crawlerScreens = [];
+let crawlerLogs = [];
+let clickedButtons = new Set(); // Track which buttons we've already clicked
+let visitedScreenshots = new Set();
+let uniqueScreens = [];
+let screenNodes = {};
+let screenEdges = {};
+
+// Function to add and send a log message
+function addCrawlerLog(message, type = 'info') {
+  const logEntry = {
+    timestamp: Date.now(),
+    message,
+    type // 'info', 'error', 'success', etc.
+  };
+  
+  crawlerLogs.push(logEntry);
+  
+  // Keep logs limited to the most recent 1000
+  if (crawlerLogs.length > 1000) {
+    crawlerLogs.shift();
+  }
+  
+  // Send to renderer if window exists
+  if (mainWindow) {
+    mainWindow.webContents.send('crawler:log', logEntry);
+  }
+  
+  // Also log to console
+  if (type === 'error') {
+    console.error(`[Crawler] ${message}`);
+  } else {
+    console.log(`[Crawler] ${message}`);
+  }
+}
+
+// Main recursive crawling function
+async function crawlScreen(deviceId, packageName, navigationPath = [], currentDepth = 0) {
+  if (!crawlerRunning) {
+    addCrawlerLog('Crawler stopped');
+    return;
+  }
+  
+  try {
+    // Get current activity
+    addCrawlerLog('Getting current activity');
+    const currentActivity = await getCurrentActivity(deviceId, packageName);
+    
+    // Check if we're still in the app package if stayInApp is enabled
+    if (crawlerSettings.stayInApp && !currentActivity.includes(packageName)) {
+      addCrawlerLog(`Current activity ${currentActivity} is outside app package ${packageName}, returning to app`, 'warning');
+      
+      // Launch the app again to return to it
+      await execAdbCommand(`-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`);
+      
+      // Wait for app to launch
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Get the updated activity after returning to the app
+      const newActivity = await getCurrentActivity(deviceId, packageName);
+      
+      if (!newActivity.includes(packageName)) {
+        addCrawlerLog(`Failed to return to app ${packageName}, stopping crawler`, 'error');
+        stopAppCrawling();
+        return;
+      }
+      
+      addCrawlerLog(`Successfully returned to app: ${newActivity}`, 'success');
+    } else if (!crawlerSettings.stayInApp && !currentActivity.includes(packageName)) {
+      addCrawlerLog(`Current activity ${currentActivity} is not part of package ${packageName}, skipping`, 'info');
+      return;
+    }
+    
+    addCrawlerLog(`Current activity: ${currentActivity}`);
+    
+    // Get the screen XML
+    addCrawlerLog('Capturing UI hierarchy');
+    const screenXml = await getUiAutomatorXml(deviceId);
+    
+    // Create a hash based on XML content to identify unique screens
+    const screenHash = createScreenHash(screenXml);
+    addCrawlerLog(`Screen hash: ${screenHash}`);
+    
+    // Capture screenshot
+    addCrawlerLog('Capturing screenshot');
+    const screenshotBase64 = await captureScreenshot(deviceId);
+    
+    // Create a hash of the screenshot to identify unique visual states
+    const screenshotHash = createScreenshotHash(screenshotBase64);
+    addCrawlerLog(`Screenshot hash: ${screenshotHash}`);
+    
+    // Parse XML to find clickable elements
+    addCrawlerLog('Analyzing UI elements');
+    const { elements, clickableElements } = parseUiAutomatorXml(screenXml);
+    
+    // We'll now track unique visual states rather than just screens
+    const isNewVisualState = !visitedScreenshots.has(screenshotHash);
+    
+    // Add this screen to our visited set
+    visitedScreens.add(screenHash);
+    visitedScreenshots.add(screenshotHash);
+    
+    // Create screen object
+    const screen = {
+      id: screenHash,
+      visualId: screenshotHash,
+      activityName: currentActivity,
+      screenshot: screenshotBase64,
+      xml: screenXml,
+      elementCount: elements.length,
+      clickableCount: clickableElements.length,
+      timestamp: Date.now(),
+      isNewVisualState: isNewVisualState,
+      depth: currentDepth
+    };
+    
+    // Add to our collection if it's a new visual state
+    if (isNewVisualState) {
+      uniqueScreens.push(screen);
+      
+      // Create node for flowchart
+      screenNodes[screenshotHash] = {
+        id: screenshotHash,
+        label: currentActivity.split('/').pop(),
+        data: screen
+      };
+      
+      // Send to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('crawler:newScreen', screen);
+        mainWindow.webContents.send('crawler:progress', {
+          percentage: Math.min(100, Math.round((uniqueScreens.length / crawlerSettings.maxScreens) * 100)),
+          screensCount: uniqueScreens.length,
+          maxScreens: crawlerSettings.maxScreens
+        });
+      }
+      
+      addCrawlerLog(`Found new visual state: ${currentActivity.split('/').pop()}`, 'success');
+    } else {
+      addCrawlerLog(`Found already visited visual state: ${currentActivity.split('/').pop()}`, 'info');
+    }
+    
+    // Add this screen to our path history
+    const screenNode = {
+      hash: screenshotHash,
+      activity: currentActivity
+    };
+    
+    // Record the navigation path
+    const newPath = [...navigationPath, screenNode];
+    
+    // If we have a previous screen, record the edge between them for the flowchart
+    if (navigationPath.length > 0) {
+      const prevScreenHash = navigationPath[navigationPath.length - 1].hash;
+      const edgeId = `${prevScreenHash}->${screenshotHash}`;
+      
+      // Add to edges if not already present
+      if (!screenEdges[edgeId]) {
+        screenEdges[edgeId] = {
+          id: edgeId,
+          source: prevScreenHash,
+          target: screenshotHash,
+          count: 1
+        };
+      } else {
+        // Increment count if edge already exists
+        screenEdges[edgeId].count++;
+      }
+    }
+    
+    addCrawlerLog(`Found ${elements.length} elements, ${clickableElements.length} clickable`);
+    
+    // Check if we've reached the maximum number of unique visual states
+    if (uniqueScreens.length >= crawlerSettings.maxScreens) {
+      addCrawlerLog(`Reached maximum number of unique visual states (${crawlerSettings.maxScreens}), stopping crawler`, 'success');
+      
+      // Generate and return the flow chart data
+      generateFlowchartData();
+      
+      stopAppCrawling();
+      return;
+    }
+    
+    // Limit recursion depth to prevent stack overflow
+    if (currentDepth >= crawlerSettings.maxDepth) {
+      addCrawlerLog(`Reached maximum recursion depth (${crawlerSettings.maxDepth}), returning to higher level`, 'warning');
+      return;
+    }
+    
+    // Filter for unique clickable elements using our hashing system
+    const uniqueClickableElements = [];
+    const buttonsOnScreen = new Set();
+    
+    for (const element of clickableElements) {
+      // Skip elements we want to ignore
+      if (crawlerSettings.ignoreElements.some(type => element.class.includes(type))) {
+        continue;
+      }
+      
+      // Create a button hash based on class and position
+      const buttonHash = createButtonHash(element, screenHash);
+      
+      // Check if we've seen this button on this screen
+      if (!buttonsOnScreen.has(buttonHash)) {
+        buttonsOnScreen.add(buttonHash);
+        element.buttonHash = buttonHash;
+        uniqueClickableElements.push(element);
+      }
+    }
+    
+    // Split elements into clicked and unclicked groups
+    const unclickedElements = uniqueClickableElements.filter(el => !clickedButtons.has(el.buttonHash) || getButtonClickCount(el.buttonHash) < 3);
+    const clickedElements = uniqueClickableElements.filter(el => clickedButtons.has(el.buttonHash) && getButtonClickCount(el.buttonHash) < 3);
+    
+    addCrawlerLog(`Found ${unclickedElements.length} unclicked elements and ${clickedElements.length} previously clicked elements`);
+    
+    // Shuffle both arrays for randomness
+    const shuffledUnclicked = shuffleArray([...unclickedElements]);
+    const shuffledClicked = shuffleArray([...clickedElements]);
+    
+    // Select a subset of elements to try (prioritize unclicked)
+    const elementsToTry = [];
+    
+    // Always prefer unclicked elements first, but in random order
+    if (shuffledUnclicked.length > 0) {
+      // Take all unclicked elements, but in random order
+      elementsToTry.push(...shuffledUnclicked);
+    }
+    
+    // Add some previously clicked elements too (but fewer of them)
+    if (shuffledClicked.length > 0) {
+      // Take up to 3 clicked elements or 30% of them, whichever is greater
+      const maxClickedToUse = Math.max(3, Math.floor(shuffledClicked.length * 0.3));
+      elementsToTry.push(...shuffledClicked.slice(0, maxClickedToUse));
+    }
+    
+    addCrawlerLog(`Selected ${elementsToTry.length} elements to try clicking in random order`);
+    
+    // Click on selected elements one by one
+    for (const element of elementsToTry) {
+      if (!crawlerRunning) break;
+      
+      // Skip if we've clicked this exact button too many times (to prevent infinite loops)
+      const clickCount = getButtonClickCount(element.buttonHash);
+      if (clickCount >= 3) { // Maximum is 3 clicks per button to avoid infinite loops
+        addCrawlerLog(`Skipping button ${element.buttonHash} (clicked ${clickCount} times already)`, 'info');
+        continue;
+      }
+      
+      // Click the element
+      addCrawlerLog(`Clicking element: ${element.class} (hash: ${element.buttonHash.substring(0, 8)})`);
+      await clickElementByBounds(deviceId, element.bounds);
+      
+      // Record that we've clicked this button
+      recordButtonClick(element.buttonHash);
+      
+      // Wait for the UI to update
+      addCrawlerLog(`Waiting for UI to update (${crawlerSettings.screenDelay}ms)`);
+      await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
+      
+      // Recursively crawl this new screen, passing the updated path and incremented depth
+      addCrawlerLog('Exploring new screen');
+      await crawlScreen(deviceId, packageName, newPath, currentDepth + 1);
+      
+      // Go back to the previous screen
+      addCrawlerLog('Going back to previous screen');
+      await execAdbCommand(`-s ${deviceId} shell input keyevent 4`); // Send BACK key
+      await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
+      
+      // Check if we're still in the app after going back
+      const activityAfterBack = await getCurrentActivity(deviceId, packageName);
+      if (crawlerSettings.stayInApp && !activityAfterBack.includes(packageName)) {
+        addCrawlerLog(`Left the app after going back. Current activity: ${activityAfterBack}. Relaunching app...`, 'warning');
+        
+        // Launch the app again
+        await execAdbCommand(`-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`);
+        
+        // Wait for app to launch
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify we're back in the app
+        const newActivity = await getCurrentActivity(deviceId, packageName);
+        if (newActivity.includes(packageName)) {
+          addCrawlerLog(`Successfully returned to app: ${newActivity}`, 'success');
+        } else {
+          addCrawlerLog(`Failed to return to app ${packageName} after back action`, 'error');
+        }
+      }
+    }
+    
+    addCrawlerLog(`Finished exploring screen: ${currentActivity.split('/').pop()}`);
+    
+  } catch (error) {
+    addCrawlerLog(`Error during crawling: ${error.message}`, 'error');
+    
+    // Emit error event
+    if (mainWindow) {
+      mainWindow.webContents.send('crawler:error', {
+        message: error.message
+      });
+    }
+    
+    // Stop crawler on error
+    stopAppCrawling();
+  }
+}
+
+// Button click tracking
+const buttonClickCounts = {};
+
+function recordButtonClick(buttonHash) {
+  clickedButtons.add(buttonHash);
+  buttonClickCounts[buttonHash] = (buttonClickCounts[buttonHash] || 0) + 1;
+}
+
+function getButtonClickCount(buttonHash) {
+  return buttonClickCounts[buttonHash] || 0;
+}
+
+// Create a unique hash for a button based on its properties
+function createButtonHash(element, screenHash) {
+  // Include the screen hash to differentiate same-looking buttons on different screens
+  const buttonData = {
+    screenHash: screenHash,
+    class: element.class,
+    left: element.bounds.left,
+    top: element.bounds.top,
+    right: element.bounds.right,
+    bottom: element.bounds.bottom
+  };
+  
+  // Create a hash of the stringified button data
+  const crypto = require('crypto');
+  return crypto.createHash('md5').update(JSON.stringify(buttonData)).digest('hex');
+}
+
+// Reset tracking when starting a new crawl session
+function resetButtonTracking() {
+  clickedButtons.clear();
+  Object.keys(buttonClickCounts).forEach(key => delete buttonClickCounts[key]);
+}
+
+// Function to start app crawling
+async function startAppCrawling(deviceId, packageName, settings) {
+  if (crawlerRunning) {
+    addCrawlerLog('Crawler already running', 'error');
+    return {
+      success: false,
+      message: 'Crawler already running'
+    };
+  }
+  
+  // Initialize state
+  crawlerRunning = true;
+  crawlerDeviceId = deviceId;
+  crawlerPackageName = packageName;
+  crawlerSettings = settings || {
+    maxScreens: 20,
+    screenDelay: 1000,
+    ignoreElements: ['android.widget.ImageView'],
+    stayInApp: true,
+    maxDepth: 5
+  };
+  visitedScreens = new Set();
+  crawlerScreens = [];
+  crawlerLogs = [];
+  resetButtonTracking(); // Reset button tracking
+  visitedScreenshots = new Set();
+  uniqueScreens = [];
+  screenNodes = {};
+  screenEdges = {};
+  
+  try {
+    addCrawlerLog(`Starting app crawler for device ${deviceId} and package ${packageName}`, 'success');
+    
+    // Launch the app
+    addCrawlerLog(`Launching app ${packageName}`);
+    await execAdbCommand(`-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`);
+    
+    // Wait for app to launch
+    addCrawlerLog('Waiting for app to launch...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Start the crawl process
+    addCrawlerLog('Beginning app exploration');
+    crawlScreen(deviceId, packageName);
+    
+    return {
+      success: true,
+      message: 'Crawler started successfully'
+    };
+  } catch (error) {
+    addCrawlerLog(`Failed to start app crawling: ${error.message}`, 'error');
+    crawlerRunning = false;
+    return {
+      success: false,
+      message: `Failed to start crawler: ${error.message}`
+    };
+  }
+}
+
+// Function to stop app crawling
+function stopAppCrawling() {
+  if (!crawlerRunning) {
+    addCrawlerLog('Crawler not running', 'error');
+    return {
+      success: false,
+      message: 'Crawler not running'
+    };
+  }
+  
+  crawlerRunning = false;
+  addCrawlerLog('Stopping crawler', 'success');
+  
+  // Emit the complete event
+  if (mainWindow) {
+    mainWindow.webContents.send('crawler:complete');
+  }
+  
+  return {
+    success: true,
+    message: 'Crawler stopped successfully'
+  };
+}
+
+// Helper function to get current activity
+async function getCurrentActivity(deviceId, packageName) {
+  try {
+    // Get the full window dump and parse it in JS instead of using grep
+    const output = await execAdbCommand(`-s ${deviceId} shell dumpsys window windows`);
+    
+    // Look for mCurrentFocus or mFocusedApp in the output
+    const currentFocusMatch = output.match(/mCurrentFocus=.*?(\S+\/\S+)/);
+    const focusedAppMatch = output.match(/mFocusedApp=.*?(\S+\/\S+)/);
+    
+    if (currentFocusMatch && currentFocusMatch[1]) {
+      return currentFocusMatch[1];
+    } else if (focusedAppMatch && focusedAppMatch[1]) {
+      return focusedAppMatch[1];
+    }
+    
+    addCrawlerLog('Could not find current activity in dumpsys output, trying fallback', 'warning');
+    
+    // Fallback approach - get activities dump and parse in JS
+    const activitiesOutput = await execAdbCommand(`-s ${deviceId} shell dumpsys activity activities`);
+    const resumedMatch = activitiesOutput.match(/mResumedActivity.*?(\S+\/\S+)/);
+    if (resumedMatch && resumedMatch[1]) {
+      return resumedMatch[1];
+    }
+    
+    // Additional fallback - check if we can get the package name directly
+    if (packageName) {
+      addCrawlerLog(`Using provided package name as fallback: ${packageName}`, 'warning');
+      return packageName + "/unknown";
+    }
+    
+    // Return a default if all attempts fail
+    addCrawlerLog('All attempts to get current activity failed', 'error');
+    return '';
+  } catch (error) {
+    addCrawlerLog(`Error getting current activity: ${error.message}`, 'error');
+    // If we can't get the activity, just return empty string
+    // This will make the crawler continue with a fallback
+    return '';
+  }
+}
+
+// Helper function to get UI hierarchy XML
+async function getUiAutomatorXml(deviceId) {
+  try {
+    console.log(`Dumping UI hierarchy for device ${deviceId}...`);
+    
+    // Create a temporary file on the device
+    const dumpResult = await execAdbCommand(`-s ${deviceId} shell uiautomator dump /sdcard/window_dump.xml`);
+    console.log('UIAutomator dump result:', dumpResult);
+    
+    // Check if the dump was successful
+    if (dumpResult.includes('ERROR')) {
+      throw new Error(`UIAutomator dump failed: ${dumpResult}`);
+    }
+    
+    // Pull the file from the device
+    const tempFile = path.join(os.tmpdir(), `window_dump_${Date.now()}.xml`);
+    await execAdbCommand(`-s ${deviceId} pull /sdcard/window_dump.xml "${tempFile}"`);
+    
+    // Check if the file exists and has content
+    if (!fs.existsSync(tempFile)) {
+      throw new Error('Failed to pull UI dump file from device');
+    }
+    
+    const stats = fs.statSync(tempFile);
+    if (stats.size === 0) {
+      throw new Error('UI dump file is empty');
+    }
+    
+    // Read the file content
+    const content = fs.readFileSync(tempFile, 'utf8');
+    
+    // Clean up
+    fs.unlinkSync(tempFile);
+    
+    if (!content || content.trim() === '') {
+      throw new Error('UI dump content is empty');
+    }
+    
+    return content;
+  } catch (error) {
+    console.error('Error getting UI hierarchy:', error);
+    throw error;
+  }
+}
+
+// Helper function to create a hash of the screen based on XML content
+function createScreenHash(xml) {
+  const crypto = require('crypto');
+  return crypto.createHash('md5').update(xml).digest('hex').substring(0, 10);
+}
+
+// Helper function to parse UI XML and find clickable elements
+function parseUiAutomatorXml(xml) {
+  try {
+    if (!xml || typeof xml !== 'string') {
+      console.error('Invalid XML input:', xml);
+      return { elements: [], clickableElements: [] };
+    }
+    
+    const elements = [];
+    const clickableElements = [];
+    
+    // Simple regex-based parsing
+    // In a production app, you'd want to use a proper XML parser
+    const nodeRegex = /<node[^>]*>/g;
+    let match;
+    
+    while ((match = nodeRegex.exec(xml)) !== null) {
+      const node = match[0];
+      
+      // Extract attributes
+      const classMatch = node.match(/class="([^"]+)"/);
+      const boundsMatch = node.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+      const clickableMatch = node.match(/clickable="([^"]+)"/);
+      
+      if (classMatch && boundsMatch) {
+        const element = {
+          class: classMatch[1],
+          bounds: {
+            left: parseInt(boundsMatch[1]),
+            top: parseInt(boundsMatch[2]),
+            right: parseInt(boundsMatch[3]),
+            bottom: parseInt(boundsMatch[4])
+          },
+          clickable: clickableMatch && clickableMatch[1] === 'true'
+        };
+        
+        elements.push(element);
+        
+        if (element.clickable) {
+          clickableElements.push(element);
+        }
+      }
+    }
+    
+    console.log(`Parsed ${elements.length} elements, ${clickableElements.length} clickable`);
+    return { elements, clickableElements };
+  } catch (error) {
+    console.error('Error parsing UI XML:', error);
+    return { elements: [], clickableElements: [] };
+  }
+}
+
+// Helper function to click on a specific element by bounds
+async function clickElementByBounds(deviceId, bounds) {
+  const centerX = Math.floor((bounds.left + bounds.right) / 2);
+  const centerY = Math.floor((bounds.top + bounds.bottom) / 2);
+  
+  await execAdbCommand(`-s ${deviceId} shell input tap ${centerX} ${centerY}`);
+}
+
+// Helper function to capture a screenshot
+async function captureScreenshot(deviceId) {
+  const tempScreenshotPath = path.join(os.tmpdir(), `screenshot_${Date.now()}.png`);
+  
+  try {
+    console.log(`Capturing screenshot for device ${deviceId}...`);
+    
+    // Capture to device storage first
+    const captureResult = await execAdbCommand(`-s ${deviceId} shell screencap -p /sdcard/screenshot.png`);
+    if (captureResult && captureResult.includes('ERROR')) {
+      throw new Error(`Failed to capture screenshot: ${captureResult}`);
+    }
+    
+    // Pull to local temp file
+    await execAdbCommand(`-s ${deviceId} pull /sdcard/screenshot.png "${tempScreenshotPath}"`);
+    
+    // Check if the file was pulled successfully
+    if (!fs.existsSync(tempScreenshotPath)) {
+      throw new Error('Failed to pull screenshot from device');
+    }
+    
+    const stats = fs.statSync(tempScreenshotPath);
+    if (stats.size === 0) {
+      throw new Error('Screenshot file is empty');
+    }
+    
+    // Read as base64
+    const screenshotData = fs.readFileSync(tempScreenshotPath);
+    const base64Data = screenshotData.toString('base64');
+    
+    // Clean up
+    fs.unlinkSync(tempScreenshotPath);
+    
+    console.log(`Screenshot captured successfully (${base64Data.length} bytes)`);
+    return base64Data;
+  } catch (error) {
+    console.error('Error capturing screenshot:', error);
+    
+    // Clean up if file exists
+    if (fs.existsSync(tempScreenshotPath)) {
+      try {
+        fs.unlinkSync(tempScreenshotPath);
+      } catch (cleanupError) {
+        console.error('Error cleaning up screenshot file:', cleanupError);
+      }
+    }
+    
+    // Return a placeholder or empty string
+    return '';
+  }
+}
+
+// Register IPC handlers
+ipcMain.handle('crawler:start', async (event, deviceId, packageName, settings) => {
+  return await startAppCrawling(deviceId, packageName, settings);
+});
+
+ipcMain.handle('crawler:stop', async () => {
+  return stopAppCrawling();
+});
+
+ipcMain.handle('crawler:status', async () => {
+  return {
+    running: crawlerRunning,
+    deviceId: crawlerDeviceId,
+    packageName: crawlerPackageName,
+    screensCount: uniqueScreens.length,
+    maxScreens: crawlerSettings?.maxScreens || 0
+  };
+});
+
+ipcMain.handle('crawler:getLogs', async () => {
+  return crawlerLogs;
+});
+
+// Add handler to get flowchart data
+ipcMain.handle('crawler:getFlowchartData', async () => {
+  return {
+    nodes: Object.values(screenNodes),
+    edges: Object.values(screenEdges),
+    uniqueScreensCount: uniqueScreens.length
+  };
+});
+
+// Helper function to shuffle an array (Fisher-Yates shuffle)
+function shuffleArray(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
+// Function to create a hash of the screenshot
+function createScreenshotHash(screenshotBase64) {
+  const crypto = require('crypto');
+  return crypto.createHash('md5').update(screenshotBase64).digest('hex');
+}
+
+// Function to generate flowchart data
+function generateFlowchartData() {
+  // Convert screen nodes and edges to a format suitable for rendering
+  const nodes = Object.values(screenNodes);
+  const edges = Object.values(screenEdges);
+  
+  // Create a flowchart object
+  const flowchart = {
+    nodes,
+    edges
+  };
+  
+  // Send flowchart data to the renderer
+  if (mainWindow) {
+    mainWindow.webContents.send('crawler:flowchartData', flowchart);
+  }
+}

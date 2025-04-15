@@ -154,33 +154,7 @@ export default function AnalyticsDebugger({ deviceId, packageName, show }) {
   
   return (
     <div className={styles.container}>
-      <div className={styles.content}>
-        <AdobeAnalyticsDebugger analyticsData={analyticsData} />
-      </div>
-      <div className={styles.screenshotColumn}>
-        <div className={styles.screenshotControls}>
-          <button className={styles.retakeButton}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            Retake
-          </button>
-          <button className={styles.deleteButton}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-            Delete
-          </button>
-        </div>
-        <div className={styles.screenshotContainer}>
-          <div className={styles.screenshotPlaceholder}>
-            <span>No Screenshot Available</span>
-            <span className={styles.dimensions}>720 x 1,604</span>
-          </div>
-        </div>
-      </div>
+      <AdobeAnalyticsDebugger analyticsData={analyticsData} />
     </div>
   );
 } 

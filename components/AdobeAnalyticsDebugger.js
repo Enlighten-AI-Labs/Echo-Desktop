@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from '@/styles/AdobeAnalyticsDebugger.module.css';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 
@@ -108,6 +108,10 @@ export default function AnalyticsDebugger() {
     rawData: false
   });
   const [showFullData, setShowFullData] = useState(false);
+  // New state for screenshots
+  const [screenshots, setScreenshots] = useState({});
+  const [screenshotStatus, setScreenshotStatus] = useState('idle'); // idle, capturing, success, error
+  const [selectedScreenshot, setSelectedScreenshot] = useState(null);
 
   // Add array of parameters to hide by default
   const hiddenParameters = [
@@ -115,6 +119,9 @@ export default function AnalyticsDebugger() {
     'CarrierName', 'DeviceName', '.a', '.c', 's', 'c', 'j', 
     'v', 'k', 'bh', 'AQE', 'pf', 'c.', 'a.'
   ];
+
+  // Add a ref to track which beacons have been processed
+  const processedBeaconIds = useRef(new Set());
 
   // Add copy to clipboard function
   const copyToClipboard = async (text) => {
@@ -168,6 +175,20 @@ export default function AnalyticsDebugger() {
               }
               
               if (parsedBeacon) {
+                // Generate beacon ID for screenshot association
+                const beaconId = generateBeaconId(parsedBeacon);
+                parsedBeacon.id = beaconId;
+                
+                // Only capture screenshot for new beacons that haven't been processed yet
+                if (!processedBeaconIds.current.has(beaconId)) {
+                  processedBeaconIds.current.add(beaconId);
+                  
+                  // Don't capture for the currently displayed beacon to avoid refreshing during viewing
+                  if (!selectedBeacon || selectedBeacon.id !== beaconId) {
+                    captureScreenshot(beaconId);
+                  }
+                }
+                
                 acc.push(parsedBeacon);
               }
             }
@@ -194,7 +215,193 @@ export default function AnalyticsDebugger() {
         clearInterval(intervalId);
       }
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, selectedBeacon]);
+
+  // Function to generate a consistent beacon ID
+  const generateBeaconId = (beacon) => {
+    const generateHash = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash);
+    };
+
+    if (beacon.source === 'Adobe') {
+      // Create a unique string based on key Adobe beacon properties
+      const keyProperties = [
+        beacon.type, // 's.t' or 's.tl'
+        beacon.pageName || '',
+        beacon.linkName || '',
+        beacon.linkType || '',
+        beacon.rsid || '',
+        beacon.timestamp || ''
+      ].join('|');
+
+      const hash = generateHash(keyProperties);
+      
+      // Format as XX.YY.ZZ
+      const num = hash % 1000000; // Keep it within 6 digits
+      const num1 = String(Math.floor(num / 10000)).padStart(2, '0');
+      const num2 = String(Math.floor((num % 10000) / 100)).padStart(2, '0');
+      const num3 = String(num % 100).padStart(2, '0');
+      
+      return `${num1}.${num2}.${num3}`;
+    } else if (beacon.source === 'GA4') {
+      // Create a unique string based on key GA4 beacon properties
+      const keyProperties = [
+        beacon.eventName || '',
+        beacon.pageTitle || beacon.parameters?.page_title || '',
+        beacon.pageLocation || beacon.parameters?.page_location || '',
+        beacon.timestamp || ''
+      ].join('|');
+
+      const hash = generateHash(keyProperties);
+      
+      // Format as XX.YY.ZZ
+      const num = hash % 1000000; // Keep it within 6 digits
+      const num1 = String(Math.floor(num / 10000)).padStart(2, '0');
+      const num2 = String(Math.floor((num % 10000) / 100)).padStart(2, '0');
+      const num3 = String(num % 100).padStart(2, '0');
+      
+      return `${num1}.${num2}.${num3}`;
+    }
+    
+    return `beacon_${Date.now()}`;
+  };
+
+  // Function to capture screenshot from RTMP stream
+  const captureScreenshot = async (beaconId) => {
+    // Skip if we already have a screenshot for this beacon
+    if (screenshots[beaconId]) return;
+
+    try {
+      // Check if RTMP server is running
+      const rtmpStatus = await window.api.rtmp.status();
+      if (!rtmpStatus.running) return;
+
+      setScreenshotStatus('capturing');
+      
+      // Call our screenshot capture API
+      const result = await window.api.rtmp.captureScreenshot(beaconId);
+      
+      if (result.success) {
+        // Store the screenshot metadata in state, but not the image data yet
+        setScreenshots(prev => ({
+          ...prev,
+          [beaconId]: {
+            fileName: result.fileName,
+            path: result.screenshotPath,
+            timestamp: new Date(result.timestamp).toISOString(),
+            width: 720,
+            height: null, // Height will be calculated based on aspect ratio
+            dataUrl: null, // We'll load this when the beacon is selected
+            cached: result.cached || false
+          }
+        }));
+        
+        // If this screenshot is for the currently selected beacon, load its data
+        if (selectedBeacon && selectedBeacon.id === beaconId) {
+          loadScreenshotData(beaconId);
+        }
+        
+        setScreenshotStatus('success');
+      } else {
+        console.error('Failed to capture screenshot:', result.message);
+        setScreenshotStatus('error');
+      }
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      setScreenshotStatus('error');
+    }
+  };
+
+  // Function to load screenshot data when a beacon is selected
+  const loadScreenshotData = async (beaconId) => {
+    if (!screenshots[beaconId] || screenshots[beaconId].dataUrl) return;
+    
+    try {
+      setScreenshotStatus('loading');
+      
+      // Get the data URL for the screenshot
+      const result = await window.api.rtmp.getScreenshotDataUrl(screenshots[beaconId].fileName);
+      
+      if (result.success) {
+        // Update the screenshot with the data URL and dimensions from backend
+        setScreenshots(prev => ({
+          ...prev,
+          [beaconId]: {
+            ...prev[beaconId],
+            dataUrl: result.dataUrl,
+            width: result.dimensions?.width || prev[beaconId].width || 720,
+            height: result.dimensions?.height || prev[beaconId].height || null
+          }
+        }));
+      } else {
+        console.error('Failed to load screenshot data:', result.message);
+      }
+      
+      setScreenshotStatus('idle');
+    } catch (error) {
+      console.error('Error loading screenshot data:', error);
+      setScreenshotStatus('error');
+    }
+  };
+
+  // Function to retake a screenshot
+  const handleRetakeScreenshot = async () => {
+    if (!selectedBeacon) return;
+    
+    try {
+      // First remove the old screenshot
+      setScreenshots(prev => {
+        const newScreenshots = { ...prev };
+        delete newScreenshots[selectedBeacon.id];
+        return newScreenshots;
+      });
+      
+      // Then capture a new one
+      setScreenshotStatus('capturing');
+      await captureScreenshot(selectedBeacon.id);
+      
+      // Wait a moment to ensure the screenshot is saved
+      setTimeout(async () => {
+        await loadScreenshotData(selectedBeacon.id);
+        setSelectedScreenshot(screenshots[selectedBeacon.id]);
+      }, 500);
+    } catch (error) {
+      console.error('Error retaking screenshot:', error);
+      setScreenshotStatus('error');
+    }
+  };
+
+  // Function to delete a screenshot
+  const handleDeleteScreenshot = () => {
+    if (!selectedBeacon) return;
+    
+    setScreenshots(prev => {
+      const newScreenshots = { ...prev };
+      delete newScreenshots[selectedBeacon.id];
+      return newScreenshots;
+    });
+    
+    setSelectedScreenshot(null);
+  };
+
+  // Update selected screenshot when a beacon is selected
+  useEffect(() => {
+    if (selectedBeacon) {
+      // If we have metadata for this screenshot but no data URL yet, load it
+      if (screenshots[selectedBeacon.id] && !screenshots[selectedBeacon.id].dataUrl) {
+        loadScreenshotData(selectedBeacon.id);
+      }
+      setSelectedScreenshot(screenshots[selectedBeacon.id]);
+    } else {
+      setSelectedScreenshot(null);
+    }
+  }, [selectedBeacon, screenshots]);
 
   // Filter beacons based on user input
   const filteredBeacons = beacons.filter(beacon => {
@@ -546,7 +753,10 @@ export default function AnalyticsDebugger() {
     };
 
     return (
-      <div className={styles.beaconCard} onClick={() => setSelectedBeacon(beacon)}>
+      <div 
+        className={`${styles.beaconCard} ${selectedBeacon && selectedBeacon.id === beacon.id ? styles.selected : ''}`} 
+        onClick={() => setSelectedBeacon(beacon)}
+      >
         <div className={styles.beaconCardHeader}>
           <div className={styles.beaconEventName}>
             <span className={styles.beaconNumber}>{index}</span>
@@ -696,6 +906,68 @@ export default function AnalyticsDebugger() {
             <p>Select a beacon from the list to view details</p>
           </div>
         )}
+      </div>
+
+      <div className={styles.screenshotColumn}>
+        <div className={styles.screenshotControls}>
+          <button 
+            className={styles.retakeButton}
+            onClick={handleRetakeScreenshot}
+            disabled={!selectedBeacon || screenshotStatus === 'capturing'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {screenshotStatus === 'capturing' ? 'Capturing...' : 'Retake'}
+          </button>
+          <button 
+            className={styles.deleteButton}
+            onClick={handleDeleteScreenshot}
+            disabled={!selectedBeacon || !selectedScreenshot}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete
+          </button>
+        </div>
+        <div className={styles.screenshotContainer}>
+          {selectedScreenshot ? (
+            <>
+              {selectedScreenshot.dataUrl ? (
+                <>
+                  <div className={styles.screenshotWrapper}>
+                    <img 
+                      src={selectedScreenshot.dataUrl} 
+                      alt="Screenshot for selected beacon"
+                      className={styles.screenshot}
+                    />
+                  </div>
+                  <div className={styles.screenshotInfo}>
+                    <span className={styles.dimensions}>
+                      {selectedScreenshot.width} x {selectedScreenshot.height}
+                    </span>
+                    <span className={styles.timestamp}>
+                      {new Date(selectedScreenshot.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.screenshotPlaceholder}>
+                  <span>Loading screenshot...</span>
+                  <span className={`${styles.dimensions} ${styles.loading}`}>{selectedScreenshot.width} x {selectedScreenshot.height}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className={styles.screenshotPlaceholder}>
+              <span>{selectedBeacon ? 'No Screenshot Available' : 'Select a beacon to view screenshot'}</span>
+              <span className={styles.dimensions}>720 x 1,604</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

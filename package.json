@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.3",
+    "@xyflow/react": "^12.5.6",
     "extract-zip": "^2.0.1",
     "flv.js": "^1.6.2",
     "hls.js": "^1.6.2",
@@ -26,7 +27,8 @@
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-flow": "^1.0.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.25",

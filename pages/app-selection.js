@@ -295,6 +295,7 @@ export default function AppSelection() {
       console.log('Launching app:', selectedApp.packageName);
 
       // Check if proxy is enabled on device
+      /*
       if (!proxyStatus.enabled) {
         setLaunchStatus({ step: 'proxy', message: 'Setting up proxy on device...' });
         console.log('Proxy not enabled on device, setting it up...');
@@ -304,6 +305,7 @@ export default function AppSelection() {
           throw new Error('Failed to set up proxy on device. Please try enabling it manually.');
         }
       }
+      */
 
       // Check mitm proxy status and start if not running
       setLaunchStatus({ step: 'mitmproxy', message: 'Checking mitmproxy status...' });

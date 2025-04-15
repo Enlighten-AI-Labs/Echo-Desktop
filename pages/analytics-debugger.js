@@ -36,6 +36,16 @@ export default function AnalyticsDebuggerPage() {
     });
   };
   
+  const handleAppCrawler = () => {
+    const query = {};
+    if (deviceId) query.deviceId = deviceId;
+    if (packageName) query.packageName = packageName;
+    router.push({
+      pathname: '/app-crawler',
+      query
+    });
+  };
+  
   return (
     <>
       <Head>
@@ -59,6 +69,12 @@ export default function AnalyticsDebuggerPage() {
             <h1 className={styles.pageTitle}>Analytics Debugger</h1>
           </div>
           <div className={styles.headerButtons}>
+            <button 
+              className={styles.viewLogsButton}
+              onClick={handleAppCrawler}
+            >
+              App Crawler
+            </button>
             <button 
               className={styles.viewLogsButton}
               onClick={handleSetupDevice}

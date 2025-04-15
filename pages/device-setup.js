@@ -289,7 +289,7 @@ export default function DeviceSetup() {
       // Preserve the tab parameter if it exists
       if (router.query.tab) query.tab = router.query.tab;
       router.push({
-        pathname: '/analytics-debugger',
+        pathname: '/debugger',
         query
       });
     }
@@ -309,7 +309,7 @@ export default function DeviceSetup() {
           // Preserve the tab parameter if it exists
           if (router.query.tab) query.tab = router.query.tab;
           router.push({
-            pathname: '/analytics-debugger',
+            pathname: '/debugger',
             query
           });
         } else {

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Head from 'next/head';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
@@ -7,71 +7,19 @@ import styles from '@/styles/AnalyticsDebuggerPage.module.css';
 
 export default function AnalyticsDebuggerPage() {
   const router = useRouter();
-  const [deviceId, setDeviceId] = useState('');
-  const [packageName, setPackageName] = useState('');
-  const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat'
   
   useEffect(() => {
-    // Get query parameters when the page loads
+    // Wait for router to be ready
     if (router.isReady) {
-      const { deviceId, packageName, tab } = router.query;
-      if (deviceId) setDeviceId(deviceId);
-      if (packageName) setPackageName(packageName);
-      if (tab === 'logcat' || tab === 'network') setActiveTab(tab);
+      // Redirect to the new debugger page with the same query parameters
+      router.replace({
+        pathname: '/debugger',
+        query: router.query
+      });
     }
   }, [router.isReady, router.query]);
   
-  const handleBack = () => {
-    router.push('/dashboard');
-  };
-  
-  const handleViewLogs = () => {
-    router.push('/mitmproxy-logs');
-  };
-  
-  const handleSetupDevice = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    query.tab = activeTab;
-    router.push({
-      pathname: '/device-setup',
-      query
-    });
-  };
-  
-  const handleAppCrawler = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    router.push({
-      pathname: '/app-crawler',
-      query
-    });
-  };
-  
-  const handleSplitScreenView = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    query.tab = activeTab;
-    router.push({
-      pathname: '/debugger',
-      query
-    });
-  };
-  
-  const changeTab = (tab) => {
-    setActiveTab(tab);
-    
-    // Update the URL to include the active tab
-    const query = { ...router.query, tab };
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true });
-  };
-  
+  // Return a simple loading screen while redirecting
   return (
     <>
       <Head>
@@ -80,78 +28,15 @@ export default function AnalyticsDebuggerPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <div className={styles.headerLeft}>
-            <button 
-              className={styles.backButton}
-              onClick={handleBack}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-              Back to Dashboard
-            </button>
-            <h1 className={styles.pageTitle}>Analytics Debugger</h1>
-          </div>
-          <div className={styles.headerButtons}>
-            <button 
-              className={styles.viewLogsButton}
-              onClick={handleAppCrawler}
-            >
-              App Crawler
-            </button>
-            <button 
-              className={styles.viewLogsButton}
-              onClick={handleSplitScreenView}
-            >
-              Split Screen View
-            </button>
-            <button 
-              className={styles.viewLogsButton}
-              onClick={handleSetupDevice}
-            >
-              Setup Device
-            </button>
-            <button 
-              className={styles.viewLogsButton}
-              onClick={handleViewLogs}
-            >
-              View Logs
-            </button>
-          </div>
-        </div>
-        
-        <div className={styles.tabs}>
-          <button 
-            className={`${styles.tabButton} ${activeTab === 'network' ? styles.activeTab : ''}`}
-            onClick={() => changeTab('network')}
-          >
-            Network Capture
-          </button>
-          <button 
-            className={`${styles.tabButton} ${activeTab === 'logcat' ? styles.activeTab : ''}`}
-            onClick={() => changeTab('logcat')}
-          >
-            Logcat Capture
-          </button>
-        </div>
-        
-        <div className={styles.debuggerContainer}>
-          {activeTab === 'network' ? (
-            <AnalyticsDebugger
-              deviceId={deviceId}
-              packageName={packageName}
-              show={true}
-            />
-          ) : (
-            <LogcatAnalyticsDebugger
-              deviceId={deviceId}
-              packageName={packageName}
-              show={true}
-            />
-          )}
-        </div>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: '#262628',
+        color: '#ffffff'
+      }}>
+        Redirecting to new Debugger...
       </div>
     </>
   );

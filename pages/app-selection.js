@@ -344,11 +344,11 @@ export default function AppSelection() {
       
       // Navigate to analytics debugger with the device ID and package name
       router.push({
-        pathname: '/analytics-debugger',
-        query: { 
-          deviceId, 
+        pathname: '/debugger',
+        query: {
+          deviceId,
           packageName: selectedApp.packageName,
-          proxyEnabled: true
+          tab: 'network' // Default to network tab
         }
       });
     } catch (error) {

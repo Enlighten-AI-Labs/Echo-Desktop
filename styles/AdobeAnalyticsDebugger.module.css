@@ -207,7 +207,7 @@
 
 .content {
   flex: 1;
-  padding: 24px 0 24px 24px;
+  padding: 24px;
   overflow-y: auto;
   max-width: 100%;
 }
@@ -216,7 +216,7 @@
   background-color: #ffffff;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 24px 24px 24px 0;
+  padding: 24px;
   width: 100%;
   max-width: 100%;
 }

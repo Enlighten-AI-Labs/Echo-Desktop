@@ -1728,6 +1728,10 @@ let visitedScreens = new Set();
 let crawlerScreens = [];
 let crawlerLogs = [];
 let clickedButtons = new Set(); // Track which buttons we've already clicked
+let visitedScreenshots = new Set();
+let uniqueScreens = [];
+let screenNodes = {};
+let screenEdges = {};
 
 // Function to add and send a log message
 function addCrawlerLog(message, type = 'info') {
@@ -1758,7 +1762,7 @@ function addCrawlerLog(message, type = 'info') {
 }
 
 // Main recursive crawling function
-async function crawlScreen(deviceId, packageName) {
+async function crawlScreen(deviceId, packageName, navigationPath = [], currentDepth = 0) {
   if (!crawlerRunning) {
     addCrawlerLog('Crawler stopped');
     return;
@@ -1804,54 +1808,109 @@ async function crawlScreen(deviceId, packageName) {
     const screenHash = createScreenHash(screenXml);
     addCrawlerLog(`Screen hash: ${screenHash}`);
     
-    // Skip if we've already visited this screen
-    if (visitedScreens.has(screenHash)) {
-      addCrawlerLog(`Already visited screen ${screenHash}, skipping`, 'info');
-      return;
-    }
-    
     // Capture screenshot
     addCrawlerLog('Capturing screenshot');
     const screenshotBase64 = await captureScreenshot(deviceId);
+    
+    // Create a hash of the screenshot to identify unique visual states
+    const screenshotHash = createScreenshotHash(screenshotBase64);
+    addCrawlerLog(`Screenshot hash: ${screenshotHash}`);
     
     // Parse XML to find clickable elements
     addCrawlerLog('Analyzing UI elements');
     const { elements, clickableElements } = parseUiAutomatorXml(screenXml);
     
-    // Mark this screen as visited
+    // We'll now track unique visual states rather than just screens
+    const isNewVisualState = !visitedScreenshots.has(screenshotHash);
+    
+    // Add this screen to our visited set
     visitedScreens.add(screenHash);
+    visitedScreenshots.add(screenshotHash);
     
     // Create screen object
     const screen = {
       id: screenHash,
+      visualId: screenshotHash,
       activityName: currentActivity,
       screenshot: screenshotBase64,
       xml: screenXml,
       elementCount: elements.length,
       clickableCount: clickableElements.length,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      isNewVisualState: isNewVisualState,
+      depth: currentDepth
     };
     
-    // Add to our collection
-    crawlerScreens.push(screen);
-    
-    // Send to renderer
-    if (mainWindow) {
-      mainWindow.webContents.send('crawler:newScreen', screen);
-      mainWindow.webContents.send('crawler:progress', {
-        percentage: Math.min(100, Math.round((crawlerScreens.length / crawlerSettings.maxScreens) * 100)),
-        screensCount: crawlerScreens.length,
-        maxScreens: crawlerSettings.maxScreens
-      });
+    // Add to our collection if it's a new visual state
+    if (isNewVisualState) {
+      uniqueScreens.push(screen);
+      
+      // Create node for flowchart
+      screenNodes[screenshotHash] = {
+        id: screenshotHash,
+        label: currentActivity.split('/').pop(),
+        data: screen
+      };
+      
+      // Send to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('crawler:newScreen', screen);
+        mainWindow.webContents.send('crawler:progress', {
+          percentage: Math.min(100, Math.round((uniqueScreens.length / crawlerSettings.maxScreens) * 100)),
+          screensCount: uniqueScreens.length,
+          maxScreens: crawlerSettings.maxScreens
+        });
+      }
+      
+      addCrawlerLog(`Found new visual state: ${currentActivity.split('/').pop()}`, 'success');
+    } else {
+      addCrawlerLog(`Found already visited visual state: ${currentActivity.split('/').pop()}`, 'info');
     }
     
-    addCrawlerLog(`Found new screen: ${currentActivity.split('/').pop()}`, 'success');
+    // Add this screen to our path history
+    const screenNode = {
+      hash: screenshotHash,
+      activity: currentActivity
+    };
+    
+    // Record the navigation path
+    const newPath = [...navigationPath, screenNode];
+    
+    // If we have a previous screen, record the edge between them for the flowchart
+    if (navigationPath.length > 0) {
+      const prevScreenHash = navigationPath[navigationPath.length - 1].hash;
+      const edgeId = `${prevScreenHash}->${screenshotHash}`;
+      
+      // Add to edges if not already present
+      if (!screenEdges[edgeId]) {
+        screenEdges[edgeId] = {
+          id: edgeId,
+          source: prevScreenHash,
+          target: screenshotHash,
+          count: 1
+        };
+      } else {
+        // Increment count if edge already exists
+        screenEdges[edgeId].count++;
+      }
+    }
+    
     addCrawlerLog(`Found ${elements.length} elements, ${clickableElements.length} clickable`);
     
-    // Check if we've reached the maximum number of screens
-    if (crawlerScreens.length >= crawlerSettings.maxScreens) {
-      addCrawlerLog(`Reached maximum number of screens (${crawlerSettings.maxScreens}), stopping crawler`, 'warning');
+    // Check if we've reached the maximum number of unique visual states
+    if (uniqueScreens.length >= crawlerSettings.maxScreens) {
+      addCrawlerLog(`Reached maximum number of unique visual states (${crawlerSettings.maxScreens}), stopping crawler`, 'success');
+      
+      // Generate and return the flow chart data
+      generateFlowchartData();
+      
       stopAppCrawling();
+      return;
+    }
+    
+    // Limit recursion depth to prevent stack overflow
+    if (currentDepth >= crawlerSettings.maxDepth) {
+      addCrawlerLog(`Reached maximum recursion depth (${crawlerSettings.maxDepth}), returning to higher level`, 'warning');
       return;
     }
     
@@ -1926,14 +1985,34 @@ async function crawlScreen(deviceId, packageName) {
       addCrawlerLog(`Waiting for UI to update (${crawlerSettings.screenDelay}ms)`);
       await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
       
-      // Recursively crawl this new screen
+      // Recursively crawl this new screen, passing the updated path and incremented depth
       addCrawlerLog('Exploring new screen');
-      await crawlScreen(deviceId, packageName);
+      await crawlScreen(deviceId, packageName, newPath, currentDepth + 1);
       
       // Go back to the previous screen
       addCrawlerLog('Going back to previous screen');
       await execAdbCommand(`-s ${deviceId} shell input keyevent 4`); // Send BACK key
       await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
+      
+      // Check if we're still in the app after going back
+      const activityAfterBack = await getCurrentActivity(deviceId, packageName);
+      if (crawlerSettings.stayInApp && !activityAfterBack.includes(packageName)) {
+        addCrawlerLog(`Left the app after going back. Current activity: ${activityAfterBack}. Relaunching app...`, 'warning');
+        
+        // Launch the app again
+        await execAdbCommand(`-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`);
+        
+        // Wait for app to launch
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Verify we're back in the app
+        const newActivity = await getCurrentActivity(deviceId, packageName);
+        if (newActivity.includes(packageName)) {
+          addCrawlerLog(`Successfully returned to app: ${newActivity}`, 'success');
+        } else {
+          addCrawlerLog(`Failed to return to app ${packageName} after back action`, 'error');
+        }
+      }
     }
     
     addCrawlerLog(`Finished exploring screen: ${currentActivity.split('/').pop()}`);
@@ -2006,12 +2085,17 @@ async function startAppCrawling(deviceId, packageName, settings) {
     maxScreens: 20,
     screenDelay: 1000,
     ignoreElements: ['android.widget.ImageView'],
-    stayInApp: true
+    stayInApp: true,
+    maxDepth: 5
   };
   visitedScreens = new Set();
   crawlerScreens = [];
   crawlerLogs = [];
   resetButtonTracking(); // Reset button tracking
+  visitedScreenshots = new Set();
+  uniqueScreens = [];
+  screenNodes = {};
+  screenEdges = {};
   
   try {
     addCrawlerLog(`Starting app crawler for device ${deviceId} and package ${packageName}`, 'success');
@@ -2285,13 +2369,22 @@ ipcMain.handle('crawler:status', async () => {
     running: crawlerRunning,
     deviceId: crawlerDeviceId,
     packageName: crawlerPackageName,
-    screensCount: crawlerScreens.length,
+    screensCount: uniqueScreens.length,
     maxScreens: crawlerSettings?.maxScreens || 0
   };
 });
 
 ipcMain.handle('crawler:getLogs', async () => {
   return crawlerLogs;
+});
+
+// Add handler to get flowchart data
+ipcMain.handle('crawler:getFlowchartData', async () => {
+  return {
+    nodes: Object.values(screenNodes),
+    edges: Object.values(screenEdges),
+    uniqueScreensCount: uniqueScreens.length
+  };
 });
 
 // Helper function to shuffle an array (Fisher-Yates shuffle)
@@ -2302,4 +2395,28 @@ function shuffleArray(array) {
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
   return newArray;
+}
+
+// Function to create a hash of the screenshot
+function createScreenshotHash(screenshotBase64) {
+  const crypto = require('crypto');
+  return crypto.createHash('md5').update(screenshotBase64).digest('hex');
+}
+
+// Function to generate flowchart data
+function generateFlowchartData() {
+  // Convert screen nodes and edges to a format suitable for rendering
+  const nodes = Object.values(screenNodes);
+  const edges = Object.values(screenEdges);
+  
+  // Create a flowchart object
+  const flowchart = {
+    nodes,
+    edges
+  };
+  
+  // Send flowchart data to the renderer
+  if (mainWindow) {
+    mainWindow.webContents.send('crawler:flowchartData', flowchart);
+  }
 }

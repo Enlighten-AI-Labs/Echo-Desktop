@@ -60,6 +60,39 @@ contextBridge.exposeInMainWorld(
       getConfig: () => ipcRenderer.invoke('rtmp:getConfig'),
       captureScreenshot: (beaconId) => ipcRenderer.invoke('rtmp:captureScreenshot', beaconId),
       getScreenshotDataUrl: (fileName) => ipcRenderer.invoke('rtmp:getScreenshotDataUrl', fileName),
+    },
+    
+    // Crawler specific methods
+    crawler: {
+      startCrawling: (deviceId, packageName, settings) => 
+        ipcRenderer.invoke('crawler:start', deviceId, packageName, settings),
+      stopCrawling: () => ipcRenderer.invoke('crawler:stop'),
+      getStatus: () => ipcRenderer.invoke('crawler:status'),
+      getLogs: () => ipcRenderer.invoke('crawler:getLogs'),
+      
+      // Event listeners
+      onProgress: (callback) => {
+        ipcRenderer.on('crawler:progress', (event, data) => callback(data));
+      },
+      onNewScreen: (callback) => {
+        ipcRenderer.on('crawler:newScreen', (event, data) => callback(data));
+      },
+      onComplete: (callback) => {
+        ipcRenderer.on('crawler:complete', () => callback());
+      },
+      onError: (callback) => {
+        ipcRenderer.on('crawler:error', (event, data) => callback(data));
+      },
+      onLog: (callback) => {
+        ipcRenderer.on('crawler:log', (event, data) => callback(data));
+      },
+      removeAllListeners: () => {
+        ipcRenderer.removeAllListeners('crawler:progress');
+        ipcRenderer.removeAllListeners('crawler:newScreen');
+        ipcRenderer.removeAllListeners('crawler:complete');
+        ipcRenderer.removeAllListeners('crawler:error');
+        ipcRenderer.removeAllListeners('crawler:log');
+      }
     }
   }
 ); 

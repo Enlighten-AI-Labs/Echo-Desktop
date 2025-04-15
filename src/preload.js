@@ -40,6 +40,12 @@ contextBridge.exposeInMainWorld(
       getInstalledApps: (deviceId) => ipcRenderer.invoke('adb:getInstalledApps', deviceId),
       launchApp: (deviceId, packageName) => ipcRenderer.invoke('adb:launchApp', deviceId, packageName),
       executeCommand: (deviceId, command) => ipcRenderer.invoke('adb:executeCommand', deviceId, command),
+      // New logcat methods
+      startLogcatCapture: (deviceId, filter) => ipcRenderer.invoke('adb:startLogcatCapture', deviceId, filter),
+      stopLogcatCapture: () => ipcRenderer.invoke('adb:stopLogcatCapture'),
+      getAnalyticsLogs: () => ipcRenderer.invoke('adb:getAnalyticsLogs'),
+      clearAnalyticsLogs: () => ipcRenderer.invoke('adb:clearAnalyticsLogs'),
+      isLogcatRunning: () => ipcRenderer.invoke('adb:isLogcatRunning')
     },
     
     // MitmProxy specific methods

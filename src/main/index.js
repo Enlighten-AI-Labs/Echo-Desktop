@@ -212,6 +212,27 @@ ipcMain.handle('adb:executeCommand', async (event, deviceId, command) => {
   return await adb.executeCommand(deviceId, command);
 });
 
+// New logcat handlers
+ipcMain.handle('adb:startLogcatCapture', async (event, deviceId, filter) => {
+  return adb.startLogcatCapture(deviceId, filter);
+});
+
+ipcMain.handle('adb:stopLogcatCapture', async () => {
+  return adb.stopLogcatCapture();
+});
+
+ipcMain.handle('adb:getAnalyticsLogs', async () => {
+  return adb.getAnalyticsLogs();
+});
+
+ipcMain.handle('adb:clearAnalyticsLogs', async () => {
+  return adb.clearAnalyticsLogs();
+});
+
+ipcMain.handle('adb:isLogcatRunning', async () => {
+  return adb.isLogcatRunning();
+});
+
 // MitmProxy handlers
 ipcMain.handle('mitmproxy:status', () => {
   return mitmproxy.getStatus();

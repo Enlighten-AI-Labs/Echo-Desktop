@@ -7,6 +7,7 @@ const qrcode = require('qrcode');
 const mDnsSd = require('node-dns-sd');
 const { nanoid } = require('nanoid');
 const { userDataPath, downloadFile, getLocalIpAddress, ensureTmpDir } = require('./utils');
+const { spawn } = require('child_process');
 
 // ADB paths
 const adbPath = path.join(userDataPath, 'platform-tools');
@@ -16,6 +17,14 @@ const fullAdbPath = path.join(adbPath, adbExecutable);
 // Variables for device discovery
 let discoveryInProgress = false;
 let deviceDiscoveryTimeout = null;
+
+// Variables for logcat capture
+let logcatProcess = null;
+let analyticsLogs = [];
+let currentEvent = null;
+let eventBuffer = '';
+let eventStarted = false;
+const MAX_ANALYTICS_LOGS = 5000;
 
 // Download and extract Android platform tools if not already installed
 async function ensureAdbExists() {
@@ -628,6 +637,219 @@ async function getDevices() {
   }
 }
 
+// Start capturing logcat output
+function startLogcatCapture(deviceId, filter = 'FA FA-SVC') {
+  if (logcatProcess) {
+    console.log('Logcat capture already running, stopping previous capture');
+    stopLogcatCapture();
+  }
+
+  console.log(`Starting logcat capture for device ${deviceId} with filter "${filter}"`);
+  
+  try {
+    // Clear the logcat buffer first
+    execAdbCommand(`-s ${deviceId} logcat -c`);
+    
+    // Start logcat with specified filter
+    // Using the raw format as specified by the user
+    const logcatCmd = process.platform === 'win32' ? 
+      `"${fullAdbPath}"` : fullAdbPath;
+    
+    const args = [
+      '-s', deviceId,
+      'logcat',
+      '-v', 'raw',
+      '-s', filter
+    ];
+    
+    console.log(`Executing: ${logcatCmd} ${args.join(' ')}`);
+    
+    logcatProcess = spawn(logcatCmd, args);
+    
+    // Clear analytics logs array
+    analyticsLogs = [];
+    
+    // Process the output
+    logcatProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      parseLogcatForAnalytics(output);
+    });
+    
+    logcatProcess.stderr.on('data', (data) => {
+      console.error(`Logcat error: ${data}`);
+    });
+    
+    logcatProcess.on('close', (code) => {
+      console.log(`Logcat process exited with code ${code}`);
+      logcatProcess = null;
+    });
+    
+    return { success: true, message: 'Logcat capture started' };
+  } catch (error) {
+    console.error('Error starting logcat capture:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Stop capturing logcat output
+function stopLogcatCapture() {
+  if (!logcatProcess) {
+    return { success: true, message: 'Logcat capture was not running' };
+  }
+  
+  try {
+    logcatProcess.kill();
+    logcatProcess = null;
+    console.log('Logcat capture stopped');
+    return { success: true, message: 'Logcat capture stopped' };
+  } catch (error) {
+    console.error('Error stopping logcat capture:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Parse logcat output for Google Analytics events
+function parseLogcatForAnalytics(output) {
+  const lines = output.split('\n');
+  
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    
+    // Always store as raw log
+    const rawLogEntry = {
+      timestamp: new Date().toISOString(),
+      rawLog: line
+    };
+    
+    // Add the raw log to our array
+    analyticsLogs.push(rawLogEntry);
+    
+    // Check if this is the start of a new event with "Logging event:"
+    if (line.includes('Logging event:')) {
+      // Extract event name and potential parameters
+      const nameMatch = line.match(/name=([a-zA-Z_]+)/);
+      const eventName = nameMatch ? nameMatch[1] : 'Unknown Event';
+      
+      // Create new event object
+      const logEvent = {
+        timestamp: new Date().toISOString(),
+        eventName: eventName,
+        message: line,
+        rawLog: line,
+        params: {}
+      };
+      
+      // If there are params, extract them
+      const paramsMatch = line.match(/params=Bundle\[\{(.*)\}\]/);
+      if (paramsMatch) {
+        const paramsStr = paramsMatch[1];
+        // Extract key-value pairs
+        const keyValueRegex = /([a-zA-Z_]+)=([^,]+),?\s*/g;
+        let match;
+        while ((match = keyValueRegex.exec(paramsStr)) !== null) {
+          logEvent.params[match[1]] = match[2];
+        }
+      }
+      
+      // Add this event to the analytics logs
+      analyticsLogs.push(logEvent);
+      continue;
+    }
+    
+    // Look for "event {" which starts a detailed event definition
+    if (line.includes('event {')) {
+      eventBuffer = line;
+      eventStarted = true;
+      continue;
+    }
+    
+    // If we're in the middle of an event, accumulate lines
+    if (eventStarted) {
+      eventBuffer += '\n' + line;
+      
+      // Check if we've reached the end of an event
+      if (line.includes('} // End-of-batch') || line.trim() === '}') {
+        // Parse the complete event
+        const parsedEvent = parseFirebaseEvent(eventBuffer);
+        if (parsedEvent) {
+          analyticsLogs.push(parsedEvent);
+        }
+        
+        // Reset event tracking
+        eventBuffer = '';
+        eventStarted = false;
+      }
+      continue;
+    }
+    
+    // If we get here, it's a regular analytics log line that's not part of a special format
+    // Only add it if it wasn't handled by the previous conditions
+    const regularLogEntry = {
+      timestamp: new Date().toISOString(),
+      message: line,
+      rawLog: line
+    };
+    analyticsLogs.push(regularLogEntry);
+    
+    // Keep array size under control
+    while (analyticsLogs.length > MAX_ANALYTICS_LOGS) {
+      analyticsLogs.shift();
+    }
+  }
+}
+
+// Parse a Firebase event from a complete event string
+function parseFirebaseEvent(eventStr) {
+  try {
+    // Extract event name
+    const nameMatch = eventStr.match(/name:\s*([a-zA-Z_()]+)/);
+    const eventName = nameMatch ? nameMatch[1] : 'Unknown Event';
+    
+    // Extract timestamp
+    const timeMatch = eventStr.match(/timestamp_millis:\s*(\d+)/);
+    const timestamp = timeMatch ? new Date(parseInt(timeMatch[1])).toISOString() : new Date().toISOString();
+    
+    // Create event object
+    const event = {
+      timestamp,
+      eventName,
+      message: eventStr,
+      rawLog: eventStr,
+      params: {}
+    };
+    
+    // Extract all parameters
+    const paramRegex = /param\s*\{\s*name:\s*([a-zA-Z_()]+)\s*(string_value|int_value):\s*([^\n]+)/g;
+    let match;
+    while ((match = paramRegex.exec(eventStr)) !== null) {
+      const paramName = match[1];
+      const paramValue = match[3].trim();
+      event.params[paramName] = paramValue;
+    }
+    
+    return event;
+  } catch (error) {
+    console.error('Error parsing Firebase event:', error);
+    return null;
+  }
+}
+
+// Get captured analytics logs
+function getAnalyticsLogs() {
+  return analyticsLogs;
+}
+
+// Clear captured analytics logs
+function clearAnalyticsLogs() {
+  analyticsLogs = [];
+  return { success: true, message: 'Analytics logs cleared' };
+}
+
+// Check if logcat capture is running
+function isLogcatRunning() {
+  return !!logcatProcess;
+}
+
 module.exports = {
   ensureAdbExists,
   fullAdbPath,
@@ -641,5 +863,11 @@ module.exports = {
   getInstalledApps,
   launchApp,
   executeCommand,
-  execAdbCommand
+  execAdbCommand,
+  // New logcat functionality
+  startLogcatCapture,
+  stopLogcatCapture,
+  getAnalyticsLogs,
+  clearAnalyticsLogs,
+  isLogcatRunning
 }; 

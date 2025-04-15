@@ -294,18 +294,27 @@ export default function AppSelection() {
     try {
       console.log('Launching app:', selectedApp.packageName);
 
-      // Check if proxy is enabled on device
-      /*
-      if (!proxyStatus.enabled) {
-        setLaunchStatus({ step: 'proxy', message: 'Setting up proxy on device...' });
-        console.log('Proxy not enabled on device, setting it up...');
-        const proxySetupSuccess = await setDeviceProxy();
-        
-        if (!proxySetupSuccess) {
-          throw new Error('Failed to set up proxy on device. Please try enabling it manually.');
-        }
+      // Set Firebase Analytics debug properties and start logcat capture
+      setLaunchStatus({ step: 'debug', message: 'Setting up Firebase Analytics debug mode...' });
+      console.log('Setting up Firebase Analytics logging...');
+      
+      // Step 1 & 2: Set Firebase Analytics to VERBOSE
+      await window.api.adb.executeCommand(deviceId, 'shell setprop log.tag.FA VERBOSE');
+      await window.api.adb.executeCommand(deviceId, 'shell setprop log.tag.FA-SVC VERBOSE');
+      
+      // Step 3: Start logcat capture with the specific filter
+      setLaunchStatus({ step: 'logcat', message: 'Starting logcat capture...' });
+      console.log('Starting logcat capture for Firebase Analytics events...');
+      
+      // First stop any existing logcat capture
+      await window.api.adb.stopLogcatCapture();
+      
+      // Start new capture with the exact parameters specified
+      const logcatResult = await window.api.adb.startLogcatCapture(deviceId, 'FA FA-SVC');
+      if (!logcatResult.success) {
+        console.warn(`Warning: Failed to start logcat capture: ${logcatResult.message}`);
+        // Continue with the flow even if logcat fails
       }
-      */
 
       // Check mitm proxy status and start if not running
       setLaunchStatus({ step: 'mitmproxy', message: 'Checking mitmproxy status...' });
@@ -321,10 +330,6 @@ export default function AppSelection() {
         console.log('Mitmproxy started successfully');
       }
 
-      // Clear any existing analytics data
-      setLaunchStatus({ step: 'clearTraffic', message: 'Clearing previous analytics data...' });
-      await window.api.mitmproxy.clearTraffic();
-      
       // Launch the app on the device
       setLaunchStatus({ step: 'launchApp', message: 'Launching app on device...' });
       console.log('Launching app on device:', deviceId);

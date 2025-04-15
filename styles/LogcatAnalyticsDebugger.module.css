@@ -1,0 +1,515 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.captureButton {
+  padding: 6px 12px;
+  background-color: #2c7be5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.captureButton:hover {
+  background-color: #1a68d1;
+}
+
+.captureButton.active {
+  background-color: #e53e3e;
+}
+
+.captureButton.active:hover {
+  background-color: #c53030;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.tab {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+}
+
+.tab.active {
+  border-bottom-color: #2c7be5;
+  font-weight: 500;
+}
+
+.logsList {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.message {
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  background-color: white;
+  border-left: 3px solid #718096;
+}
+
+.message h3 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+}
+
+.timestamp {
+  color: #718096;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.params {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.param {
+  display: flex;
+  font-size: 11px;
+}
+
+.paramName {
+  font-weight: 500;
+  margin-right: 8px;
+  min-width: 100px;
+}
+
+.rawLog {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: #4a5568;
+  line-height: 1.4;
+}
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #edf2f7;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #718096;
+}
+
+.statusDot.running {
+  background-color: #38a169;
+}
+
+.statusDot.disconnected {
+  background-color: #e53e3e;
+}
+
+.clearButton {
+  padding: 6px 12px;
+  background-color: #718096;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.clearButton:hover {
+  background-color: #4a5568;
+}
+
+.emptyMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #718096;
+  font-size: 12px;
+  text-align: center;
+}
+
+.messageContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+.message p {
+  margin-bottom: 16px;
+  color: #757575;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.toolbarLeft, .toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deviceButton {
+  background-color: #2196f3;
+  color: white;
+}
+
+.deviceButton:hover {
+  background-color: #1e88e5;
+}
+
+.filterContainer {
+  display: flex;
+  align-items: center;
+}
+
+.filterInput, .searchInput {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  font-size: 12px;
+}
+
+.applyButton {
+  background-color: #9e9e9e;
+  color: white;
+}
+
+.applyButton:hover {
+  background-color: #757575;
+}
+
+.searchContainer {
+  flex: 1;
+}
+
+.autoRefreshLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.emptyState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #757575;
+  font-size: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.twoColumnLayout {
+  display: flex;
+  height: calc(100% - 65px);
+  overflow: hidden;
+}
+
+.logList {
+  width: 40%;
+  padding: 16px;
+  background-color: white;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+}
+
+.logList h3, .rawLogsContainer h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  color: #333;
+  font-size: 14px;
+}
+
+.logItem {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.logItem.systemMessage {
+  background-color: #e8f4f8;
+  border-left: 3px solid #64b5f6;
+  font-style: italic;
+}
+
+.logItem:hover {
+  background-color: #f0f0f0;
+}
+
+.logItem.selected {
+  background-color: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.logItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.eventName {
+  font-weight: 600;
+  color: #2196f3;
+  font-size: 12px;
+}
+
+.logTimestamp {
+  font-size: 11px;
+  color: #757575;
+}
+
+.logPreview {
+  font-size: 11px;
+  color: #616161;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logDetail {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: white;
+}
+
+.logDetailContent {
+  background-color: white;
+  border-radius: 4px;
+}
+
+.logDetailHeader {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logDetailHeader h3 {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.logDetailTimestamp {
+  color: #757575;
+  font-size: 12px;
+}
+
+.eventParams {
+  margin-bottom: 24px;
+}
+
+.eventParams h4, .rawLog h4 {
+  margin-top: 0;
+  margin-bottom: 6px;
+  color: #424242;
+  font-size: 13px;
+}
+
+.paramsTable {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.paramsTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.paramsTable th {
+  background-color: #f5f5f5;
+  text-align: left;
+  padding: 8px;
+  font-weight: 600;
+  color: #424242;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 12px;
+}
+
+.paramsTable td {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: top;
+  font-size: 12px;
+}
+
+.paramsTable tr:last-child td {
+  border-bottom: none;
+}
+
+.paramValue {
+  color: #616161;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  font-size: 12px;
+}
+
+.arrayValue {
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  padding: 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+
+.noParams {
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  color: #757575;
+  text-align: center;
+  font-size: 12px;
+}
+
+.rawLogsContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: white;
+  overflow: hidden;
+  height: calc(100% - 65px);
+}
+
+.rawLogsContent {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.rawLogEntry {
+  margin-bottom: 12px;
+  background-color: white;
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.rawLogEntry.systemMessage {
+  background-color: #e8f4f8;
+  border-left: 3px solid #64b5f6;
+  font-style: italic;
+}
+
+.rawLogTimestamp {
+  display: block;
+  font-size: 11px;
+  color: #757575;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.rawLogMessage {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 11px;
+  color: #424242;
+  background-color: #f9f9f9;
+  padding: 6px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.viewModeButton {
+  background-color: #673ab7;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.viewModeButton:hover {
+  background-color: #5e35b1;
+} 

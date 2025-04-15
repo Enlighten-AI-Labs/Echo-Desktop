@@ -286,6 +286,8 @@ export default function DeviceSetup() {
       const query = {};
       if (deviceId) query.deviceId = deviceId;
       if (packageName) query.packageName = packageName;
+      // Preserve the tab parameter if it exists
+      if (router.query.tab) query.tab = router.query.tab;
       router.push({
         pathname: '/analytics-debugger',
         query
@@ -304,6 +306,8 @@ export default function DeviceSetup() {
           };
           if (deviceId) query.deviceId = deviceId;
           if (packageName) query.packageName = packageName;
+          // Preserve the tab parameter if it exists
+          if (router.query.tab) query.tab = router.query.tab;
           router.push({
             pathname: '/analytics-debugger',
             query
@@ -317,20 +321,30 @@ export default function DeviceSetup() {
       });
   };
 
-  const handleAndroidContinue = () => {
+  const handleAndroidContinue = async () => {
     // If no device is selected, show an error
     if (!selectedDevice) {
       setConnectionError('Please connect and select a device');
       return;
     }
 
-    // Redirect to app selection page with the selected device
-    router.push({
-      pathname: '/app-selection',
-      query: {
-        deviceId: selectedDevice
-      }
-    });
+    try {
+      // Set debug properties for Firebase Analytics
+      console.log('Setting Firebase Analytics debug properties...');
+      await window.api.adb.executeCommand(selectedDevice, 'setprop log.tag.FA VERBOSE');
+      await window.api.adb.executeCommand(selectedDevice, 'setprop log.tag.FA-SVC VERBOSE');
+      
+      // Redirect to app selection page with the selected device
+      router.push({
+        pathname: '/app-selection',
+        query: {
+          deviceId: selectedDevice
+        }
+      });
+    } catch (error) {
+      console.error('Error setting debug properties:', error);
+      setConnectionError(`Error setting debug properties: ${error.message}`);
+    }
   };
 
   // Android ADB setup instructions view

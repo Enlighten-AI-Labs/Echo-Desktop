@@ -40,7 +40,7 @@ export default function Dashboard() {
 
   const handleStartDebugging = () => {
     // Instead of opening the app selector, navigate directly to the analytics debugger
-    router.push('/analytics-debugger');
+    router.push('/analytics-debugger?tab=network');
   };
 
   const handleCloseAppSelector = () => {
@@ -122,7 +122,7 @@ export default function Dashboard() {
 
   const handleToggleAnalyticsDebugger = () => {
     // Navigate to analytics debugger page instead of showing/hiding sidebar
-    router.push(`/analytics-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}`);
+    router.push(`/analytics-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
   };
 
   return (

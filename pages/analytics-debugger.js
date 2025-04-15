@@ -2,19 +2,22 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
+import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
 import styles from '@/styles/AnalyticsDebuggerPage.module.css';
 
 export default function AnalyticsDebuggerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
+  const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat'
   
   useEffect(() => {
     // Get query parameters when the page loads
     if (router.isReady) {
-      const { deviceId, packageName } = router.query;
+      const { deviceId, packageName, tab } = router.query;
       if (deviceId) setDeviceId(deviceId);
       if (packageName) setPackageName(packageName);
+      if (tab === 'logcat' || tab === 'network') setActiveTab(tab);
     }
   }, [router.isReady, router.query]);
   
@@ -30,6 +33,7 @@ export default function AnalyticsDebuggerPage() {
     const query = {};
     if (deviceId) query.deviceId = deviceId;
     if (packageName) query.packageName = packageName;
+    query.tab = activeTab;
     router.push({
       pathname: '/device-setup',
       query
@@ -44,6 +48,17 @@ export default function AnalyticsDebuggerPage() {
       pathname: '/app-crawler',
       query
     });
+  };
+  
+  const changeTab = (tab) => {
+    setActiveTab(tab);
+    
+    // Update the URL to include the active tab
+    const query = { ...router.query, tab };
+    router.push({
+      pathname: router.pathname,
+      query
+    }, undefined, { shallow: true });
   };
   
   return (
@@ -89,12 +104,36 @@ export default function AnalyticsDebuggerPage() {
             </button>
           </div>
         </div>
+        
+        <div className={styles.tabs}>
+          <button 
+            className={`${styles.tabButton} ${activeTab === 'network' ? styles.activeTab : ''}`}
+            onClick={() => changeTab('network')}
+          >
+            Network Capture
+          </button>
+          <button 
+            className={`${styles.tabButton} ${activeTab === 'logcat' ? styles.activeTab : ''}`}
+            onClick={() => changeTab('logcat')}
+          >
+            Logcat Capture
+          </button>
+        </div>
+        
         <div className={styles.debuggerContainer}>
-          <AnalyticsDebugger
-            deviceId={deviceId}
-            packageName={packageName}
-            show={true}
-          />
+          {activeTab === 'network' ? (
+            <AnalyticsDebugger
+              deviceId={deviceId}
+              packageName={packageName}
+              show={true}
+            />
+          ) : (
+            <LogcatAnalyticsDebugger
+              deviceId={deviceId}
+              packageName={packageName}
+              show={true}
+            />
+          )}
         </div>
       </div>
     </>

@@ -2,6 +2,21 @@ import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/AppCrawler.module.css';
+import dynamic from 'next/dynamic';
+
+// Dynamically import ReactFlow to avoid SSR issues
+const ReactFlow = dynamic(
+  () => import('@xyflow/react').then((mod) => mod.default),
+  { ssr: false, loading: () => <div className={styles.flowLoading}>Loading Flow Chart...</div> }
+);
+
+// Also dynamically import the other components
+const { MiniMap, Controls, Background, MarkerType } = dynamic(
+  () => import('@xyflow/react'),
+  { ssr: false }
+);
+
+import '@xyflow/react/dist/style.css';
 
 export default function AppCrawlerPage() {
   const router = useRouter();
@@ -14,6 +29,12 @@ export default function AppCrawlerPage() {
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
   const [showConfig, setShowConfig] = useState(true);
+  const [viewType, setViewType] = useState('grid'); // 'grid', 'list', 'flow'
+  const [flowNodes, setFlowNodes] = useState([]);
+  const [flowEdges, setFlowEdges] = useState([]);
+  const [flowReady, setFlowReady] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
+  
   const [crawlSettings, setCrawlSettings] = useState({
     maxScreens: 20,
     screenDelay: 1000, // ms between actions
@@ -43,6 +64,47 @@ export default function AppCrawlerPage() {
       setShowConfig(false);
     }
   }, [crawlStatus]);
+  
+  // Effect to update flow data whenever screens change
+  useEffect(() => {
+    if (screens.length > 0) {
+      try {
+        // Create nodes based on screens
+        const nodes = screens.map((screen, index) => ({
+          id: `screen-${index}`,
+          data: { 
+            label: `Screen ${index + 1}`,
+            activity: screen.activityName.split('.').pop(),
+            imageUrl: `data:image/png;base64,${screen.screenshot}`
+          },
+          position: { 
+            x: 250 * (index % 3), 
+            y: 200 * Math.floor(index / 3) 
+          }
+        }));
+        
+        // Create edges connecting sequential screens
+        const edges = [];
+        for (let i = 0; i < screens.length - 1; i++) {
+          edges.push({
+            id: `edge-${i}`,
+            source: `screen-${i}`,
+            target: `screen-${i + 1}`,
+            style: { stroke: '#aaa' },
+            type: 'smoothstep',
+            label: `→`,
+            animated: true
+          });
+        }
+        
+        setFlowNodes(nodes);
+        setFlowEdges(edges);
+        setFlowReady(true);
+      } catch (error) {
+        console.error('Error creating flow data:', error);
+      }
+    }
+  }, [screens]);
   
   const handleBack = () => {
     router.push('/analytics-debugger');
@@ -81,6 +143,9 @@ export default function AppCrawlerPage() {
       setScreens([]);
       setCurrentScreen(null);
       setLogs([]);
+      setFlowNodes([]);
+      setFlowEdges([]);
+      setFlowReady(false);
       
       // Call the API to start crawling
       await window.api.crawler.startCrawling(deviceId, packageName, crawlSettings);
@@ -161,6 +226,35 @@ export default function AppCrawlerPage() {
       window.api.crawler.removeAllListeners();
     };
   }, []);
+
+  // Custom node component for React Flow
+  const CustomNode = ({ data }) => {
+    return (
+      <div className={styles.flowNode}>
+        <div className={styles.flowNodeHeader}>{data.label}</div>
+        <div className={styles.flowNodeActivity}>{data.activity}</div>
+        {data.imageUrl && (
+          <div className={styles.flowNodeImage}>
+            <img src={data.imageUrl} alt={data.label} width="150" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Prepare the nodeTypes object only when the Flow is about to be rendered
+  const getNodeTypes = () => {
+    return {
+      default: CustomNode
+    };
+  };
+  
+  // Initialize ReactFlow when the Flow tab is selected
+  useEffect(() => {
+    if (viewType === 'flow') {
+      setShowFlow(true);
+    }
+  }, [viewType]);
   
   return (
     <>
@@ -332,41 +426,142 @@ export default function AppCrawlerPage() {
               </div>
             )}
             
+            {screens.length > 0 && (
+              <div className={styles.viewToggle}>
+                <button
+                  className={`${styles.viewToggleButton} ${viewType === 'flow' ? styles.activeView : ''}`}
+                  onClick={() => setViewType('flow')}
+                  title="Flow Chart View"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <path d="M10 7h4M17 8v8M7 17h7" />
+                  </svg>
+                  Flow
+                </button>
+                <button
+                  className={`${styles.viewToggleButton} ${viewType === 'grid' ? styles.activeView : ''}`}
+                  onClick={() => setViewType('grid')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                  </svg>
+                  Grid
+                </button>
+                <button
+                  className={`${styles.viewToggleButton} ${viewType === 'list' ? styles.activeView : ''}`}
+                  onClick={() => setViewType('list')}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                  List
+                </button>
+              </div>
+            )}
+            
             <div className={styles.screensContainer}>
               {screens.length > 0 ? (
                 <>
-                  <div className={styles.screenList}>
-                    {screens.map((screen, index) => (
-                      <div 
-                        key={index}
-                        className={`${styles.screenItem} ${currentScreen === screen ? styles.activeScreen : ''}`}
-                        onClick={() => setCurrentScreen(screen)}
-                      >
-                        <span>Screen {index + 1}</span>
-                        <span>{screen.activityName.split('.').pop()}</span>
+                  {viewType === 'flow' ? (
+                    <div className={styles.flowView}>
+                      {showFlow && flowReady ? (
+                        <div style={{ width: '100%', height: '600px' }}>
+                          {typeof ReactFlow !== 'undefined' && (
+                            <ReactFlow
+                              nodes={flowNodes}
+                              edges={flowEdges}
+                              nodeTypes={getNodeTypes()}
+                              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                              style={{ background: '#1a1a1a' }}
+                              fitView
+                            >
+                              <div>
+                                {typeof Background !== 'undefined' && <Background color="#333" gap={16} size={1} />}
+                                {typeof Controls !== 'undefined' && <Controls style={{ bottom: 10, right: 10 }} />}
+                                {typeof MiniMap !== 'undefined' && (
+                                  <MiniMap 
+                                    nodeStrokeWidth={3}
+                                    nodeColor="#666" 
+                                    nodeBorderRadius={2}
+                                    style={{ background: '#262626', border: '1px solid #333' }}
+                                  />
+                                )}
+                              </div>
+                            </ReactFlow>
+                          )}
+                        </div>
+                      ) : (
+                        <div className={styles.flowLoading}>
+                          <p>Preparing flow chart visualization...</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : viewType === 'grid' ? (
+                    <div className={styles.gridView}>
+                      {screens.map((screen, index) => (
+                        <div 
+                          key={index}
+                          className={`${styles.gridItem} ${currentScreen === screen ? styles.activeGridItem : ''}`}
+                          onClick={() => setCurrentScreen(screen)}
+                        >
+                          <div className={styles.gridImage}>
+                            <img 
+                              src={`data:image/png;base64,${screen.screenshot}`}
+                              alt={`Screenshot of ${screen.activityName}`}
+                            />
+                          </div>
+                          <div className={styles.gridInfo}>
+                            <span>Screen {index + 1}</span>
+                            <span>{screen.activityName.split('.').pop()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.screenList}>
+                        {screens.map((screen, index) => (
+                          <div 
+                            key={index}
+                            className={`${styles.screenItem} ${currentScreen === screen ? styles.activeScreen : ''}`}
+                            onClick={() => setCurrentScreen(screen)}
+                          >
+                            <span>Screen {index + 1}</span>
+                            <span>{screen.activityName.split('.').pop()}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  
-                  <div className={styles.screenPreview}>
-                    {currentScreen && (
-                      <>
-                        <div className={styles.screenImage}>
-                          <img 
-                            src={`data:image/png;base64,${currentScreen.screenshot}`}
-                            alt={`Screenshot of ${currentScreen.activityName}`}
-                          />
-                        </div>
-                        
-                        <div className={styles.screenDetails}>
-                          <h3>Screen Details</h3>
-                          <p><strong>Activity:</strong> {currentScreen.activityName}</p>
-                          <p><strong>Elements:</strong> {currentScreen.elementCount}</p>
-                          <p><strong>Clickable:</strong> {currentScreen.clickableCount}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      
+                      <div className={styles.screenPreview}>
+                        {currentScreen && (
+                          <>
+                            <div className={styles.screenImage}>
+                              <img 
+                                src={`data:image/png;base64,${currentScreen.screenshot}`}
+                                alt={`Screenshot of ${currentScreen.activityName}`}
+                              />
+                            </div>
+                            
+                            <div className={styles.screenDetails}>
+                              <h3>Screen Details</h3>
+                              <p><strong>Activity:</strong> {currentScreen.activityName}</p>
+                              <p><strong>Elements:</strong> {currentScreen.elementCount}</p>
+                              <p><strong>Clickable:</strong> {currentScreen.clickableCount}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <div className={styles.emptyState}>

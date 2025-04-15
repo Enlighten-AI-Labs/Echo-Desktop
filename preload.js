@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld(
       stopCrawling: () => ipcRenderer.invoke('crawler:stop'),
       getStatus: () => ipcRenderer.invoke('crawler:status'),
       getLogs: () => ipcRenderer.invoke('crawler:getLogs'),
+      getFlowchartData: () => ipcRenderer.invoke('crawler:getFlowchartData'),
       
       // Event listeners
       onProgress: (callback) => {

@@ -125,6 +125,11 @@ export default function Dashboard() {
     router.push(`/analytics-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
   };
 
+  const handleSplitScreenDebugger = () => {
+    // Navigate to the new split screen debugger
+    router.push(`/split-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
+  };
+
   return (
     <>
       <Head>
@@ -188,12 +193,20 @@ export default function Dashboard() {
               </div>
               <div className={styles.debuggingActions}>
                 {selectedPlatform === 'android' && selectedAndroidApp && (
-                  <button 
-                    className={styles.analyticsButton}
-                    onClick={handleToggleAnalyticsDebugger}
-                  >
-                    Analytics Debugger
-                  </button>
+                  <>
+                    <button 
+                      className={styles.analyticsButton}
+                      onClick={handleToggleAnalyticsDebugger}
+                    >
+                      Analytics Debugger
+                    </button>
+                    <button 
+                      className={styles.analyticsButton}
+                      onClick={handleSplitScreenDebugger}
+                    >
+                      Split Screen Debugger
+                    </button>
+                  </>
                 )}
                 <button 
                   className={styles.stopDebuggingButton}

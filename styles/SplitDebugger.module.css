@@ -1,0 +1,832 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #262628;
+  color: #e0e0e0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #262628;
+  border-bottom: 1px solid #3a3a3c;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.backButton:hover {
+  opacity: 0.8;
+}
+
+.backButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pageTitle {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.viewLogsButton {
+  padding: 6px 12px;
+  background-color: #3C76A9;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.viewLogsButton:hover {
+  background-color: #2C5D8B;
+}
+
+/* Split screen layout */
+.splitContainer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.panel {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.divider {
+  width: 8px;
+  background-color: #1a1a1c;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.dividerHandle {
+  width: 4px;
+  height: 40px;
+  background-color: #3a3a3c;
+  border-radius: 2px;
+}
+
+.panelHeader {
+  padding: 12px 16px;
+  background-color: #1e1e20;
+  border-bottom: 1px solid #3a3a3c;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Tab styles */
+.tabs {
+  display: flex;
+  align-items: center;
+}
+
+.tabButton {
+  padding: 8px 12px;
+  background-color: transparent;
+  border: none;
+  color: #b8b8b8;
+  font-size: 14px;
+  cursor: pointer;
+  position: relative;
+}
+
+.tabButton:hover {
+  color: #ffffff;
+}
+
+.tabButton.activeTab {
+  color: #ffffff;
+}
+
+.tabButton.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #3C76A9;
+}
+
+/* Analytics debugger styles */
+.analyticsDebuggerContent {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* App crawler styles */
+.appCrawlerContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.crawlControls {
+  display: flex;
+  gap: 8px;
+}
+
+.startButton {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.startButton:hover {
+  background-color: #3e8e41;
+}
+
+.startButton:disabled {
+  background-color: #4caf5080;
+  cursor: not-allowed;
+}
+
+.stopButton {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.stopButton:hover {
+  background-color: #d32f2f;
+}
+
+/* Left panel styles */
+.leftPanel {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #3a3a3c;
+}
+
+.settingsPanel {
+  padding: 16px;
+  background-color: #1e1e20;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.settingsPanelCollapsed {
+  padding: 8px;
+}
+
+.settingsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settingsHeader h2 {
+  font-size: 14px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.toggleButton {
+  background: none;
+  border: 1px solid #555;
+  color: #bbb;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toggleButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.settingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settingItem label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settingItem input[type="number"] {
+  background-color: #333;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+.settingItem input[type="checkbox"] {
+  margin: 0;
+}
+
+.deviceInfo {
+  background-color: #2d2d2d;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.deviceInfo p {
+  margin: 6px 0;
+}
+
+/* Logs panel styles */
+.logsPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: #1e1e20;
+  border-top: 1px solid #3a3a3c;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+.logsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.logsHeader h2 {
+  font-size: 14px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.clearLogsButton {
+  background: none;
+  border: 1px solid #555;
+  color: #bbb;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.clearLogsButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #f44336;
+}
+
+.logsContainer {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.logEntry {
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  border-radius: 2px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.logTime {
+  color: #999;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.logMessage {
+  word-break: break-word;
+}
+
+/* Log entry types */
+.info {
+  color: #e0e0e0;
+}
+
+.success {
+  color: #4caf50;
+}
+
+.warning {
+  color: #ff9800;
+}
+
+.error {
+  color: #f44336;
+}
+
+.emptyLogs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-style: italic;
+}
+
+/* Right panel styles */
+.rightPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 6px;
+  background-color: #333;
+  border-radius: 3px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: #4caf50;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressBar span {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* View toggle styles */
+.viewToggle {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 5px;
+  background-color: #1e1e20;
+  border-radius: 6px;
+}
+
+.viewToggleButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  color: #bbb;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.viewToggleButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.viewToggleButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.activeView {
+  background-color: #3C76A9 !important;
+  color: white !important;
+}
+
+/* Flow view styles */
+.flowView {
+  flex: 1;
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  border: 1px solid #3a3a3c;
+  overflow: hidden;
+}
+
+.flowLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #bbb;
+  font-style: italic;
+}
+
+.flowNode {
+  padding: 10px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 4px;
+  width: 200px;
+}
+
+.flowNodeHeader {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.flowNodeActivity {
+  font-size: 11px;
+  color: #bbb;
+  margin-bottom: 4px;
+}
+
+.flowNodeImage {
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.flowNodeImage img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Grid view styles */
+.gridView {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.gridItem {
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gridItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.activeGridItem {
+  border-color: #3C76A9;
+  box-shadow: 0 0 0 2px rgba(60, 118, 169, 0.5);
+}
+
+.gridImage {
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background-color: #1a1a1a;
+}
+
+.gridImage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.gridInfo {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gridInfo span:first-child {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.gridInfo span:last-child {
+  font-size: 12px;
+  color: #bbb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* List view styles */
+.listContainer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+.screenList {
+  width: 250px;
+  min-width: 180px;
+  background-color: #1e1e20;
+  border-radius: 4px;
+  overflow-y: auto;
+  border: 1px solid #3a3a3c;
+  margin-right: 16px;
+  flex-shrink: 0;
+  max-height: 100%;
+}
+
+.screenItem {
+  padding: 10px 12px;
+  border-bottom: 1px solid #3a3a3c;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background-color 0.2s;
+}
+
+.screenItem:hover {
+  background-color: #333;
+}
+
+.screenItem:last-child {
+  border-bottom: none;
+}
+
+.screenItem span:first-child {
+  font-weight: 500;
+}
+
+.screenItem span:last-child {
+  font-size: 12px;
+  color: #bbb;
+}
+
+.activeScreen {
+  background-color: #3C76A9;
+}
+
+.activeScreen:hover {
+  background-color: #3C76A9;
+}
+
+.activeScreen span:last-child {
+  color: #e0e0e0;
+}
+
+.screenPreview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 100%;
+  min-width: 0;
+}
+
+.screenImage {
+  background-color: #1e1e20;
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  border: 1px solid #3a3a3c;
+}
+
+.screenImage img {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+.screenDetails {
+  background-color: #1e1e20;
+  border-radius: 4px;
+  padding: 16px;
+  border: 1px solid #3a3a3c;
+}
+
+.screenDetails h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.screenDetails p {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+/* XML Viewer styles */
+.xmlViewer {
+  margin-top: 16px;
+  border-top: 1px solid #3a3a3c;
+  padding-top: 16px;
+}
+
+.xmlViewer h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.expandButton:hover {
+  color: #fff;
+}
+
+.xmlContent {
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  padding: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.xmlContent pre {
+  margin: 0;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* Empty state */
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #bbb;
+  text-align: center;
+  padding: 32px;
+  background-color: #1e1e20;
+  border-radius: 4px;
+  border: 1px solid #3a3a3c;
+}
+
+/* XML Popup styles */
+.xmlPopupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: popupFadeIn 0.2s ease;
+}
+
+.xmlPopup {
+  width: 90%;
+  max-width: 1000px;
+  height: 80%;
+  background-color: #262628;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.xmlPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background-color: #1e1e20;
+  border-bottom: 1px solid #3a3a3c;
+}
+
+.xmlPopupHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.xmlPopupInfo {
+  color: #bbb;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+}
+
+.xmlPopupClose {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.xmlPopupClose:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.xmlPopupContent {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #1a1a1a;
+}
+
+.xmlPopupContent pre {
+  margin: 0;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  color: #e0e0e0;
+} 

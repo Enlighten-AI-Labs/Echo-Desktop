@@ -157,6 +157,16 @@ export default function AppCrawlerPage() {
     });
   };
 
+  const handleSplitScreenView = () => {
+    const query = {};
+    if (deviceId) query.deviceId = deviceId;
+    if (packageName) query.packageName = packageName;
+    router.push({
+      pathname: '/split-debugger',
+      query
+    });
+  };
+
   const handleSettingsChange = (setting, value) => {
     setCrawlSettings(prev => ({
       ...prev,
@@ -347,6 +357,12 @@ export default function AppCrawlerPage() {
             <h1 className={styles.pageTitle}>App Crawler</h1>
           </div>
           <div className={styles.headerButtons}>
+            <button 
+              className={styles.setupButton}
+              onClick={handleSplitScreenView}
+            >
+              Split Screen View
+            </button>
             <button 
               className={styles.setupButton}
               onClick={handleDeviceSetup}

@@ -50,6 +50,17 @@ export default function AnalyticsDebuggerPage() {
     });
   };
   
+  const handleSplitScreenView = () => {
+    const query = {};
+    if (deviceId) query.deviceId = deviceId;
+    if (packageName) query.packageName = packageName;
+    query.tab = activeTab;
+    router.push({
+      pathname: '/split-debugger',
+      query
+    });
+  };
+  
   const changeTab = (tab) => {
     setActiveTab(tab);
     
@@ -89,6 +100,12 @@ export default function AnalyticsDebuggerPage() {
               onClick={handleAppCrawler}
             >
               App Crawler
+            </button>
+            <button 
+              className={styles.viewLogsButton}
+              onClick={handleSplitScreenView}
+            >
+              Split Screen View
             </button>
             <button 
               className={styles.viewLogsButton}

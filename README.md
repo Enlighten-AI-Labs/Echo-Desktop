@@ -10,6 +10,22 @@ Analytics debugging tool for Android and iOS applications.
 - Supabase integration for auth and storage
 - Capture and analyze mobile app analytics
 
+## Debugger Changes
+
+As of the latest update, the separate Analytics Debugger and App Crawler views have been consolidated into a single unified Debugger view with collapsible panels.
+
+### Changes:
+- Combined Analytics Debugger and App Crawler into a single split-screen view
+- Added ability to collapse/expand either side for better focus
+- Improved UI with a cleaner design
+- Simplified navigation throughout the app
+
+### Benefits:
+- Better workflow with side-by-side debugging
+- Improved screen real estate management
+- Fewer context switches between different views
+- More intuitive navigation
+
 ## Getting Started
 
 ### Prerequisites

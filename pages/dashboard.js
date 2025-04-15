@@ -39,8 +39,8 @@ export default function Dashboard() {
   }
 
   const handleStartDebugging = () => {
-    // Instead of opening the app selector, navigate directly to the analytics debugger
-    router.push('/analytics-debugger?tab=network');
+    // Navigate directly to the debugger
+    router.push('/debugger?tab=network');
   };
 
   const handleCloseAppSelector = () => {
@@ -121,13 +121,13 @@ export default function Dashboard() {
   };
 
   const handleToggleAnalyticsDebugger = () => {
-    // Navigate to analytics debugger page instead of showing/hiding sidebar
-    router.push(`/analytics-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
+    // Redirect to debugger
+    router.push(`/debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
   };
 
   const handleSplitScreenDebugger = () => {
-    // Navigate to the new split screen debugger
-    router.push(`/split-debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
+    // Navigate to the debugger
+    router.push(`/debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
   };
 
   return (
@@ -196,15 +196,9 @@ export default function Dashboard() {
                   <>
                     <button 
                       className={styles.analyticsButton}
-                      onClick={handleToggleAnalyticsDebugger}
-                    >
-                      Analytics Debugger
-                    </button>
-                    <button 
-                      className={styles.analyticsButton}
                       onClick={handleSplitScreenDebugger}
                     >
-                      Split Screen Debugger
+                      Debugger
                     </button>
                   </>
                 )}

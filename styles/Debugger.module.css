@@ -85,6 +85,12 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  will-change: width, opacity;
+}
+
+/* New class that's only applied during transitions */
+.animatedPanel {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s linear;
 }
 
 .divider {
@@ -95,6 +101,7 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
+  transition: opacity 0.15s linear;
 }
 
 .dividerHandle {
@@ -166,9 +173,103 @@
   overflow: hidden;
 }
 
+/* Header controls container for buttons and controls in the panel header */
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .crawlControls {
   display: flex;
   gap: 8px;
+}
+
+/* Collapse/expand button styles */
+.collapseButton {
+  background: none;
+  border: none;
+  color: #bbb;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.collapseButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Left and right expand button containers */
+.leftExpandButtonContainer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1c;
+  cursor: pointer;
+  transition: background-color 0.15s linear;
+  z-index: 10;
+}
+
+.rightExpandButtonContainer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1c;
+  cursor: pointer;
+  transition: background-color 0.15s linear;
+  z-index: 10;
+}
+
+.leftExpandButtonContainer:hover,
+.rightExpandButtonContainer:hover {
+  background-color: #333;
+}
+
+/* Button to expand a collapsed panel */
+.expandPanelButton {
+  background: none;
+  border: none;
+  color: #bbb;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.expandPanelButton:hover {
+  color: #fff;
+  animation: none;
 }
 
 .startButton {
@@ -409,7 +510,8 @@
   height: 100%;
   background-color: #4caf50;
   border-radius: 3px;
-  transition: width 0.3s ease;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
 }
 
 .progressBar span {

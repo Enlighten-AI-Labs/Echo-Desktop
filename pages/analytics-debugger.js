@@ -56,7 +56,7 @@ export default function AnalyticsDebuggerPage() {
     if (packageName) query.packageName = packageName;
     query.tab = activeTab;
     router.push({
-      pathname: '/split-debugger',
+      pathname: '/debugger',
       query
     });
   };

@@ -162,7 +162,7 @@ export default function AppCrawlerPage() {
     if (deviceId) query.deviceId = deviceId;
     if (packageName) query.packageName = packageName;
     router.push({
-      pathname: '/split-debugger',
+      pathname: '/debugger',
       query
     });
   };

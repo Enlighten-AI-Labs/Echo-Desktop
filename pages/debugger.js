@@ -1,10 +1,10 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
-import styles from '@/styles/SplitDebugger.module.css';
+import styles from '@/styles/Debugger.module.css';
 
 // Dynamically import ReactFlow to avoid SSR issues
 const ReactFlow = dynamic(
@@ -56,21 +56,29 @@ function beautifyXml(xml) {
   return result.trim();
 }
 
-export default function SplitDebuggerPage() {
+// Create a utility function for auto-collapse thresholds
+const MIN_PANEL_WIDTH = 20; // Minimum percentage width for a panel before it should auto-collapse
+
+export default function DebuggerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
   const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat'
-  const [splitRatio, setSplitRatio] = useState(50); // 50% for each side
+  const [splitRatio, setSplitRatio] = useState(0); // Start with 0 since left panel is collapsed
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
   const containerRef = useRef(null);
   const dividerRef = useRef(null);
   
   // New state variables for collapsible panels
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true); // Start with App Crawler collapsed
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [previousSplitRatio, setPreviousSplitRatio] = useState(50); // Save previous split ratio when collapsing
+  const [lastResizeTime, setLastResizeTime] = useState(0);
+  const currentSplitRatio = useRef(0); // Use ref to track current ratio without re-renders
+  
+  // Track if we're in an animation transition
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // App Crawler State
   const [crawlStatus, setCrawlStatus] = useState('idle'); // idle, running, completed, error
@@ -107,25 +115,64 @@ export default function SplitDebuggerPage() {
 
   // Handle resize functionality
   const startResize = (e) => {
+    setIsAnimating(false); // Turn off animations during manual resize
     setIsResizing(true);
     setStartX(e.clientX);
+    // Initialize the current ratio
+    currentSplitRatio.current = splitRatio;
   };
 
   const stopResize = () => {
     setIsResizing(false);
-  };
-
-  const resize = (e) => {
-    if (isResizing && containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const newSplitRatio = ((e.clientX / containerWidth) * 100);
-      
-      // Limit the split ratio to ensure both panels remain visible
-      if (newSplitRatio >= 20 && newSplitRatio <= 80) {
-        setSplitRatio(newSplitRatio);
-      }
+    
+    // Update state with final value from ref
+    setSplitRatio(currentSplitRatio.current);
+    
+    // Check if we should auto-collapse panels after resizing
+    if (currentSplitRatio.current < MIN_PANEL_WIDTH) {
+      // Left panel is too small, auto-collapse it
+      setIsAnimating(true); // Enable animations for auto-collapse
+      setPreviousSplitRatio(MIN_PANEL_WIDTH);
+      setSplitRatio(0);
+      setTimeout(() => {
+        setLeftPanelCollapsed(true);
+        setIsAnimating(false); // Disable animations after transition
+      }, 50);
+    } else if (currentSplitRatio.current > (100 - MIN_PANEL_WIDTH)) {
+      // Right panel is too small, auto-collapse it
+      setIsAnimating(true); // Enable animations for auto-collapse
+      setPreviousSplitRatio(100 - MIN_PANEL_WIDTH);
+      setSplitRatio(100);
+      setTimeout(() => {
+        setRightPanelCollapsed(true);
+        setIsAnimating(false); // Disable animations after transition
+      }, 50);
     }
   };
+
+  // Throttled resize function - animations disabled during resize
+  const resize = useCallback((e) => {
+    if (isResizing && containerRef.current) {
+      const now = Date.now();
+      // Store value in ref for smoother tracking
+      const containerWidth = containerRef.current.offsetWidth;
+      currentSplitRatio.current = ((e.clientX / containerWidth) * 100);
+      
+      // Only update state every 16ms (approx 60fps) for smoother performance
+      if (now - lastResizeTime > 16) {
+        setSplitRatio(currentSplitRatio.current);
+        setLastResizeTime(now);
+      }
+      
+      // Make sure panels are expanded when resizing
+      if (leftPanelCollapsed) {
+        setLeftPanelCollapsed(false);
+      }
+      if (rightPanelCollapsed) {
+        setRightPanelCollapsed(false);
+      }
+    }
+  }, [isResizing, lastResizeTime, leftPanelCollapsed, rightPanelCollapsed]);
 
   useEffect(() => {
     if (isResizing) {
@@ -501,33 +548,69 @@ export default function SplitDebuggerPage() {
     };
   }, [showXmlPopup]);
 
-  // New functions to handle panel collapse/expand
+  // New functions to handle panel collapse/expand with better performance
   const toggleLeftPanel = () => {
+    // Enable animation for collapse/expand operations
+    setIsAnimating(true);
+    
     if (leftPanelCollapsed) {
-      // Expanding left panel
+      // Expanding left panel - first show the panel
       setLeftPanelCollapsed(false);
-      setSplitRatio(previousSplitRatio);
+      // Then set width in the next frame for animation
+      requestAnimationFrame(() => {
+        setSplitRatio(previousSplitRatio);
+        
+        // Disable animations after transition completes
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 250); // slightly longer than the CSS transition
+      });
       setRightPanelCollapsed(false);
     } else {
-      // Collapsing left panel
+      // Collapsing left panel - first set width to 0
       setPreviousSplitRatio(splitRatio);
-      setLeftPanelCollapsed(true);
       setSplitRatio(0);
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      requestAnimationFrame(() => {
+        // Add a small delay to let animation finish 
+        setTimeout(() => {
+          setLeftPanelCollapsed(true);
+          setIsAnimating(false); // Disable animations after transition
+        }, 200);
+      });
       setRightPanelCollapsed(false);
     }
   };
 
   const toggleRightPanel = () => {
+    // Enable animation for collapse/expand operations
+    setIsAnimating(true);
+    
     if (rightPanelCollapsed) {
-      // Expanding right panel
+      // Expanding right panel - first show the panel
       setRightPanelCollapsed(false);
-      setSplitRatio(previousSplitRatio);
+      // Then set width in the next frame for animation
+      requestAnimationFrame(() => {
+        setSplitRatio(previousSplitRatio);
+        
+        // Disable animations after transition completes
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 250); // slightly longer than the CSS transition
+      });
       setLeftPanelCollapsed(false);
     } else {
-      // Collapsing right panel
+      // Collapsing right panel - first set width to 100
       setPreviousSplitRatio(splitRatio);
-      setRightPanelCollapsed(true);
       setSplitRatio(100);
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      requestAnimationFrame(() => {
+        // Add a small delay to let animation finish
+        setTimeout(() => {
+          setRightPanelCollapsed(true);
+          setIsAnimating(false); // Disable animations after transition
+        }, 200);
+      });
       setLeftPanelCollapsed(false);
     }
   };
@@ -535,8 +618,8 @@ export default function SplitDebuggerPage() {
   return (
     <>
       <Head>
-        <title>Split Screen Debugger | Echo Desktop</title>
-        <meta name="description" content="Echo Desktop Split Screen Debugger" />
+        <title>Debugger | Echo Desktop</title>
+        <meta name="description" content="Echo Desktop Debugger" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -552,7 +635,7 @@ export default function SplitDebuggerPage() {
               </svg>
               Back to Dashboard
             </button>
-            <h1 className={styles.pageTitle}>Split Screen Debugger</h1>
+            <h1 className={styles.pageTitle}>App Debugger & Crawler</h1>
           </div>
           <div className={styles.headerButtons}>
             <button 
@@ -573,10 +656,11 @@ export default function SplitDebuggerPage() {
         <div ref={containerRef} className={styles.splitContainer}>
           {/* App Crawler Panel */}
           <div 
-            className={styles.panel} 
+            className={`${styles.panel} ${isAnimating ? styles.animatedPanel : ''}`} 
             style={{ 
               width: `${splitRatio}%`,
-              display: leftPanelCollapsed ? 'none' : 'flex'
+              display: leftPanelCollapsed ? 'none' : 'flex',
+              opacity: leftPanelCollapsed ? 0 : 1,
             }}>
             <div className={styles.panelHeader}>
               <h2>App Crawler</h2>
@@ -876,10 +960,11 @@ export default function SplitDebuggerPage() {
           
           {/* Analytics Debugger Panel */}
           <div 
-            className={styles.panel} 
+            className={`${styles.panel} ${isAnimating ? styles.animatedPanel : ''}`} 
             style={{ 
               width: `${rightPanelCollapsed ? 0 : (leftPanelCollapsed ? 100 : 100 - splitRatio)}%`,
-              display: rightPanelCollapsed ? 'none' : 'flex'
+              display: rightPanelCollapsed ? 'none' : 'flex',
+              opacity: rightPanelCollapsed ? 0 : 1,
             }}>
             <div className={styles.panelHeader}>
               <h2>Analytics Debugger</h2>
@@ -929,7 +1014,7 @@ export default function SplitDebuggerPage() {
           
           {/* Panel expand buttons that appear when panels are collapsed */}
           {leftPanelCollapsed && (
-            <div className={styles.expandButtonContainer} onClick={toggleLeftPanel}>
+            <div className={styles.leftExpandButtonContainer} onClick={toggleLeftPanel}>
               <button className={styles.expandPanelButton} title="Expand App Crawler panel">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 5l7 7-7 7M13 5l7 7-7 7" />
@@ -939,7 +1024,7 @@ export default function SplitDebuggerPage() {
           )}
           
           {rightPanelCollapsed && (
-            <div className={styles.expandButtonContainer} onClick={toggleRightPanel}>
+            <div className={styles.rightExpandButtonContainer} onClick={toggleRightPanel}>
               <button className={styles.expandPanelButton} title="Expand Analytics Debugger panel">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M13 5l-7 7 7 7M19 5l-7 7 7 7" />

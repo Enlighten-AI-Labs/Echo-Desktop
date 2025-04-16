@@ -276,7 +276,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     if (!log || !log.message) return {};
     
     // Look for params=Bundle[{...}] pattern
-    const paramsMatch = log.message.match(/params=Bundle\[\{(.*)\}\]/);
+    const paramsMatch = log.message.match(/params=Bundle\[(.*)\]$/);
     if (!paramsMatch) return {};
     
     const paramsStr = paramsMatch[1];
@@ -284,13 +284,34 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     
     const params = {};
     
-    // Extract key-value pairs
-    const keyValueRegex = /([a-zA-Z_]+)=([^,]+),?\s*/g;
-    let match;
-    while ((match = keyValueRegex.exec(paramsStr)) !== null) {
-      if (match[1] && match[2]) {
-        params[match[1]] = match[2];
-      }
+    try {
+      // Remove outer braces and split by comma
+      const cleanParamsStr = paramsStr.replace(/^\{|\}$/g, '');
+      const paramPairs = cleanParamsStr.split(',').map(pair => pair.trim());
+      
+      paramPairs.forEach(pair => {
+        const [key, ...valueParts] = pair.split('=');
+        if (key && valueParts.length > 0) {
+          // Join value parts in case the value contains equals signs
+          const value = valueParts.join('=').trim();
+          
+          // Clean up the key by removing Firebase Analytics suffixes
+          const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
+          
+          // Clean up the value
+          let cleanValue = value;
+          // If value is a number, convert it
+          if (/^-?\d+$/.test(cleanValue)) {
+            cleanValue = parseInt(cleanValue, 10);
+          } else if (/^-?\d*\.\d+$/.test(cleanValue)) {
+            cleanValue = parseFloat(cleanValue);
+          }
+          
+          params[cleanKey] = cleanValue;
+        }
+      });
+    } catch (error) {
+      console.error('Error parsing parameters:', error);
     }
     
     return params;
@@ -424,81 +445,45 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
         
         if (log.message && log.message.includes('Logging event:')) {
           try {
+            // Handle double "Logging event:" prefix by taking the last one
+            const cleanMessage = log.message.replace('[electron-wait] Logging event: ', '');
+            
             // Extract event name
-            const eventMatch = log.message.match(/name=([^,]+)/);
+            const eventMatch = cleanMessage.match(/name=([^,]+)/);
             if (eventMatch) {
               eventName = eventMatch[1].replace(/\(_vs\)/, '').trim();
             }
 
             // Extract parameters
-            const paramsMatch = log.message.match(/params=Bundle\[(.*)\]$/);
+            const paramsMatch = cleanMessage.match(/params=Bundle\[(.*)\]$/);
             if (paramsMatch && paramsMatch[1]) {
               const paramsStr = paramsMatch[1];
               
-              // Function to parse a Bundle string
-              const parseBundle = (bundleStr) => {
-                const params = {};
-                let depth = 0;
-                let currentKey = '';
-                let currentValue = '';
-                let isInKey = true;
-                
-                // Remove outer braces
-                bundleStr = bundleStr.replace(/^\{|\}$/g, '').trim();
-                
-                for (let i = 0; i < bundleStr.length; i++) {
-                  const char = bundleStr[i];
-                  
-                  if (char === '[' || char === '{') {
-                    depth++;
-                    if (depth === 1) {
-                      // Start of a nested structure
-                      currentValue = char;
-                    } else {
-                      currentValue += char;
-                    }
-                  } else if (char === ']' || char === '}') {
-                    depth--;
-                    currentValue += char;
-                    if (depth === 0) {
-                      // End of nested structure
-                      if (currentKey) {
-                        const cleanKey = currentKey.replace(/\([^)]+\)/g, '').trim();
-                        params[cleanKey] = currentValue;
-                        currentKey = '';
-                        currentValue = '';
-                        isInKey = true;
-                      }
-                    }
-                  } else if (char === '=' && depth === 0 && isInKey) {
-                    // End of key
-                    currentKey = currentValue;
-                    currentValue = '';
-                    isInKey = false;
-                  } else if (char === ',' && depth === 0) {
-                    // End of value
-                    if (currentKey) {
-                      const cleanKey = currentKey.replace(/\([^)]+\)/g, '').trim();
-                      params[cleanKey] = currentValue.trim();
-                      currentKey = '';
-                      currentValue = '';
-                      isInKey = true;
-                    }
-                  } else {
-                    currentValue += char;
-                  }
-                }
-                
-                // Handle last pair
-                if (currentKey && currentValue) {
-                  const cleanKey = currentKey.replace(/\([^)]+\)/g, '').trim();
-                  params[cleanKey] = currentValue.trim();
-                }
-                
-                return params;
-              };
+              // Remove outer braces and split by comma
+              const cleanParamsStr = paramsStr.replace(/^\{|\}$/g, '');
+              const paramPairs = cleanParamsStr.split(',').map(pair => pair.trim());
               
-              parameters = parseBundle(paramsStr);
+              paramPairs.forEach(pair => {
+                const [key, ...valueParts] = pair.split('=');
+                if (key && valueParts.length > 0) {
+                  // Join value parts in case the value contains equals signs
+                  const value = valueParts.join('=').trim();
+                  
+                  // Clean up the key by removing Firebase Analytics suffixes
+                  const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
+                  
+                  // Clean up the value
+                  let cleanValue = value;
+                  // If value is a number, convert it
+                  if (/^-?\d+$/.test(cleanValue)) {
+                    cleanValue = parseInt(cleanValue, 10);
+                  } else if (/^-?\d*\.\d+$/.test(cleanValue)) {
+                    cleanValue = parseFloat(cleanValue);
+                  }
+                  
+                  parameters[cleanKey] = cleanValue;
+                }
+              });
             }
           } catch (error) {
             console.error('Error parsing Firebase Analytics log:', error);

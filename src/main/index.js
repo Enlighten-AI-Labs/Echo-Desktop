@@ -29,6 +29,9 @@ function createWindow() {
     show: false,
     backgroundColor: '#262628',
   });
+  
+  // Make mainWindow globally accessible
+  global.mainWindow = mainWindow;
 
   const startUrl = isDev
     ? 'http://localhost:3000'
@@ -51,6 +54,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    global.mainWindow = null;
   });
 
   // Open DevTools if in dev mode

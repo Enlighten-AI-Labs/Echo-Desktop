@@ -1340,4 +1340,327 @@
   font-size: 12px !important;
   color: #888 !important;
   font-style: italic;
+}
+
+.appSelectionPanel {
+  width: 100%;
+  padding: 1rem;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.searchContainer {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.appsGridContainer {
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 1rem 0;
+  border: 2px solid #3a3a3c;
+  border-radius: 8px;
+  background: #2a2a2c;
+  padding: 1rem;
+}
+
+/* Custom scrollbar styles */
+.appsGridContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.appsGridContainer::-webkit-scrollbar-track {
+  background: #2a2a2c;
+  border-radius: 4px;
+}
+
+.appsGridContainer::-webkit-scrollbar-thumb {
+  background: #3a3a3c;
+  border-radius: 4px;
+}
+
+.appsGridContainer::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4c;
+}
+
+.appsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.appCard {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: #323234;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.appCard:hover {
+  background-color: #3a3a3c;
+  border-color: #9C54AD;
+}
+
+.appCard.selectedApp {
+  border: 2px solid #9C54AD;
+  background-color: rgba(156, 84, 173, 0.15);
+}
+
+.appIcon {
+  width: 32px;
+  height: 32px;
+  background-color: #2a2a2c;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  color: #9C54AD;
+  flex-shrink: 0;
+}
+
+.appInfo {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.appName {
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.packageName {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.75rem;
+  color: #b0b0b0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.secondaryButton {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--background-hover);
+  border-color: var(--accent-color);
+}
+
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.launchButton {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.noApps, .noSearchResults {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  background: var(--background-primary);
+  border-radius: 4px;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  border: 2px solid var(--background-secondary);
+  border-top: 2px solid var(--accent-color);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.wirelessPairingSection {
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #3a3a3c;
+}
+
+.divider span {
+  padding: 0 1rem;
+  color: #808080;
+  font-size: 0.9rem;
+}
+
+.pairNewDeviceButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #323234;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.pairNewDeviceButton:hover {
+  background-color: #3a3a3c;
+  border-color: #9C54AD;
+}
+
+.pairNewDeviceButton .methodIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #9C54AD;
+}
+
+.deviceListContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  background-color: #2a2a2c;
+  border: 2px solid #3a3a3c;
+  border-radius: 8px;
+  padding: 1rem;
+} 
+.deviceControls {
+display: flex;
+gap: 8px;
+align-items: center;
+}
+
+.proxyButton {
+padding: 6px 12px;
+border-radius: 4px;
+border: 1px solid #ccc;
+background-color: #fff;
+cursor: pointer;
+font-size: 14px;
+transition: all 0.2s;
+}
+
+.proxyButton:hover {
+background-color: #f5f5f5;
+}
+
+.proxyButton:disabled {
+opacity: 0.6;
+cursor: not-allowed;
+}
+
+.proxyEnabled {
+background-color: #e6f4ea;
+border-color: #34a853;
+color: #34a853;
+}
+
+.proxyEnabled:hover {
+background-color: #d2ebd8;
+}
+
+.tabsContainer {
+display: flex;
+gap: 2px;
+margin-bottom: 20px;
+border-bottom: 1px solid #e0e0e0;
+width: 100%;
+}
+
+.tabButton {
+padding: 10px 20px;
+border: none;
+background: none;
+cursor: pointer;
+font-size: 16px;
+color: #666;
+position: relative;
+transition: all 0.2s;
+}
+
+.tabButton:hover {
+color: #000;
+}
+
+.activeTab {
+color: #000;
+font-weight: 500;
+}
+
+.activeTab::after {
+content: '';
+position: absolute;
+bottom: -1px;
+left: 0;
+right: 0;
+height: 2px;
+background-color: #000;
 } 

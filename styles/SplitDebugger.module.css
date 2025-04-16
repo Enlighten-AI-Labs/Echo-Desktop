@@ -1,0 +1,47 @@
+.panel {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  will-change: width, opacity;
+  padding: 0 20px; /* Add padding to prevent overlap with expand buttons */
+} 
+
+/* Left and right expand button containers */
+.leftExpandButtonContainer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(26, 26, 28, 0.6); /* Make background semi-transparent */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(2px); /* Add blur effect */
+}
+
+.rightExpandButtonContainer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(26, 26, 28, 0.6); /* Make background semi-transparent */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  backdrop-filter: blur(2px); /* Add blur effect */
+}
+
+.leftExpandButtonContainer:hover,
+.rightExpandButtonContainer:hover {
+  background-color: rgba(51, 51, 51, 0.8);
+  width: 24px; /* Slightly expand on hover */
+} 

@@ -661,6 +661,7 @@ export default function DebuggerPage() {
               width: `${splitRatio}%`,
               display: leftPanelCollapsed ? 'none' : 'flex',
               opacity: leftPanelCollapsed ? 0 : 1,
+              marginRight: rightPanelCollapsed ? '20px' : '0px'
             }}>
             <div className={styles.panelHeader}>
               <h2>App Crawler</h2>
@@ -965,6 +966,7 @@ export default function DebuggerPage() {
               width: `${rightPanelCollapsed ? 0 : (leftPanelCollapsed ? 100 : 100 - splitRatio)}%`,
               display: rightPanelCollapsed ? 'none' : 'flex',
               opacity: rightPanelCollapsed ? 0 : 1,
+              marginLeft: leftPanelCollapsed ? '20px' : '0px'
             }}>
             <div className={styles.panelHeader}>
               <h2>Analytics Debugger</h2>

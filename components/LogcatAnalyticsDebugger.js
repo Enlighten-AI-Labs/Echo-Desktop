@@ -105,6 +105,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
                     const uniqueKey = `${log.timestamp}-${log.message?.substring(0, 50) || log.rawLog?.substring(0, 50) || ''}`;
                     if (!existingLogsMap.has(uniqueKey)) {
                       existingLogsMap.set(uniqueKey, log);
+                      console.log('Added new log:', log);
                     }
                   });
                   
@@ -529,7 +530,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     
   // Further filter to show only real analytics events
   const isAnalyticsEvent = (log) => {
-    if (!log || !log.message) return false;
+    if (!log || !log.rawLog) return false;
     
     // Always show system messages
     if (log.isSystemMessage) return true;
@@ -537,12 +538,13 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     // If log has a source property, it's from network capture
     if (log.source === 'network') return true;
     
-    const message = log.message;
+    const message = log.rawLog;
+    log.message = log.rawLog;
     
     // Check for "Logging event:" pattern first as it's the most common
     if (message.includes('Logging event:')) {
       // Extract the event name
-      const eventMatch = message.match(/name=([^,]+)/);
+      /* const eventMatch = message.match(/name=([^,]+)/);
       if (eventMatch) {
         const eventName = eventMatch[1].replace(/\(_vs\)/, '').trim();
         // Valid event names we want to capture
@@ -557,7 +559,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
           'purchase'
         ];
         return validEvents.some(event => eventName.includes(event));
-      }
+      } */
       return true; // If we can't extract the name but it has "Logging event:", show it anyway
     }
     

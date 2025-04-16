@@ -1,0 +1,1699 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--color-black);
+    color: var(--color-white);
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    background-color: #262628;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: var(--color-white);
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-family: 'Travelia', sans-serif;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+  }
+  
+  .backButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .backButton svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke: var(--color-white);
+  }
+  
+  .pageTitle {
+    margin-left: 2rem;
+    font-family: 'Travelia', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--color-white);
+  }
+  
+  .content {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1c;
+  }
+  
+  .platformsContainer {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+  
+  .platformCard {
+    width: 200px;
+    height: 200px;
+    border: 2px solid #3a3a3c;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #262628;
+    padding: 1.5rem;
+  }
+  
+  .platformCard:hover {
+    border-color: #9C54AD; /* Purple */
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .platformCard.selected {
+    border-color: #9C54AD; /* Purple */
+    background-color: rgba(156, 84, 173, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .platformIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e0e0e0;
+  }
+  
+  .platformIcon svg {
+    transition: all 0.2s ease;
+  }
+  
+  .selected .platformIcon svg {
+    color: #9C54AD; /* Purple */
+  }
+  
+  .platformName {
+    margin: 0;
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.4rem;
+    color: #e0e0e0;
+    text-align: center;
+  }
+  
+  .selected .platformName {
+    color: #9C54AD; /* Purple */
+  }
+  
+  .actionsContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  
+  .continueButton {
+    font-family: 'Travelia Bold', sans-serif;
+    font-size: 1.1rem;
+    background-color: #9C54AD; /* Purple */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 2.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(156, 84, 173, 0.3);
+  }
+  
+  .continueButton:hover {
+    background-color: #8a4899; /* Slightly darker purple */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(156, 84, 173, 0.4);
+  }
+  
+  .continueButton:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(156, 84, 173, 0.2);
+  }
+  
+  .continueButton:disabled {
+    background-color: #6b476d;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  
+  /* iOS Setup Instructions Styles */
+  .instructionsContainer {
+    max-width: 1000px;
+    width: 100%;
+    background-color: #262628;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+  
+  .instructionsTitle {
+    font-family: 'Travelia Bold', sans-serif;
+    font-size: 1.8rem;
+    color: #e0e0e0;
+    margin: 0 0 2rem 0;
+    text-align: center;
+  }
+  
+  .instructionsStep {
+    display: flex;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+  
+  .instructionsStep:not(:last-of-type)::after {
+    content: '';
+    position: absolute;
+    left: 25px;
+    top: 55px;
+    bottom: -10px;
+    width: 2px;
+    background-color: #9C54AD;
+  }
+  
+  .stepNumber {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #9C54AD;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Travelia Bold', sans-serif;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    margin-right: 1.5rem;
+  }
+  
+  .stepContent {
+    flex: 1;
+  }
+  
+  .stepContent h3 {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.3rem;
+    color: #e0e0e0;
+    margin: 0 0 0.8rem 0;
+  }
+  
+  .stepContent p {
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.95rem;
+    color: #b0b0b0;
+    line-height: 1.5;
+    margin: 0;
+  }
+  
+  .stepContent strong {
+    color: #9C54AD;
+    font-weight: bold;
+  }
+  
+  .proxyDetails {
+    background-color: rgba(156, 84, 173, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+    border-left: 3px solid #9C54AD;
+  }
+  
+  .proxyItem {
+    display: flex;
+    margin-bottom: 0.5rem;
+  }
+  
+  .proxyItem:last-child {
+    margin-bottom: 0;
+  }
+  
+  .proxyLabel {
+    width: 80px;
+    font-family: 'Azeret Mono Bold', monospace;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+  }
+  
+  .proxyValue {
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.9rem;
+    color: #9C54AD;
+    font-weight: bold;
+  }
+  
+  /* Android Connection Methods Styles */
+  .connectionMethods {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  
+  .connectionMethodButton {
+    width: 180px;
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background-color: #2a2a2c;
+    border: 2px solid #3a3a3c;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 1.5rem;
+    color: #e0e0e0;
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.1rem;
+  }
+  
+  .connectionMethodButton:hover {
+    border-color: #9C54AD;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  }
+  
+  .connectionMethodButton:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .methodIcon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(156, 84, 173, 0.15);
+    border-radius: 50%;
+    color: #9C54AD;
+  }
+  
+  /* Android Device List Styles */
+  .deviceListContainer {
+    margin-top: 1.5rem;
+    background-color: #2a2a2c;
+    border-radius: 8px;
+    padding: 1.2rem;
+    width: 100%;
+  }
+  
+  .deviceListHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .deviceListHeader h4 {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.1rem;
+    color: #e0e0e0;
+    margin: 0;
+  }
+  
+  .refreshButton {
+    background-color: #3a3a3c;
+    color: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-family: 'Travelia', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .refreshButton:hover {
+    background-color: #484848;
+  }
+  
+  .refreshButton:active {
+    transform: translateY(1px);
+  }
+  
+  .refreshButton:disabled {
+    background-color: #2a2a2c;
+    color: #5a5a5c;
+    cursor: not-allowed;
+  }
+  
+  .deviceItems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .deviceItem {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background-color: #323234;
+    border: 1px solid #3a3a3c;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .deviceItem:hover {
+    background-color: #3a3a3c;
+    border-color: #9C54AD;
+  }
+  
+  .deviceItem.selectedDevice {
+    border: 2px solid #9C54AD;
+    background-color: rgba(156, 84, 173, 0.15);
+  }
+  
+  .deviceIcon {
+    width: 40px;
+    height: 40px;
+    background-color: #2a2a2c;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: #9C54AD;
+  }
+  
+  .deviceInfo {
+    flex: 1;
+  }
+  
+  .deviceName {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin: 0 0 0.3rem 0;
+  }
+  
+  .deviceStatus {
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.8rem;
+    color: #b0b0b0;
+  }
+  
+  .noDevices {
+    padding: 2rem;
+    text-align: center;
+    color: #b0b0b0;
+    font-family: 'Azeret Mono Light', monospace;
+    background-color: #2a2a2c;
+    border-radius: 8px;
+  }
+  
+  .errorMessage {
+    background-color: rgba(235, 39, 38, 0.15);
+    color: #EB2726;
+    padding: 0.8rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.9rem;
+  }
+  
+  /* Wireless Connection Styles */
+  .connectOptionsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
+  }
+  
+  .qrCodeSection, .manualConnectSection {
+    background-color: #2a2a2c;
+    border-radius: 8px;
+    padding: 1.2rem;
+  }
+  
+  .qrCodeSection h4, .manualConnectSection h4 {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.1rem;
+    color: #e0e0e0;
+    margin: 0 0 0.8rem 0;
+  }
+  
+  .instructionsList {
+    padding-left: 1.5rem;
+    margin: 0.8rem 0 1.2rem 0;
+  }
+  
+  .instructionsList li {
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
+  
+  .qrCodeContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 1.5rem 0;
+  }
+  
+  .qrCode {
+    width: 240px;
+    height: 240px;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  
+  .loadingQrContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #323234;
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+  }
+  
+  .loadingQR {
+    font-family: 'Azeret Mono Light', monospace;
+    color: #b0b0b0;
+    margin-bottom: 1rem;
+  }
+  
+  .pairingInfo {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    max-width: 400px;
+  }
+  
+  .pairingDetail {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .pairingLabel {
+    font-weight: 600;
+    color: #555;
+  }
+  
+  .pairingValue {
+    font-family: monospace;
+    background-color: rgba(0, 0, 0, 0.06);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  
+  .infoMessage {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+  }
+  
+  .manualConnectForm {
+    margin: 1.2rem 0;
+  }
+  
+  .formField {
+    margin-bottom: 1rem;
+  }
+  
+  .formField label {
+    display: block;
+    font-family: 'Travelia', sans-serif;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .formInput {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #323234;
+    border: 1px solid #3a3a3c;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+  }
+  
+  .formInput:focus {
+    outline: none;
+    border-color: #9C54AD;
+  }
+  
+  .connectButton {
+    display: block;
+    width: 100%;
+    background-color: #3C76A9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.8rem;
+    font-family: 'Travelia Bold', sans-serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1.5rem;
+  }
+  
+  .connectButton:hover {
+    background-color: #2c5a86;
+  }
+  
+  .connectButton:active {
+    transform: translateY(1px);
+  }
+  
+  .connectButton:disabled {
+    background-color: #2c5a86;
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  /* Terminal QR Code styles */
+  .terminalQrContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #2a2a2c;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border: 1px dashed #3C76A9; /* Blue */
+  }
+  
+  .terminalQrMessage {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: rgba(60, 118, 169, 0.15); /* Light blue background */
+    padding: 1rem;
+    border-radius: 8px;
+    width: 100%;
+  }
+  
+  .terminalQrMessage svg {
+    color: #3C76A9; /* Blue */
+    flex-shrink: 0;
+  }
+  
+  .terminalQrMessage div {
+    flex: 1;
+  }
+  
+  .terminalQrMessage strong {
+    display: block;
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .terminalQrMessage p {
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .noQrPlaceholder {
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 8px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 200px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  
+  .noQrPlaceholder svg {
+    color: #888;
+    margin-bottom: 16px;
+  }
+  
+  .noQrPlaceholder p {
+    margin: 0;
+    color: #666;
+  }
+  
+  .discoveryStatus {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.9rem;
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .discoveryStatus svg {
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .discoveryStatus p {
+    margin: 0;
+  }
+  
+  .discoveryStatus.waiting {
+    background-color: rgba(255, 196, 0, 0.15);
+    color: #FFC400;
+    border: 1px solid rgba(255, 196, 0, 0.3);
+  }
+  
+  .discoveryStatus.success {
+    background-color: rgba(76, 175, 80, 0.15);
+    color: #4CAF50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+  }
+  
+  .discoveryStatus.error {
+    background-color: rgba(244, 67, 54, 0.15);
+    color: #F44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+  }
+  
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 196, 0, 0.3);
+    border-radius: 50%;
+    border-top-color: #FFC400;
+    animation: spin 1s linear infinite;
+    margin-right: 12px;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* New wireless connection styles */
+  .wirelessConnectionContainer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    .wirelessConnectionContainer {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .qrCodeArea, .connectionInfoArea {
+    background-color: #2a2a2c;
+    border-radius: 8px;
+    padding: 20px;
+    height: 100%;
+  }
+  
+  .connectionInstructions {
+    margin-top: 20px;
+    background-color: #323234;
+    border-radius: 8px;
+    padding: 15px;
+  }
+  
+  .connectionDetails {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .formFields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  
+  .discoveryStatus svg {
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .actionButton {
+    font-family: 'Travelia Bold', sans-serif;
+    font-size: 1.1rem;
+    background-color: #3CB371; /* Green */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 2.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(60, 179, 113, 0.3);
+    display: block;
+    margin: 1.5rem 0;
+    width: 100%;
+  }
+  
+  .actionButton:hover {
+    background-color: #2E8B57; /* Darker green */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(60, 179, 113, 0.4);
+  }
+  
+  .actionButton:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(60, 179, 113, 0.2);
+  }
+  
+  .actionButton:disabled {
+    background-color: #559977;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.7;
+  }
+  
+  .stopButton {
+    background-color: #E74C3C; /* Red */
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+  }
+  
+  .stopButton:hover {
+    background-color: #C0392B; /* Darker red */
+    box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+  }
+  
+  .stopButton:active {
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+  }
+  
+  .stopButton:disabled {
+    background-color: #CC6055;
+  }
+  
+  .statusMessage {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.9rem;
+  }
+  
+  .statusMessage.success {
+    background-color: rgba(60, 179, 113, 0.2);
+    border-left: 3px solid #3CB371;
+    color: #3CB371;
+  }
+  
+  .statusMessage.error {
+    background-color: rgba(231, 76, 60, 0.2);
+    border-left: 3px solid #E74C3C;
+    color: #E74C3C;
+  }
+  
+  .connectionDetails {
+    background-color: #1E1E20;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .connectionDetail {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .connectionDetail:last-child {
+    margin-bottom: 0;
+  }
+  
+  .connectionLabel {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 0.9rem;
+    color: #9C54AD;
+    width: 100px;
+  }
+  
+  .connectionValue {
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    background-color: #2A2A2C;
+    padding: 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    flex: 1;
+  }
+  
+  .copyButton {
+    margin-left: 0.5rem;
+    background-color: #3a3a3c;
+    color: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .copyButton:hover {
+    background-color: #4a4a4c;
+  }
+  
+  .setupInstructions {
+    background-color: rgba(156, 84, 173, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1.5rem;
+    border-left: 3px solid #9C54AD;
+  }
+  
+  .setupInstructions h4 {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.1rem;
+    color: #9C54AD;
+    margin: 0 0 0.8rem 0;
+  }
+  
+  /* Add this to the existing instructionsList styles */
+  .setupInstructions .instructionsList {
+    margin-left: 1.5rem;
+  }
+  
+  .setupInstructions .instructionsList li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .setupInstructions code {
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.85rem;
+    background-color: #2A2A2C;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    color: #e0e0e0;
+  }
+  
+  /* Video Preview Styles */
+  .videoPreviewContainer {
+    position: relative;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+    aspect-ratio: 9/16;
+    width: 100%;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .videoPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #111;
+  }
+  
+  .liveIndicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #ff0000;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  
+  .playOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .playOverlay svg {
+    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+  }
+  
+  .streamStatus {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.85rem;
+  }
+  
+  .streamStatus.active {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+  }
+  
+  .streamStatus.active::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #4CAF50;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+  }
+  
+  .streamStatus.inactive {
+    background-color: rgba(158, 158, 158, 0.2);
+    color: #9E9E9E;
+  }
+  
+  .streamStatus.inactive::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #9E9E9E;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .waitingMessage {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    margin-top: 16px;
+    background-color: rgba(33, 150, 243, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid #2196F3;
+  }
+  
+  .waitingMessage p {
+    margin: 0;
+    color: #2196F3;
+  }
+  
+  .waitingMessage .spinner {
+    border: 2px solid rgba(33, 150, 243, 0.3);
+    border-top-color: #2196F3;
+  }
+  
+  /* Debug Info Styles */
+  .debugInfo {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #1a1a1c;
+    border-radius: 6px;
+    border-left: 3px solid #2196F3;
+  }
+  
+  .debugHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .debugHeader h4 {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 0.9rem;
+    color: #2196F3;
+    margin: 0;
+  }
+  
+  .debugInfo pre {
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.8rem;
+    color: #e0e0e0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+    padding: 0.5rem;
+    background-color: #262628;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .smallButton {
+    background-color: #333336;
+    color: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .smallButton:hover {
+    background-color: #444448;
+  }
+  
+  .smallButton:active {
+    background-color: #555558;
+  }
+  
+  .streamActions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+  }
+  
+  /* Add styles for the force play button and external links */
+  
+  .forcePlayButton {
+    margin-top: 12px;
+    margin-left: auto;
+    padding: 8px 16px;
+    background-color: #3CB371;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Travelia', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    animation: pulse 2s infinite;
+    box-shadow: 0 2px 6px rgba(60, 179, 113, 0.4);
+    transition: all 0.2s ease;
+  }
+  
+  .forcePlayButton:hover {
+    background-color: #2E8B57;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(60, 179, 113, 0.6);
+  }
+  
+  .forcePlayButton:active {
+    transform: translateY(0);
+  }
+  
+  .externalLinks {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .externalLink {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #3a3a3c;
+    color: #e0e0e0;
+    text-decoration: none;
+    border-radius: 4px;
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+  }
+  
+  .externalLink:hover {
+    background-color: #4a4a4c;
+    color: #ffffff;
+  }
+  
+  /* Add styles for stream debugging buttons */
+  .streamActionButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    width: 100%;
+  }
+  
+  .alternativeButton {
+    padding: 8px 16px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Travelia', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+    transition: all 0.2s ease;
+  }
+  
+  .alternativeButton:hover {
+    background-color: #1976D2;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.6);
+  }
+  
+  .debugButton {
+    padding: 8px 16px;
+    background-color: #FF9800;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Travelia', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(255, 152, 0, 0.4);
+    transition: all 0.2s ease;
+  }
+  
+  .debugButton:hover {
+    background-color: #F57C00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.6);
+  }
+  
+  /* New streamOptions layout */
+  .streamOptions {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .optionCard {
+    flex: 1;
+    min-width: 300px;
+    background: #222;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .optionCard h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #fff;
+  }
+  
+  .playButton {
+    background: #3a7bd5;
+    color: white;
+    font-weight: 600;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 15px;
+    transition: background-color 0.2s;
+  }
+  
+  .playButton:hover {
+    background: #2d6abf;
+  }
+  
+  /* Add the flex layout for side-by-side arrangement */
+  .flexLayout {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+  }
+  
+  .videoPreviewSection {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+  }
+  
+  .controlsSection {
+    flex: 2;
+    min-width: 300px;
+  }
+  
+  /* Responsive layout for smaller screens */
+  @media (max-width: 800px) {
+    .flexLayout {
+      flex-direction: column;
+    }
+    
+    .videoPreviewSection {
+      max-width: 100%;
+    }
+    
+    .videoPreviewContainer {
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+  
+  /* ADB Device Section */
+  .adbDeviceSection {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+  }
+  
+  .adbDeviceSection h5 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #fff;
+  }
+  
+  .adbDeviceSection p {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #aaa;
+  }
+  
+  .deviceSelect {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .deviceButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #444;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+  }
+  
+  .deviceButton:hover {
+    background-color: #555;
+  }
+  
+  .deviceButton:active {
+    transform: translateY(1px);
+  }
+  
+  .deviceButton:disabled {
+    background-color: #333;
+    color: #777;
+    cursor: not-allowed;
+  }
+  
+  .deviceName {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+  
+  .deviceTip {
+    font-size: 12px !important;
+    color: #888 !important;
+    font-style: italic;
+  }
+  
+  .appSelectionPanel {
+    width: 100%;
+    padding: 1rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    margin-top: 1rem;
+  }
+  
+  .searchContainer {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .searchInput {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+  
+  .searchInput:focus {
+    outline: none;
+    border-color: var(--accent-color);
+  }
+  
+  .appsGridContainer {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 1rem 0;
+    border: 2px solid #3a3a3c;
+    border-radius: 8px;
+    background: #2a2a2c;
+    padding: 1rem;
+  }
+  
+  /* Custom scrollbar styles */
+  .appsGridContainer::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .appsGridContainer::-webkit-scrollbar-track {
+    background: #2a2a2c;
+    border-radius: 4px;
+  }
+  
+  .appsGridContainer::-webkit-scrollbar-thumb {
+    background: #3a3a3c;
+    border-radius: 4px;
+  }
+  
+  .appsGridContainer::-webkit-scrollbar-thumb:hover {
+    background: #4a4a4c;
+  }
+  
+  .appsGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  
+  .appCard {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: #323234;
+    border: 1px solid #3a3a3c;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+  
+  .appCard:hover {
+    background-color: #3a3a3c;
+    border-color: #9C54AD;
+  }
+  
+  .appCard.selectedApp {
+    border: 2px solid #9C54AD;
+    background-color: rgba(156, 84, 173, 0.15);
+  }
+  
+  .appIcon {
+    width: 32px;
+    height: 32px;
+    background-color: #2a2a2c;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: #9C54AD;
+    flex-shrink: 0;
+  }
+  
+  .appInfo {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  
+  .appName {
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .packageName {
+    font-family: 'Azeret Mono Light', monospace;
+    font-size: 0.75rem;
+    color: #b0b0b0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .secondaryButton {
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+  
+  .secondaryButton:hover:not(:disabled) {
+    background: var(--background-hover);
+    border-color: var(--accent-color);
+  }
+  
+  .secondaryButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .launchButton {
+    width: 100%;
+    margin-top: 1rem;
+  }
+  
+  .noApps, .noSearchResults {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    background: var(--background-primary);
+    border-radius: 4px;
+  }
+  
+  .loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+  }
+  
+  .spinner {
+    border: 2px solid var(--background-secondary);
+    border-top: 2px solid var(--accent-color);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .wirelessPairingSection {
+    margin-top: 1.5rem;
+    width: 100%;
+  }
+  
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #3a3a3c;
+  }
+  
+  .divider span {
+    padding: 0 1rem;
+    color: #808080;
+    font-size: 0.9rem;
+  }
+  
+  .pairNewDeviceButton {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #323234;
+    border: 1px solid #3a3a3c;
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    justify-content: center;
+    font-size: 0.9rem;
+  }
+  
+  .pairNewDeviceButton:hover {
+    background-color: #3a3a3c;
+    border-color: #9C54AD;
+  }
+  
+  .pairNewDeviceButton .methodIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: #9C54AD;
+  }
+  
+  .deviceListContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    background-color: #2a2a2c;
+    border: 2px solid #3a3a3c;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .deviceControls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .proxyButton {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  
+  .proxyButton:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .proxyButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .proxyEnabled {
+    background-color: #e6f4ea;
+    border-color: #34a853;
+    color: #34a853;
+  }
+  
+  .proxyEnabled:hover {
+    background-color: #d2ebd8;
+  }
+  
+  .tabsContainer {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    width: 100%;
+  }
+  
+  .tabButton {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    position: relative;
+    transition: all 0.2s;
+  }
+  
+  .tabButton:hover {
+    color: #000;
+  }
+  
+  .activeTab {
+    color: #000;
+    font-weight: 500;
+  }
+  
+  .activeTab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #000;
+  }
+  
+  .rtmpButton {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #9C54AD;
+    color: var(--color-white);
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-family: 'Travelia', sans-serif;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+  }
+  
+  .rtmpButton:hover {
+    background-color: #8a4899;
+    transform: translateY(-1px);
+  }
+  
+  .rtmpButton:active {
+    transform: translateY(0);
+  }
+  
+  .rtmpButton svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: var(--color-white);
+  } 

@@ -2,17 +2,21 @@
   display: flex;
   height: 100%;
   background-color: #fff;
+  padding-left: 24px;
 }
 
 .sidebar {
   width: 300px;
+  min-width: 300px;
+  background-color: #e0e8f8;
+  overflow-y: auto;
+  padding-left: 16px;
   display: flex;
   flex-direction: column;
-  background-color: #dddddd;
 }
 
 .logoContainer {
-  padding: 16px;
+  padding: 16px 16px 16px 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;

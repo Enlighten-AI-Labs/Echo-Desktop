@@ -44,6 +44,11 @@ function addCrawlerLog(message, type = 'info') {
     console.log(`[Crawler] ${message}`);
   }
   
+  // If we have a main window reference, send the log to the renderer
+  if (global.mainWindow) {
+    global.mainWindow.webContents.send('crawler:log', logEntry);
+  }
+  
   return logEntry;
 }
 
@@ -323,6 +328,9 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
     return;
   }
   
+  // Use provided mainWindow or global.mainWindow
+  const windowRef = mainWindow || global.mainWindow;
+  
   try {
     // Get current activity
     addCrawlerLog('Getting current activity');
@@ -343,7 +351,7 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
       
       if (!newActivity.includes(packageName)) {
         addCrawlerLog(`Failed to return to app ${packageName}, stopping crawler`, 'error');
-        stopAppCrawling();
+        stopAppCrawling(windowRef);
         return;
       }
       
@@ -407,10 +415,10 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
         data: screen
       };
       
-      // Send to renderer if we have a mainWindow reference
-      if (mainWindow) {
-        mainWindow.webContents.send('crawler:newScreen', screen);
-        mainWindow.webContents.send('crawler:progress', {
+      // Send to renderer if we have a windowRef reference
+      if (windowRef) {
+        windowRef.webContents.send('crawler:newScreen', screen);
+        windowRef.webContents.send('crawler:progress', {
           percentage: Math.min(100, Math.round((uniqueScreens.length / crawlerSettings.maxScreens) * 100)),
           screensCount: uniqueScreens.length,
           maxScreens: crawlerSettings.maxScreens
@@ -457,11 +465,11 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
       addCrawlerLog(`Reached maximum number of unique visual states (${crawlerSettings.maxScreens}), stopping crawler`, 'success');
       
       // Generate and return the flow chart data
-      if (mainWindow) {
-        mainWindow.webContents.send('crawler:flowchartData', generateFlowchartData());
+      if (windowRef) {
+        windowRef.webContents.send('crawler:flowchartData', generateFlowchartData());
       }
       
-      stopAppCrawling();
+      stopAppCrawling(windowRef);
       return;
     }
     
@@ -544,7 +552,7 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
       
       // Recursively crawl this new screen, passing the updated path and incremented depth
       addCrawlerLog('Exploring new screen');
-      await crawlScreen(deviceId, packageName, newPath, currentDepth + 1, mainWindow);
+      await crawlScreen(deviceId, packageName, newPath, currentDepth + 1, windowRef);
       
       // Go back to the previous screen
       addCrawlerLog('Going back to previous screen');
@@ -578,14 +586,14 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
     addCrawlerLog(`Error during crawling: ${error.message}`, 'error');
     
     // Emit error event
-    if (mainWindow) {
-      mainWindow.webContents.send('crawler:error', {
+    if (windowRef) {
+      windowRef.webContents.send('crawler:error', {
         message: error.message
       });
     }
     
     // Stop crawler on error
-    stopAppCrawling();
+    stopAppCrawling(windowRef);
   }
 }
 
@@ -598,6 +606,9 @@ async function startAppCrawling(deviceId, packageName, settings, mainWindow = nu
       message: 'Crawler already running'
     };
   }
+  
+  // Use provided mainWindow or global.mainWindow
+  const windowRef = mainWindow || global.mainWindow;
   
   // Initialize state
   crawlerRunning = true;
@@ -621,8 +632,8 @@ async function startAppCrawling(deviceId, packageName, settings, mainWindow = nu
   
   try {
     const log = addCrawlerLog(`Starting app crawler for device ${deviceId} and package ${packageName}`, 'success');
-    if (mainWindow) {
-      mainWindow.webContents.send('crawler:log', log);
+    if (windowRef) {
+      windowRef.webContents.send('crawler:log', log);
     }
     
     // Launch the app
@@ -635,7 +646,7 @@ async function startAppCrawling(deviceId, packageName, settings, mainWindow = nu
     
     // Start the crawl process
     addCrawlerLog('Beginning app exploration');
-    crawlScreen(deviceId, packageName, [], 0, mainWindow);
+    crawlScreen(deviceId, packageName, [], 0, windowRef);
     
     return {
       success: true,
@@ -661,13 +672,16 @@ function stopAppCrawling(mainWindow = null) {
     };
   }
   
+  // Use provided mainWindow or global.mainWindow
+  const windowRef = mainWindow || global.mainWindow;
+  
   crawlerRunning = false;
   const log = addCrawlerLog('Stopping crawler', 'success');
   
   // Emit the log and complete events
-  if (mainWindow) {
-    mainWindow.webContents.send('crawler:log', log);
-    mainWindow.webContents.send('crawler:complete');
+  if (windowRef) {
+    windowRef.webContents.send('crawler:log', log);
+    windowRef.webContents.send('crawler:complete');
   }
   
   return {

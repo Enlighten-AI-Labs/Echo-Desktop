@@ -7,6 +7,7 @@ export default function AppSelector({ isOpen, onClose, onSelectApp }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAppId, setSelectedAppId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     // Only fetch apps when the modal is open
@@ -42,6 +43,10 @@ export default function AppSelector({ isOpen, onClose, onSelectApp }) {
     }
   };
 
+  const filteredApps = apps.filter(app => 
+    app.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -54,16 +59,46 @@ export default function AppSelector({ isOpen, onClose, onSelectApp }) {
           </button>
         </div>
         
+        <div className={styles.searchAndActionsBar}>
+          <div className={styles.searchContainer}>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search apps..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className={styles.actionsContainer}>
+            <button
+              className={styles.refreshButton}
+              onClick={fetchApps}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button 
+              className={styles.selectButton} 
+              onClick={handleSelectApp}
+              disabled={!selectedAppId || loading}
+            >
+              Debug Selected App
+            </button>
+          </div>
+        </div>
+        
         <div className={styles.modalBody}>
           {loading ? (
             <div className={styles.loading}>Loading apps...</div>
           ) : error ? (
             <div className={styles.error}>{error}</div>
-          ) : apps.length === 0 ? (
-            <div className={styles.noApps}>No apps found. Please create an app first.</div>
+          ) : filteredApps.length === 0 ? (
+            <div className={styles.noApps}>
+              {searchQuery ? 'No matching apps found.' : 'No apps found. Please create an app first.'}
+            </div>
           ) : (
             <div className={styles.appsList}>
-              {apps.map(app => (
+              {filteredApps.map(app => (
                 <div
                   key={app.id}
                   className={`${styles.appItem} ${selectedAppId === app.id ? styles.selected : ''}`}
@@ -89,13 +124,6 @@ export default function AppSelector({ isOpen, onClose, onSelectApp }) {
             onClick={onClose}
           >
             Cancel
-          </button>
-          <button 
-            className={styles.selectButton} 
-            onClick={handleSelectApp}
-            disabled={!selectedAppId || loading}
-          >
-            Debug Selected App
           </button>
         </div>
       </div>

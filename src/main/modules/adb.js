@@ -711,7 +711,6 @@ function stopLogcatCapture() {
 // Parse logcat output for Google Analytics events
 function parseLogcatForAnalytics(output) {
   const lines = output.split('\n');
-  
   for (const line of lines) {
     if (line.trim() === '') continue;
     
@@ -726,6 +725,7 @@ function parseLogcatForAnalytics(output) {
     
     // Check if this is the start of a new event with "Logging event:"
     if (line.includes('Logging event:')) {
+      console.log("Logging event: " + line);
       // Extract event name and potential parameters
       const nameMatch = line.match(/name=([a-zA-Z_]+)/);
       const eventName = nameMatch ? nameMatch[1] : 'Unknown Event';
@@ -766,9 +766,8 @@ function parseLogcatForAnalytics(output) {
     // If we're in the middle of an event, accumulate lines
     if (eventStarted) {
       eventBuffer += '\n' + line;
-      
       // Check if we've reached the end of an event
-      if (line.includes('} // End-of-batch') || line.trim() === '}') {
+      if (line.includes('} // End-of-batch') || line.includes('} // End-of-batch')) {
         // Parse the complete event
         const parsedEvent = parseFirebaseEvent(eventBuffer);
         if (parsedEvent) {

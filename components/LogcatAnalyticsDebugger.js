@@ -631,28 +631,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
             Clear Logs
           </button>
           
-          <div className={styles.filterContainer}>
-            <input
-              type="text"
-              placeholder="Logcat Filter (e.g. FA FA-SVC)"
-              value={filter}
-              onChange={handleFilterChange}
-              className={styles.filterInput}
-            />
-            <button 
-              className={styles.applyButton}
-              onClick={handleApplyFilter}
-            >
-              Apply
-            </button>
-          </div>
 
-          <button 
-            className={styles.viewModeButton}
-            onClick={toggleViewMode}
-          >
-            {viewMode === 'parsed' ? 'Switch to Raw View' : 'Switch to Parsed View'}
-          </button>
         </div>
         <div className={styles.toolbarRight}>
           <div className={styles.searchContainer}>
@@ -663,19 +642,6 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
             />
-          </div>
-          
-          <div className={styles.analyticsTypeContainer}>
-            <select 
-              value={analyticsType}
-              onChange={handleAnalyticsTypeChange}
-              className={styles.analyticsTypeSelect}
-            >
-              <option value="all">All Analytics</option>
-              <option value="google">Google Analytics</option>
-              <option value="firebase">Firebase Analytics</option>
-              <option value="adobe">Adobe Analytics</option>
-            </select>
           </div>
           
           <label className={styles.autoRefreshLabel}>
@@ -693,15 +659,9 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
               checked={showOnlyAnalytics}
               onChange={handleToggleOnlyAnalytics}
             />
-            Only Analytics Events
+            Filter for Analytics
           </label>
           
-          <button 
-            className={styles.deviceButton}
-            onClick={handleConnectDevice}
-          >
-            {deviceId ? 'Change Device' : 'Select Device'}
-          </button>
         </div>
       </div>
       

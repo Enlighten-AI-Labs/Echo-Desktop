@@ -26,6 +26,9 @@ let eventBuffer = '';
 let eventStarted = false;
 const MAX_ANALYTICS_LOGS = 5000;
 
+// Variables for network capture
+let networkCaptureProcess = null;
+
 // Download and extract Android platform tools if not already installed
 async function ensureAdbExists() {
   // Check if platform-tools directory already exists
@@ -637,7 +640,7 @@ async function getDevices() {
   }
 }
 
-// Start capturing logcat output
+// Start capturing logcat output and network traffic
 function startLogcatCapture(deviceId, filter = 'FA FA-SVC') {
   if (logcatProcess) {
     console.log('Logcat capture already running, stopping previous capture');
@@ -684,26 +687,12 @@ function startLogcatCapture(deviceId, filter = 'FA FA-SVC') {
       logcatProcess = null;
     });
     
-    return { success: true, message: 'Logcat capture started' };
+    // Start capturing network traffic for analytics requests
+    startNetworkCapture(deviceId);
+    
+    return { success: true, message: 'Logcat and network capture started' };
   } catch (error) {
     console.error('Error starting logcat capture:', error);
-    return { success: false, message: error.message };
-  }
-}
-
-// Stop capturing logcat output
-function stopLogcatCapture() {
-  if (!logcatProcess) {
-    return { success: true, message: 'Logcat capture was not running' };
-  }
-  
-  try {
-    logcatProcess.kill();
-    logcatProcess = null;
-    console.log('Logcat capture stopped');
-    return { success: true, message: 'Logcat capture stopped' };
-  } catch (error) {
-    console.error('Error stopping logcat capture:', error);
     return { success: false, message: error.message };
   }
 }
@@ -849,6 +838,297 @@ function isLogcatRunning() {
   return !!logcatProcess;
 }
 
+// Start capturing network traffic for analytics requests
+function startNetworkCapture(deviceId) {
+  if (networkCaptureProcess) {
+    console.log('Network capture already running, stopping previous capture');
+    stopNetworkCapture();
+  }
+
+  console.log(`Starting network capture for device ${deviceId}`);
+  
+  try {
+    // Use tcpdump to capture HTTP/HTTPS traffic
+    // Filter for Google Analytics and Adobe Analytics requests
+    const tcpdumpCmd = process.platform === 'win32' ? 
+      `"${fullAdbPath}"` : fullAdbPath;
+    
+    const args = [
+      '-s', deviceId,
+      'shell',
+      'tcpdump',
+      '-i', 'any',
+      '-A',  // ASCII output
+      '-s', '0',  // Capture full packets
+      'port 80 or port 443'  // HTTP/HTTPS traffic
+    ];
+    
+    console.log(`Executing network capture: ${tcpdumpCmd} ${args.join(' ')}`);
+    
+    networkCaptureProcess = spawn(tcpdumpCmd, args);
+    
+    // Process the output
+    networkCaptureProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      parseNetworkTrafficForAnalytics(output);
+    });
+    
+    networkCaptureProcess.stderr.on('data', (data) => {
+      console.error(`Network capture error: ${data}`);
+    });
+    
+    networkCaptureProcess.on('close', (code) => {
+      console.log(`Network capture process exited with code ${code}`);
+      networkCaptureProcess = null;
+    });
+    
+    return { success: true, message: 'Network capture started' };
+  } catch (error) {
+    console.error('Error starting network capture:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Stop capturing network traffic
+function stopNetworkCapture() {
+  if (!networkCaptureProcess) {
+    return { success: true, message: 'Network capture was not running' };
+  }
+  
+  try {
+    networkCaptureProcess.kill();
+    networkCaptureProcess = null;
+    console.log('Network capture stopped');
+    return { success: true, message: 'Network capture stopped' };
+  } catch (error) {
+    console.error('Error stopping network capture:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// Parse network traffic for analytics events
+function parseNetworkTrafficForAnalytics(output) {
+  // Split the output into lines
+  const lines = output.split('\n');
+  
+  // Look for HTTP requests
+  let currentRequest = '';
+  let isCollectingRequest = false;
+  
+  for (const line of lines) {
+    // Check if this is the start of an HTTP request
+    if (line.startsWith('GET ') || line.startsWith('POST ')) {
+      // If we were collecting a request, process it
+      if (isCollectingRequest) {
+        processAnalyticsRequest(currentRequest);
+      }
+      
+      // Start collecting a new request
+      currentRequest = line;
+      isCollectingRequest = true;
+      continue;
+    }
+    
+    // If we're collecting a request, add this line
+    if (isCollectingRequest) {
+      currentRequest += '\n' + line;
+      
+      // Check if this is the end of the request (empty line)
+      if (line.trim() === '') {
+        processAnalyticsRequest(currentRequest);
+        isCollectingRequest = false;
+        currentRequest = '';
+      }
+    }
+  }
+  
+  // Process any remaining request
+  if (isCollectingRequest && currentRequest) {
+    processAnalyticsRequest(currentRequest);
+  }
+}
+
+// Process an analytics request
+function processAnalyticsRequest(request) {
+  // Check if this is a Google Analytics request
+  if (isGoogleAnalyticsRequest(request)) {
+    const analyticsEvent = parseGoogleAnalyticsRequest(request);
+    if (analyticsEvent) {
+      analyticsLogs.push(analyticsEvent);
+    }
+  }
+  
+  // Check if this is an Adobe Analytics request
+  if (isAdobeAnalyticsRequest(request)) {
+    const analyticsEvent = parseAdobeAnalyticsRequest(request);
+    if (analyticsEvent) {
+      analyticsLogs.push(analyticsEvent);
+    }
+  }
+}
+
+// Check if a request is a Google Analytics request
+function isGoogleAnalyticsRequest(request) {
+  // Check for various Google Analytics patterns
+  const patterns = [
+    /google-analytics\.com/i,
+    /analytics\.google\.com/i,
+    /firebase\.google\.com/i,
+    /collect\?/i,
+    /google\.com\/analytics/i,
+    /gtag\/js/i,
+    /ga\.js/i
+  ];
+  
+  return patterns.some(pattern => pattern.test(request));
+}
+
+// Check if a request is an Adobe Analytics request
+function isAdobeAnalyticsRequest(request) {
+  // Adobe Analytics requests contain b/ss
+  return /b\/ss/i.test(request);
+}
+
+// Parse a Google Analytics request
+function parseGoogleAnalyticsRequest(request) {
+  try {
+    // Extract the URL from the request
+    const urlMatch = request.match(/^(GET|POST) (.*?) HTTP/);
+    if (!urlMatch) return null;
+    
+    const url = urlMatch[2];
+    
+    // Extract query parameters
+    const queryParams = {};
+    const queryString = url.split('?')[1];
+    if (queryString) {
+      const params = queryString.split('&');
+      for (const param of params) {
+        const [key, value] = param.split('=');
+        if (key && value) {
+          queryParams[decodeURIComponent(key)] = decodeURIComponent(value);
+        }
+      }
+    }
+    
+    // Determine the event type based on parameters
+    let eventName = 'Unknown Event';
+    let eventType = 'unknown';
+    
+    // Check for Firebase Analytics
+    if (url.includes('firebase.google.com') || url.includes('google-analytics.com/collect')) {
+      eventType = 'firebase';
+      
+      // Try to extract event name from various parameters
+      if (queryParams['en']) {
+        eventName = queryParams['en'];
+      } else if (queryParams['ec']) {
+        eventName = queryParams['ec'];
+      } else if (queryParams['ea']) {
+        eventName = queryParams['ea'];
+      }
+    }
+    // Check for standard Google Analytics
+    else if (url.includes('google-analytics.com')) {
+      eventType = 'ga';
+      
+      // Try to extract event name
+      if (queryParams['ec']) {
+        eventName = queryParams['ec'];
+      } else if (queryParams['ea']) {
+        eventName = queryParams['ea'];
+      } else if (queryParams['t']) {
+        eventName = queryParams['t'];
+      }
+    }
+    
+    // Create the event object
+    const event = {
+      timestamp: new Date().toISOString(),
+      eventName: eventName,
+      eventType: eventType,
+      message: `Network Request: ${url.substring(0, 100)}${url.length > 100 ? '...' : ''}`,
+      rawLog: request,
+      params: queryParams,
+      source: 'network'
+    };
+    
+    return event;
+  } catch (error) {
+    console.error('Error parsing Google Analytics request:', error);
+    return null;
+  }
+}
+
+// Parse an Adobe Analytics request
+function parseAdobeAnalyticsRequest(request) {
+  try {
+    // Extract the URL from the request
+    const urlMatch = request.match(/^(GET|POST) (.*?) HTTP/);
+    if (!urlMatch) return null;
+    
+    const url = urlMatch[2];
+    
+    // Extract query parameters
+    const queryParams = {};
+    const queryString = url.split('?')[1];
+    if (queryString) {
+      const params = queryString.split('&');
+      for (const param of params) {
+        const [key, value] = param.split('=');
+        if (key && value) {
+          queryParams[decodeURIComponent(key)] = decodeURIComponent(value);
+        }
+      }
+    }
+    
+    // Try to extract event name
+    let eventName = 'Adobe Analytics Event';
+    if (queryParams['events']) {
+      eventName = queryParams['events'];
+    } else if (queryParams['pe']) {
+      eventName = queryParams['pe'];
+    }
+    
+    // Create the event object
+    const event = {
+      timestamp: new Date().toISOString(),
+      eventName: eventName,
+      eventType: 'adobe',
+      message: `Adobe Analytics Request: ${url.substring(0, 100)}${url.length > 100 ? '...' : ''}`,
+      rawLog: request,
+      params: queryParams,
+      source: 'network'
+    };
+    
+    return event;
+  } catch (error) {
+    console.error('Error parsing Adobe Analytics request:', error);
+    return null;
+  }
+}
+
+// Stop capturing logcat output
+function stopLogcatCapture() {
+  if (!logcatProcess) {
+    return { success: true, message: 'Logcat capture was not running' };
+  }
+  
+  try {
+    logcatProcess.kill();
+    logcatProcess = null;
+    console.log('Logcat capture stopped');
+    
+    // Also stop network capture
+    stopNetworkCapture();
+    
+    return { success: true, message: 'Logcat and network capture stopped' };
+  } catch (error) {
+    console.error('Error stopping logcat capture:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   ensureAdbExists,
   fullAdbPath,
@@ -863,10 +1143,13 @@ module.exports = {
   launchApp,
   executeCommand,
   execAdbCommand,
-  // New logcat functionality
+  // Logcat functionality
   startLogcatCapture,
   stopLogcatCapture,
   getAnalyticsLogs,
   clearAnalyticsLogs,
-  isLogcatRunning
+  isLogcatRunning,
+  // Network capture functionality
+  startNetworkCapture,
+  stopNetworkCapture
 }; 

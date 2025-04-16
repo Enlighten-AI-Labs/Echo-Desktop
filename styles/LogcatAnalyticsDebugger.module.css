@@ -2,9 +2,9 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
-  padding: 12px;
-  font-size: 12px;
+  background-color: #E9EDF3;
+  color: #262628;
+  font-family: 'Azeret Mono Light', monospace;
 }
 
 .header {
@@ -24,192 +24,79 @@
   gap: 8px;
 }
 
-.captureButton {
-  padding: 6px 12px;
-  background-color: #2c7be5;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.captureButton:hover {
-  background-color: #1a68d1;
-}
-
-.captureButton.active {
-  background-color: #e53e3e;
-}
-
-.captureButton.active:hover {
-  background-color: #c53030;
-}
-
-.content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.tabs {
-  display: flex;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 8px;
-}
-
-.tab {
-  padding: 6px 10px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  font-size: 12px;
-}
-
-.tab.active {
-  border-bottom-color: #2c7be5;
-  font-weight: 500;
-}
-
-.logsList {
-  flex: 1;
-  overflow-y: auto;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  padding: 8px;
-}
-
-.message {
-  padding: 6px 8px;
-  border-radius: 4px;
-  margin-bottom: 4px;
-  background-color: white;
-  border-left: 3px solid #718096;
-}
-
-.message h3 {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-}
-
-.timestamp {
-  color: #718096;
-  font-size: 11px;
-  margin-bottom: 4px;
-}
-
-.params {
-  margin-top: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.param {
-  display: flex;
-  font-size: 11px;
-}
-
-.paramName {
-  font-weight: 500;
-  margin-right: 8px;
-  min-width: 100px;
-}
-
-.rawLog {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 11px;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  color: #4a5568;
-  line-height: 1.4;
-}
-
-.status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #edf2f7;
-  padding: 6px 10px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  font-size: 11px;
-}
-
-.statusIndicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.statusDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #718096;
-}
-
-.statusDot.running {
-  background-color: #38a169;
-}
-
-.statusDot.disconnected {
-  background-color: #e53e3e;
-}
-
-.clearButton {
-  padding: 6px 12px;
-  background-color: #718096;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.clearButton:hover {
-  background-color: #4a5568;
-}
-
-.emptyMessage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #718096;
-  font-size: 12px;
-  text-align: center;
-}
-
-.messageContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-}
-
-.message p {
-  margin-bottom: 16px;
-  color: #757575;
-  line-height: 1.5;
-  font-size: 13px;
-}
-
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: #262628;
+  border-bottom: 1px solid #3C76A9;
+  width: 100%;
+  gap: 16px;
 }
 
-.toolbarLeft, .toolbarRight {
+.toolbarLeft {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.captureButton {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 120px;
+  text-align: center;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
+}
+
+.startButton {
+  background-color: #3C76A9;
+  color: white;
+}
+
+.startButton:hover {
+  background-color: #2d5a7a;
+}
+
+.stopButton {
+  background-color: #EB2726;
+  color: white;
+}
+
+.stopButton:hover {
+  background-color: #c01f1e;
+}
+
+.clearButton {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+  text-align: center;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
+}
+
+.clearButton:hover {
+  background-color: #3C76A9;
 }
 
 .clearButton:disabled {
@@ -217,105 +104,153 @@
   cursor: not-allowed;
 }
 
-.deviceButton {
-  background-color: #2196f3;
-  color: white;
-}
-
-.deviceButton:hover {
-  background-color: #1e88e5;
-}
-
 .filterContainer {
   display: flex;
   align-items: center;
+  gap: 8px;
+  flex: 1;
 }
 
-.filterInput, .searchInput {
-  padding: 6px 10px;
+.filterInput {
+  padding: 8px 12px;
   border-radius: 4px;
-  border: 1px solid #e0e0e0;
-  font-size: 12px;
+  border: 1px solid #3C76A9;
+  background-color: #262628;
+  color: white;
+  width: 100%;
+  min-width: 200px;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
 }
 
 .applyButton {
-  background-color: #9e9e9e;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: #3C76A9;
   color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
 }
 
 .applyButton:hover {
-  background-color: #757575;
+  background-color: #2d5a7a;
 }
 
 .searchContainer {
+  display: flex;
+  align-items: center;
   flex: 1;
+}
+
+.searchInput {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: #262628;
+  color: white;
+  width: 100%;
+  min-width: 200px;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
+}
+
+.analyticsTypeContainer {
+  display: flex;
+  align-items: center;
+  min-width: 150px;
+}
+
+.analyticsTypeSelect {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: #262628;
+  color: white;
+  cursor: pointer;
+  width: 100%;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
 }
 
 .autoRefreshLabel {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  color: white;
   cursor: pointer;
-  font-size: 12px;
+  white-space: nowrap;
+  font-family: 'Doto Semi-Bold', sans-serif;
+  font-size: 14px;
 }
 
-.emptyState {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #757575;
-  font-size: 16px;
-  padding: 24px;
+.deviceButton {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: transparent;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
   text-align: center;
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 14px;
 }
 
-.twoColumnLayout {
-  display: flex;
-  height: calc(100% - 65px);
-  overflow: hidden;
+.deviceButton:hover {
+  background-color: #3C76A9;
+}
+
+.threeColumnLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  height: calc(100vh - 57px);
+  background-color: #E9EDF3;
 }
 
 .logList {
-  width: 40%;
-  padding: 16px;
   background-color: white;
-  border-right: 1px solid #e0e0e0;
   overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid #E9EDF3;
 }
 
-.logList h3, .rawLogsContainer h3 {
-  margin-top: 0;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e0e0e0;
-  color: #333;
-  font-size: 14px;
+.columnHeader {
+  margin: 0 0 16px 0;
+  color: #262628;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Travelia Bold', sans-serif;
+}
+
+.sectionHeader {
+  margin: 0 0 8px 0;
+  color: #262628;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Travelia Medium', sans-serif;
 }
 
 .logItem {
   padding: 12px;
-  margin-bottom: 8px;
   border-radius: 4px;
-  background-color: #f9f9f9;
+  background-color: #E9EDF3;
+  margin-bottom: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
-}
-
-.logItem.systemMessage {
-  background-color: #e8f4f8;
-  border-left: 3px solid #64b5f6;
-  font-style: italic;
+  transition: background-color 0.2s;
 }
 
 .logItem:hover {
-  background-color: #f0f0f0;
+  background-color: #d8dde5;
 }
 
 .logItem.selected {
-  background-color: #e3f2fd;
-  border-left: 3px solid #2196f3;
+  background-color: #3C76A9;
+  color: white;
 }
 
 .logItemHeader {
@@ -326,190 +261,264 @@
 }
 
 .eventName {
-  font-weight: 600;
-  color: #2196f3;
+  font-weight: 500;
+  color: inherit;
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.eventType {
+  margin-left: 8px;
   font-size: 12px;
+  color: inherit;
+  opacity: 0.8;
 }
 
 .logTimestamp {
-  font-size: 11px;
-  color: #757575;
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.8;
+  font-family: 'Doto Semi-Bold', sans-serif;
 }
 
 .logPreview {
-  font-size: 11px;
-  color: #616161;
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: 'Azeret Mono Light', monospace;
 }
 
 .logDetail {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
   background-color: white;
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid #E9EDF3;
 }
 
 .logDetailContent {
-  background-color: white;
-  border-radius: 4px;
+  height: 100%;
 }
 
 .logDetailHeader {
   margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logDetailHeader h3 {
-  margin: 0;
-  color: #333;
-  font-size: 14px;
 }
 
 .logDetailTimestamp {
-  color: #757575;
   font-size: 12px;
+  color: #262628;
+  opacity: 0.8;
+  font-family: 'Doto Semi-Bold', sans-serif;
 }
 
 .eventParams {
-  margin-bottom: 24px;
-}
-
-.eventParams h4, .rawLog h4 {
-  margin-top: 0;
-  margin-bottom: 6px;
-  color: #424242;
-  font-size: 13px;
+  margin-top: 16px;
 }
 
 .paramsTable {
-  border: 1px solid #e0e0e0;
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #E9EDF3;
   border-radius: 4px;
   overflow: hidden;
 }
 
-.paramsTable table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
 .paramsTable th {
-  background-color: #f5f5f5;
   text-align: left;
   padding: 8px;
-  font-weight: 600;
-  color: #424242;
-  border-bottom: 1px solid #e0e0e0;
   font-size: 12px;
+  color: #262628;
+  border-bottom: 1px solid #E9EDF3;
+  background-color: #E9EDF3;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .paramsTable td {
   padding: 8px;
-  border-bottom: 1px solid #e0e0e0;
-  vertical-align: top;
   font-size: 12px;
+  border-bottom: 1px solid #E9EDF3;
+  font-family: 'Azeret Mono Light', monospace;
 }
 
-.paramsTable tr:last-child td {
-  border-bottom: none;
+.paramName {
+  color: #3C76A9;
+  width: 40%;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .paramValue {
-  color: #616161;
-  max-width: 100%;
-  overflow-wrap: break-word;
-  font-size: 12px;
+  color: #262628;
+  word-break: break-all;
 }
 
 .arrayValue {
-  max-height: 150px;
-  overflow-y: auto;
-  background-color: #f5f5f5;
-  padding: 6px;
-  border-radius: 4px;
-  font-family: monospace;
+  font-family: 'Azeret Mono Light', monospace;
   white-space: pre-wrap;
-  font-size: 11px;
+  background-color: #E9EDF3;
+  padding: 4px;
+  border-radius: 2px;
 }
 
 .noParams {
-  padding: 12px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  color: #757575;
-  text-align: center;
+  color: #262628;
+  opacity: 0.7;
   font-size: 12px;
+  padding: 8px;
+  font-family: 'Azeret Mono Light', monospace;
 }
 
-.rawLogsContainer {
+.screenshotColumn {
+  background-color: white;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.screenshotControls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.retakeButton,
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #3C76A9;
+  background-color: transparent;
+  color: #262628;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-family: 'Travelia Bold', sans-serif;
+}
+
+.retakeButton:hover {
+  background-color: #3C76A9;
+  color: white;
+}
+
+.deleteButton:hover {
+  background-color: #EB2726;
+  border-color: #EB2726;
+  color: white;
+}
+
+.retakeButton:disabled,
+.deleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.screenshotContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #E9EDF3;
+  border-radius: 4px;
   padding: 16px;
-  background-color: white;
+}
+
+.screenshotWrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  height: calc(100% - 65px);
 }
 
-.rawLogsContent {
-  flex: 1;
-  overflow-y: auto;
-  background-color: #f5f5f5;
+.screenshot {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.screenshotInfo {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #262628;
+  opacity: 0.7;
+  font-family: 'Doto Semi-Bold', sans-serif;
+}
+
+.dimensions {
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.screenshotLoading {
+  color: #262628;
+  opacity: 0.7;
+  font-size: 14px;
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.noScreenshot {
+  text-align: center;
+  color: #262628;
+  opacity: 0.7;
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.noScreenshot p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #262628;
+  opacity: 0.7;
+  font-size: 14px;
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.systemMessage {
+  background-color: #E9EDF3;
+  border-left: 3px solid #9C54AD;
+}
+
+.networkLog {
+  background-color: #E9EDF3;
+  border-left: 3px solid #3C76A9;
+}
+
+.noSelection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #262628;
+  opacity: 0.7;
+  font-size: 14px;
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.rawView {
+  margin-top: 16px;
+  background-color: #262628;
   border-radius: 4px;
-  padding: 8px;
+  overflow: hidden;
 }
 
-.rawLogEntry {
-  margin-bottom: 12px;
-  background-color: white;
-  border-radius: 4px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.rawLogEntry.systemMessage {
-  background-color: #e8f4f8;
-  border-left: 3px solid #64b5f6;
-  font-style: italic;
-}
-
-.rawLogTimestamp {
-  display: block;
-  font-size: 11px;
-  color: #757575;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.rawLogMessage {
+.rawLog {
   margin: 0;
-  white-space: pre-wrap;
-  font-family: monospace;
-  font-size: 11px;
-  color: #424242;
-  background-color: #f9f9f9;
-  padding: 6px;
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
-.viewModeButton {
-  background-color: #673ab7;
+  padding: 16px;
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 12px;
+  line-height: 1.5;
   color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-}
-
-.viewModeButton:hover {
-  background-color: #5e35b1;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
 } 

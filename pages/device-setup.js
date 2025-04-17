@@ -310,7 +310,7 @@ export default function DeviceSetup() {
     setLaunchStatus({ step: 'starting', message: 'Starting launch process...' });
 
     try {
-      console.log('Launching app:', selectedApp.packageName);
+      console.log('Launching app:', selectedApp);
 
       // Set Firebase Analytics debug properties and start logcat capture
       setLaunchStatus({ step: 'debug', message: 'Setting up Firebase Analytics debug mode...' });
@@ -350,7 +350,8 @@ export default function DeviceSetup() {
       // Launch the app on the device
       setLaunchStatus({ step: 'launchApp', message: 'Launching app on device...' });
       console.log('Launching app on device:', selectedDevice);
-      const launchResult = await window.api.adb.launchApp(selectedDevice, selectedApp.packageName);
+      console.log('App package name:', selectedApp);
+      const launchResult = await window.api.adb.launchApp(selectedDevice, selectedApp);
 
       if (!launchResult.success) {
         throw new Error(`Failed to launch app: ${launchResult.message}`);

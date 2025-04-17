@@ -112,36 +112,14 @@ function shuffleArray(array) {
 async function getCurrentActivity(deviceId, packageName) {
   try {
     // Get the full window dump and parse it in JS instead of using grep
-    const output = await execAdbCommand(`-s ${deviceId} shell dumpsys window windows`);
-    
-    // Look for mCurrentFocus or mFocusedApp in the output
-    const currentFocusMatch = output.match(/mCurrentFocus=.*?(\S+\/\S+)/);
-    const focusedAppMatch = output.match(/mFocusedApp=.*?(\S+\/\S+)/);
-    
-    if (currentFocusMatch && currentFocusMatch[1]) {
-      return currentFocusMatch[1];
-    } else if (focusedAppMatch && focusedAppMatch[1]) {
-      return focusedAppMatch[1];
-    }
-    
-    addCrawlerLog('Could not find current activity in dumpsys output, trying fallback', 'warning');
     
     // Fallback approach - get activities dump and parse in JS
     const activitiesOutput = await execAdbCommand(`-s ${deviceId} shell dumpsys activity activities`);
-    const resumedMatch = activitiesOutput.match(/mResumedActivity.*?(\S+\/\S+)/);
-    if (resumedMatch && resumedMatch[1]) {
-      return resumedMatch[1];
-    }
-    
-    // Additional fallback - check if we can get the package name directly
-    if (packageName) {
-      addCrawlerLog(`Using provided package name as fallback: ${packageName}`, 'warning');
-      return packageName + "/unknown";
-    }
-    
-    // Return a default if all attempts fail
-    addCrawlerLog('All attempts to get current activity failed', 'error');
-    return '';
+    var Tasks = activitiesOutput.split("Application tokens in top down Z order:")[1]
+    Tasks = Tasks.split("rootHomeTask")[0]
+    Tasks = Tasks.split("*")
+    var Task = Tasks[2].split(" ")[3]
+    return Task
   } catch (error) {
     addCrawlerLog(`Error getting current activity: ${error.message}`, 'error');
     // If we can't get the activity, just return empty string
@@ -333,7 +311,6 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
   
   try {
     // Get current activity
-    addCrawlerLog('Getting current activity');
     const currentActivity = await getCurrentActivity(deviceId, packageName);
     
     // Check if we're still in the app package if stayInApp is enabled
@@ -458,8 +435,6 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
       }
     }
     
-    addCrawlerLog(`Found ${elements.length} elements, ${clickableElements.length} clickable`);
-    
     // Check if we've reached the maximum number of unique visual states
     if (uniqueScreens.length >= crawlerSettings.maxScreens) {
       addCrawlerLog(`Reached maximum number of unique visual states (${crawlerSettings.maxScreens}), stopping crawler`, 'success');
@@ -525,8 +500,6 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
       const maxClickedToUse = Math.max(3, Math.floor(shuffledClicked.length * 0.3));
       elementsToTry.push(...shuffledClicked.slice(0, maxClickedToUse));
     }
-    
-    addCrawlerLog(`Selected ${elementsToTry.length} elements to try clicking in random order`);
     
     // Click on selected elements one by one
     for (const element of elementsToTry) {
@@ -631,10 +604,6 @@ async function startAppCrawling(deviceId, packageName, settings, mainWindow = nu
   screenEdges = {};
   
   try {
-    const log = addCrawlerLog(`Starting app crawler for device ${deviceId} and package ${packageName}`, 'success');
-    if (windowRef) {
-      windowRef.webContents.send('crawler:log', log);
-    }
     
     // Launch the app
     addCrawlerLog(`Launching app ${packageName}`);
@@ -645,7 +614,7 @@ async function startAppCrawling(deviceId, packageName, settings, mainWindow = nu
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Start the crawl process
-    addCrawlerLog('Beginning app exploration');
+    addCrawlerLog('Beginning app exploration', 'success');
     crawlScreen(deviceId, packageName, [], 0, windowRef);
     
     return {

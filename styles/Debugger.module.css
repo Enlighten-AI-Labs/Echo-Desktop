@@ -443,6 +443,7 @@
   padding: 8px;
   font-family: monospace;
   font-size: 12px;
+  scroll-behavior: smooth;
 }
 
 .logEntry {
@@ -487,6 +488,11 @@
   height: 100%;
   color: #666;
   font-style: italic;
+}
+
+.logsEndRef {
+  height: 1px;
+  width: 100%;
 }
 
 /* Right panel styles */

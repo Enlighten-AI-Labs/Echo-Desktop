@@ -616,6 +616,22 @@ export default function DebuggerPage() {
     }
   };
 
+  // Scroll to bottom of logs when new logs are added
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  // Auto-collapse settings when crawl starts
+  useEffect(() => {
+    if (crawlStatus === 'running') {
+      setLeftPanelCollapsed(false);
+      setRightPanelCollapsed(false);
+      setSplitRatio(50);
+    }
+  }, [crawlStatus]);
+
   return (
     <>
       <Head>
@@ -759,7 +775,10 @@ export default function DebuggerPage() {
                     <h2>Crawler Logs</h2>
                     <button 
                       className={styles.clearLogsButton}
-                      onClick={() => setLogs([])}
+                      onClick={() => {
+                        setLogs([]);
+                        logsRef.current = [];
+                      }}
                     >
                       Clear Logs
                     </button>
@@ -767,16 +786,18 @@ export default function DebuggerPage() {
                   
                   <div className={styles.logsContainer}>
                     {logs.length > 0 ? (
-                      logs.map((log, index) => (
-                        <div key={index} className={`${styles.logEntry} ${styles[log.type] || styles.info}`}>
-                          <span className={styles.logTime}>{formatTime(log.timestamp)}</span>
-                          <span className={styles.logMessage}>{log.message}</span>
-                        </div>
-                      ))
+                      <>
+                        {logs.map((log, index) => (
+                          <div key={index} className={`${styles.logEntry} ${styles[log.type] || styles.info}`}>
+                            <span className={styles.logTime}>{formatTime(log.timestamp)}</span>
+                            <span className={styles.logMessage}>{log.message}</span>
+                          </div>
+                        ))}
+                        <div ref={logsEndRef} className={styles.logsEndRef} />
+                      </>
                     ) : (
                       <div className={styles.emptyLogs}>No logs yet</div>
                     )}
-                    <div ref={logsEndRef} />
                   </div>
                 </div>
               </div>

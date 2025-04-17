@@ -102,7 +102,9 @@ export default function DebuggerPage() {
     maxScreens: 20,
     screenDelay: 1000, // ms between actions
     ignoreElements: ['android.widget.ImageView'], // Element types to ignore for interaction
-    stayInApp: true
+    stayInApp: true,
+    mode: 'random', // 'random', 'orderly', or 'ai'
+    aiPrompt: '' // Prompt for AI-powered crawling
   });
   
   // New state variables for vertical split
@@ -111,6 +113,9 @@ export default function DebuggerPage() {
   const [startY, setStartY] = useState(0);
   const leftPanelRef = useRef(null);
   
+  // New state for AI prompt modal
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+
   useEffect(() => {
     // Get query parameters when the page loads
     if (router.isReady) {
@@ -226,10 +231,38 @@ export default function DebuggerPage() {
 
   // App Crawler Functions
   const handleSettingsChange = (setting, value) => {
+    setCrawlSettings(prev => {
+      const newSettings = {
+        ...prev,
+        [setting]: value
+      };
+      
+      // If mode is changed to AI, show the prompt modal
+      if (setting === 'mode' && value === 'ai') {
+        setShowAiPrompt(true);
+      }
+      
+      return newSettings;
+    });
+  };
+  
+  const handleAiPromptSave = (prompt) => {
     setCrawlSettings(prev => ({
       ...prev,
-      [setting]: value
+      aiPrompt: prompt
     }));
+    setShowAiPrompt(false);
+  };
+  
+  const handleAiPromptCancel = () => {
+    // If no prompt is set, revert to random mode
+    if (!crawlSettings.aiPrompt) {
+      setCrawlSettings(prev => ({
+        ...prev,
+        mode: 'random'
+      }));
+    }
+    setShowAiPrompt(false);
   };
   
   const toggleConfig = () => {
@@ -800,6 +833,27 @@ export default function DebuggerPage() {
                         </label>
                       </div>
                       
+                      <div className={styles.settingItem}>
+                        <label>Mode</label>
+                        <select
+                          value={crawlSettings.mode}
+                          onChange={(e) => handleSettingsChange('mode', e.target.value)}
+                        >
+                          <option value="random">Random</option>
+                          <option value="orderly">Orderly</option>
+                          <option value="ai">AI</option>
+                        </select>
+                      </div>
+                      
+                      <div className={styles.settingItem}>
+                        <label>AI Prompt</label>
+                        <input 
+                          type="text" 
+                          value={crawlSettings.aiPrompt}
+                          onChange={(e) => handleSettingsChange('aiPrompt', e.target.value)}
+                        />
+                      </div>
+                      
                       <div className={styles.deviceInfo}>
                         <p><strong>Device ID:</strong> {deviceId || 'Not selected'}</p>
                         <p><strong>Package Name:</strong> {packageName || 'Not selected'}</p>
@@ -1129,6 +1183,53 @@ export default function DebuggerPage() {
             </div>
             <div className={styles.xmlPopupContent}>
               <pre>{beautifyXml(currentScreen.xml)}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* AI Prompt Modal */}
+      {showAiPrompt && (
+        <div className={styles.aiPromptModal} onClick={() => handleAiPromptCancel()}>
+          <div className={styles.aiPromptContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.aiPromptHeader}>
+              <h3>AI-Powered Crawling</h3>
+              <button 
+                className={styles.aiPromptClose}
+                onClick={() => handleAiPromptCancel()}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <p>Enter a prompt to guide the AI in exploring your app. For example:</p>
+            <ul>
+              <li>"Focus on testing the checkout flow"</li>
+              <li>"Explore user authentication features"</li>
+              <li>"Test all CRUD operations in the app"</li>
+            </ul>
+            <textarea
+              className={styles.aiPromptTextarea}
+              value={crawlSettings.aiPrompt}
+              onChange={(e) => handleSettingsChange('aiPrompt', e.target.value)}
+              placeholder="Enter your instructions for the AI..."
+            />
+            <div className={styles.aiPromptButtons}>
+              <button 
+                className={`${styles.aiPromptButton} ${styles.cancel}`}
+                onClick={() => handleAiPromptCancel()}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`${styles.aiPromptButton} ${styles.save}`}
+                onClick={() => handleAiPromptSave(crawlSettings.aiPrompt)}
+                disabled={!crawlSettings.aiPrompt.trim()}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>

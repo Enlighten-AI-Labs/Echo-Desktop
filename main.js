@@ -1729,7 +1729,6 @@ ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
 
 
 // Button click tracking
-const buttonClickCounts = {};
 
 
 

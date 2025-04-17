@@ -98,14 +98,49 @@ function createScreenshotHash(screenshotBase64) {
   return crypto.createHash('md5').update(screenshotBase64).digest('hex');
 }
 
-// Helper function to shuffle an array (Fisher-Yates shuffle)
+// Shuffle array only if in random mode
 function shuffleArray(array) {
+  if (crawlerSettings.mode !== 'random') {
+    return array;
+  }
+  
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
   return newArray;
+}
+
+// Helper function to sort elements in orderly mode
+function sortElementsByPosition(elements) {
+  return elements.sort((a, b) => {
+    // First sort by vertical position (top to bottom)
+    if (Math.abs(a.bounds.top - b.bounds.top) > 20) {
+      return a.bounds.top - b.bounds.top;
+    }
+    // Then by horizontal position (left to right)
+    return a.bounds.left - b.bounds.left;
+  });
+}
+
+// Helper function to prioritize elements based on AI prompt
+function prioritizeElementsByAiPrompt(elements, prompt) {
+  // This is a simple implementation. In a real app, you would use
+  // a more sophisticated NLP approach or call an external AI service
+  const keywords = prompt.toLowerCase().split(/\s+/);
+  
+  return elements.sort((a, b) => {
+    const aText = a.class.toLowerCase();
+    const bText = b.class.toLowerCase();
+    
+    const aScore = keywords.reduce((score, keyword) => 
+      score + (aText.includes(keyword) ? 1 : 0), 0);
+    const bScore = keywords.reduce((score, keyword) => 
+      score + (bText.includes(keyword) ? 1 : 0), 0);
+    
+    return bScore - aScore;
+  });
 }
 
 // Helper function to get current activity
@@ -485,20 +520,39 @@ async function crawlScreen(deviceId, packageName, navigationPath = [], currentDe
     const shuffledUnclicked = shuffleArray([...unclickedElements]);
     const shuffledClicked = shuffleArray([...clickedElements]);
     
-    // Select a subset of elements to try (prioritize unclicked)
-    const elementsToTry = [];
+    // Select elements based on crawl mode
+    let elementsToTry = [];
     
-    // Always prefer unclicked elements first, but in random order
-    if (shuffledUnclicked.length > 0) {
-      // Take all unclicked elements, but in random order
-      elementsToTry.push(...shuffledUnclicked);
-    }
-    
-    // Add some previously clicked elements too (but fewer of them)
-    if (shuffledClicked.length > 0) {
-      // Take up to 3 clicked elements or 30% of them, whichever is greater
-      const maxClickedToUse = Math.max(3, Math.floor(shuffledClicked.length * 0.3));
-      elementsToTry.push(...shuffledClicked.slice(0, maxClickedToUse));
+    switch (crawlerSettings.mode) {
+      case 'orderly':
+        // Sort elements by position (top to bottom, left to right)
+        elementsToTry = sortElementsByPosition([...unclickedElements]);
+        // Add previously clicked elements at the end, also sorted
+        if (clickedElements.length > 0) {
+          elementsToTry.push(...sortElementsByPosition([...clickedElements]));
+        }
+        break;
+        
+      case 'ai':
+        // Prioritize elements based on AI prompt
+        elementsToTry = prioritizeElementsByAiPrompt([...unclickedElements], crawlerSettings.aiPrompt);
+        // Add previously clicked elements at the end, also prioritized
+        if (clickedElements.length > 0) {
+          elementsToTry.push(...prioritizeElementsByAiPrompt([...clickedElements], crawlerSettings.aiPrompt));
+        }
+        break;
+        
+      case 'random':
+      default:
+        // Keep existing random behavior
+        if (shuffledUnclicked.length > 0) {
+          elementsToTry.push(...shuffledUnclicked);
+        }
+        if (shuffledClicked.length > 0) {
+          const maxClickedToUse = Math.max(3, Math.floor(shuffledClicked.length * 0.3));
+          elementsToTry.push(...shuffledClicked.slice(0, maxClickedToUse));
+        }
+        break;
     }
     
     // Click on selected elements one by one

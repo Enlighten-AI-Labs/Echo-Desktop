@@ -626,517 +626,253 @@ export default function DeviceSetup() {
     router.push('/rtmp-setup');
   };
 
-  var content = null;
-
-  // Android ADB setup instructions view
-  if (showAndroidInstructions || showIOSInstructions) {
-    content = (
-      <>
-        <Head>
-          <title>Android Setup | Echo Desktop</title>
-          <meta name="description" content="Android ADB Setup" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/favicon.ico" />
-        </Head>
-        <div className={styles.header}>
-            <button 
-              className={styles.backButton}
-              onClick={handleBack}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-              Back
-            </button>
-            <h1 className={styles.pageTitle}>Device Setup</h1>
-            <button 
-              className={styles.rtmpButton}
-              onClick={handleRTMPClick}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/>
-              </svg>
-              RTMP Setup
-            </button>
+  var content = (
+    <div className={styles.splitView}>
+      {/* Android Section */}
+      <div className={styles.platformSection}>
+        <h2>Android</h2>
+        <div className={styles.instructionsContainer}>
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>1</div>
+            <div className={styles.stepContent}>
+              <h3>Enable USB Debugging</h3>
+              <p>On your Android device, go to <strong>Settings &gt; About phone</strong> and tap <strong>Build number</strong> 7 times to enable Developer Options.</p>
+              <p>Then go to <strong>Settings &gt; Developer options</strong> and enable <strong>USB debugging</strong>.</p>
+            </div>
           </div>
-        <div className={styles.container} style={{display: 'flex', flexDirection: 'row', width: '100%', alignItems: 'flex-start'}}>
-          <div className={styles.container} style={{width: '50%', minHeight: '100vh'}}>
-          <div className={styles.content}>
-            <div className={styles.instructionsContainer} style={{minHeight: '80vh', minWidth: '95%'}}>
-              <h2 className={styles.instructionsTitle}>Android</h2>
-              
-              {!androidConnectionMethod ? (
-                // Connection method selection
-                <>
-                  <div className={styles.instructionsStep}>
-                    <div className={styles.stepNumber}>1</div>
-                    <div className={styles.stepContent}>
-                      <h3>Enable USB Debugging</h3>
-                      <p>On your Android device, go to <strong>Settings &gt; About phone</strong> and tap <strong>Build number</strong> 7 times to enable Developer Options.</p>
-                      <p>Then go to <strong>Settings &gt; Developer options</strong> and enable <strong>USB debugging</strong>.</p>
+          
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>2</div>
+            <div className={styles.stepContent}>
+              <h3>Connect Your Device</h3>
+              <div className={styles.deviceListContainer}>
+                <div className={styles.deviceListHeader}>
+                  <h4>Available USB Devices</h4>
+                  <div className={styles.deviceControls}>
+                    {selectedDevice && (
+                      <>
+                        <button 
+                          className={`${styles.proxyButton} ${proxyStatus.enabled ? styles.proxyEnabled : ''}`}
+                          onClick={proxyStatus.enabled ? clearDeviceProxy : setDeviceProxy}
+                          disabled={proxyStatus.loading}
+                        >
+                          {proxyStatus.loading ? 'Working...' : proxyStatus.enabled ? 'Disable Proxy' : 'Enable Proxy'}
+                        </button>
+                      </>
+                    )}
+                    <button 
+                      className={styles.refreshButton}
+                      onClick={fetchConnectedDevices}
+                      disabled={isLoadingDevices}
+                    >
+                      {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
+                </div>
+                
+                {connectionError && (
+                  <div className={styles.errorMessage}>{connectionError}</div>
+                )}
+                
+                {connectedDevices.length > 0 ? (
+                  <div className={styles.deviceItems}>
+                    {connectedDevices.map(device => (
+                      <div 
+                        key={device.id}
+                        className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
+                        onClick={() => {
+                          setSelectedDevice(device.id);
+                          fetchInstalledApps();
+                        }}
+                      >
+                        <div className={styles.deviceIcon}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h1c0.55,0 1,-0.45 1,-1V8H6v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zm17,0c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zm-4.97,-5.84l1.3,-1.3c0.2,-0.2 0.2,-0.51 0,-0.71c-0.2,-0.2 -0.51,-0.2 -0.71,0l-1.48,1.48C13.85,1.23 12.95,1 12,1c-0.96,0 -1.86,0.23 -2.66,0.63L7.85,0.15c-0.2,-0.2 -0.51,-0.2 -0.71,0c-0.2,0.2 -0.2,0.51 0,0.71l1.31,1.31C6.97,3.26 6,5.01 6,7h12c0,-1.99 -0.97,-3.75 -2.47,-4.84zM10,5H9V4h1v1zm5,0h-1V4h1v1z"/>
+                          </svg>
+                        </div>
+                        <div className={styles.deviceInfo}>
+                          <div className={styles.deviceName}>
+                            {device.name || device.id}
+                          </div>
+                          <div className={styles.deviceStatus}>
+                            {device.status === 'device' ? 'Connected' : device.status}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.noDevices}>
+                    {isLoadingDevices ? 
+                      'Searching for devices...' : 
+                      'No devices found. Make sure USB debugging is enabled and your device is connected.'}
+                  </div>
+                )}
+
+                <div className={styles.wirelessPairingSection}>
+                  <div className={styles.divider}>
+                    <span>or</span>
+                  </div>
+                  <button 
+                    className={styles.pairNewDeviceButton}
+                    onClick={() => {
+                      setAndroidConnectionMethod('wireless');
+                      generateQrCode();
+                    }}
+                  >
+                    <div className={styles.methodIcon}>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                      </svg>
                     </div>
+                    <span>Pair New Device Wirelessly</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {selectedDevice && (
+            <div className={styles.instructionsStep}>
+              <div className={styles.stepNumber}>3</div>
+              <div className={styles.stepContent}>
+                <h3>Select App to Debug</h3>
+                <div className={styles.appSelectionPanel}>
+                  <div className={styles.searchContainer}>
+                    <input
+                      type="text"
+                      className={styles.searchInput}
+                      placeholder="Search installed apps..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <button 
+                      className={`${styles.refreshButton} ${styles.secondaryButton}`}
+                      onClick={fetchInstalledApps}
+                      disabled={isLoadingApps}
+                    >
+                      {isLoadingApps ? 'Refreshing...' : 'Refresh'}
+                    </button>
                   </div>
                   
-                  <div className={styles.instructionsStep}>
-                    <div className={styles.stepNumber}>2</div>
-                    <div className={styles.stepContent}>
-                      <h3>Connect Your Device</h3>
-                      <div className={styles.deviceListContainer}>
-                        <div className={styles.deviceListHeader}>
-                          <h4>Available USB Devices</h4>
-                          <div className={styles.deviceControls}>
-                            {selectedDevice && (
-                              <>
-                                <button 
-                                  className={`${styles.proxyButton} ${proxyStatus.enabled ? styles.proxyEnabled : ''}`}
-                                  onClick={proxyStatus.enabled ? clearDeviceProxy : setDeviceProxy}
-                                  disabled={proxyStatus.loading}
-                                >
-                                  {proxyStatus.loading ? 'Working...' : proxyStatus.enabled ? 'Disable Proxy' : 'Enable Proxy'}
-                                </button>
-                              </>
-                            )}
-                            <button 
-                              className={styles.refreshButton}
-                              onClick={fetchConnectedDevices}
-                              disabled={isLoadingDevices}
-                            >
-                              {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {connectionError && (
-                          <div className={styles.errorMessage}>{connectionError}</div>
-                        )}
-                        
-                        {connectedDevices.length > 0 ? (
-                          <div className={styles.deviceItems}>
-                            {connectedDevices.map(device => (
-                              <div 
-                                key={device.id}
-                                className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
-                                onClick={() => {
-                                  setSelectedDevice(device.id);
-                                  fetchInstalledApps();
-                                }}
-                              >
-                                <div className={styles.deviceIcon}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                    <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h1c0.55,0 1,-0.45 1,-1V8H6v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zm17,0c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zm-4.97,-5.84l1.3,-1.3c0.2,-0.2 0.2,-0.51 0,-0.71c-0.2,-0.2 -0.51,-0.2 -0.71,0l-1.48,1.48C13.85,1.23 12.95,1 12,1c-0.96,0 -1.86,0.23 -2.66,0.63L7.85,0.15c-0.2,-0.2 -0.51,-0.2 -0.71,0c-0.2,0.2 -0.2,0.51 0,0.71l1.31,1.31C6.97,3.26 6,5.01 6,7h12c0,-1.99 -0.97,-3.75 -2.47,-4.84zM10,5H9V4h1v1zm5,0h-1V4h1v1z"/>
-                                  </svg>
-                                </div>
-                                <div className={styles.deviceInfo}>
-                                  <div className={styles.deviceName}>
-                                    {device.name || device.id}
-                                  </div>
-                                  <div className={styles.deviceStatus}>
-                                    {device.status === 'device' ? 'Connected' : device.status}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                  {appError && (
+                    <div className={styles.errorMessage}>{appError}</div>
+                  )}
+                  
+                  {isLoadingApps ? (
+                    <div className={styles.loadingContainer}>
+                      <div className={styles.spinner}></div>
+                      <p>Loading installed apps...</p>
+                    </div>
+                  ) : apps.length === 0 ? (
+                    <div className={styles.noApps}>
+                      <p>No apps found on this device. Make sure third-party apps are installed.</p>
+                    </div>
+                  ) : (
+                    <div className={styles.appsGridContainer}>
+                      <div className={styles.appsGrid}>
+                        {filteredApps.length === 0 ? (
+                          <div className={styles.noSearchResults}>No apps match your search</div>
                         ) : (
-                          <div className={styles.noDevices}>
-                            {isLoadingDevices ? 
-                              'Searching for devices...' : 
-                              'No devices found. Make sure USB debugging is enabled and your device is connected.'}
-                          </div>
-                        )}
-
-                        <div className={styles.wirelessPairingSection}>
-                          <div className={styles.divider}>
-                            <span>or</span>
-                          </div>
-                          <button 
-                            className={styles.pairNewDeviceButton}
-                            onClick={() => {
-                              setAndroidConnectionMethod('wireless');
-                              generateQrCode();
-                            }}
-                          >
-                            <div className={styles.methodIcon}>
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
-                              </svg>
-                            </div>
-                            <span>Pair New Device Wirelessly</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.instructionsStep}>
-                    <div className={styles.stepNumber}>1</div>
-                    <div className={styles.stepContent}>
-                      <h3>{androidConnectionMethod === 'usb' ? 'Connect via USB' : 'Connect Wirelessly'}</h3>
-                      {androidConnectionMethod === 'usb' ? (
-                        <>
-                          <p>Connect your Android device to this computer using a USB cable.</p>
-                          <p>If prompted on your device, allow USB debugging for this computer.</p>
-                        </>
-                      ) : (
-                        <>
-                          <p>Make sure your Android device and this computer are on the same WiFi network.</p>
-                          <div className={styles.wirelessConnectionContainer}>
-                            {/* QR Code Section */}
-                            <div className={styles.qrCodeArea}>
-                              <h4>Scan QR Code (Android 11+)</h4>
-                              
-                              {qrCodeData ? (
-                                <div className={styles.qrCodeContainer}>
-                                  {qrCodeData.qrCodePath ? (
-                                    <img 
-                                      src={qrCodeData.qrCodePath} 
-                                      alt="ADB Pairing QR Code"
-                                      className={styles.qrCode}
-                                    />
-                                  ) : (
-                                    <div className={styles.noQrPlaceholder}>
-                                      <p>No QR code available</p>
-                                    </div>
-                                  )}
-
-                                  {discoveryStatus && (
-                                    <div className={`${styles.discoveryStatus} ${styles[discoveryStatus.status]}`}>
-                                      {discoveryStatus.status === 'waiting' && (
-                                        <div className={styles.spinner}></div>
-                                      )}
-                                      {discoveryStatus.status === 'success' && (
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                      )}
-                                      {discoveryStatus.status === 'error' && (
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <circle cx="12" cy="12" r="10"></circle>
-                                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                                        </svg>
-                                      )}
-                                      <p>{discoveryStatus.message}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className={styles.loadingQrContainer}>
-                                  <div className={styles.loadingQR}>
-                                    {pairingInProgress ? 'Generating QR code...' : 'Failed to generate QR code'}
-                                  </div>
-                                  {!pairingInProgress && (
-                                    <button 
-                                      className={styles.refreshButton}
-                                      onClick={generateQrCode}
-                                    >
-                                      Try Again
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                              
-                              <div className={styles.connectionInstructions}>
-                                <ol className={styles.instructionsList}>
-                                  <li>Go to <strong>Settings</strong> → <strong>Developer options</strong> → <strong>Wireless debugging</strong></li>
-                                  <li>Turn on Wireless debugging</li>
-                                  <li>Tap <strong>Pair device with QR code</strong></li>
-                                  <li>Scan the QR code above</li>
-                                </ol>
-                              </div>
-                            </div>
-
-                            {/* Manual Connection Section */}
-                            <div className={styles.manualConnectForm}>
-                              <h4>Manual Connection</h4>
-                              <div className={styles.formField}>
-                                <label htmlFor="ipAddress">IP Address:</label>
-                                <input
-                                  id="ipAddress"
-                                  type="text"
-                                  value={manualIpAddress}
-                                  onChange={(e) => setManualIpAddress(e.target.value)}
-                                  placeholder="192.168.1.100"
-                                  className={styles.formInput}
-                                />
-                              </div>
-                              <div className={styles.formFields}>
-                                <div className={styles.formField}>
-                                  <label htmlFor="port">Port:</label>
-                                  <input
-                                    id="port"
-                                    type="text"
-                                    value={manualPort}
-                                    onChange={(e) => setManualPort(e.target.value)}
-                                    placeholder="5555"
-                                    className={styles.formInput}
-                                  />
-                                </div>
-                                <div className={styles.formField}>
-                                  <label htmlFor="pairingCode">Pairing Code:</label>
-                                  <input
-                                    id="pairingCode"
-                                    type="text"
-                                    value={pairingCode}
-                                    onChange={(e) => setPairingCode(e.target.value)}
-                                    placeholder="123456"
-                                    className={styles.formInput}
-                                  />
-                                </div>
-                              </div>
-                              <button 
-                                className={styles.connectButton}
-                                onClick={connectToDevice}
-                                disabled={pairingInProgress || !manualIpAddress}
-                              >
-                                {pairingInProgress ? 'Connecting...' : 'Connect'}
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={styles.instructionsStep}>
-                    <div className={styles.stepNumber}>2</div>
-                    <div className={styles.stepContent}>
-                      <h3>Connected Devices</h3>
-                      <div className={styles.deviceListContainer}>
-                        <div className={styles.deviceListHeader}>
-                          <h4>Available Devices</h4>
-                          <button 
-                            className={styles.refreshButton}
-                            onClick={fetchConnectedDevices}
-                            disabled={isLoadingDevices}
-                          >
-                            {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
-                          </button>
-                        </div>
-                        
-                        {connectionError && (
-                          <div className={styles.errorMessage}>{connectionError}</div>
-                        )}
-                        
-                        {connectedDevices.length > 0 ? (
-                          <div className={styles.deviceItems}>
-                            {connectedDevices.map(device => (
-                              <div 
-                                key={device.id}
-                                className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
-                                onClick={() => {
-                                  setSelectedDevice(device.id);
-                                  fetchInstalledApps();
-                                }}
-                              >
-                                <div className={styles.deviceIcon}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                    <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h1c0.55,0 1,-0.45 1,-1V8H6v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zm17,0c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zm-4.97,-5.84l1.3,-1.3c0.2,-0.2 0.2,-0.51 0,-0.71c-0.2,-0.2 -0.51,-0.2 -0.71,0l-1.48,1.48C13.85,1.23 12.95,1 12,1c-0.96,0 -1.86,0.23 -2.66,0.63L7.85,0.15c-0.2,-0.2 -0.51,-0.2 -0.71,0c-0.2,0.2 -0.2,0.51 0,0.71l1.31,1.31C6.97,3.26 6,5.01 6,7h12c0,-1.99 -0.97,-3.75 -2.47,-4.84zM10,5H9V4h1v1zm5,0h-1V4h1v1z"/>
-                                  </svg>
-                                </div>
-                                <div className={styles.deviceInfo}>
-                                  <div className={styles.deviceName}>
-                                    {device.name || device.id}
-                                  </div>
-                                  <div className={styles.deviceStatus}>
-                                    {device.status === 'device' ? 'Connected' : device.status}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className={styles.noDevices}>
-                            {isLoadingDevices ? 
-                              'Searching for devices...' : 
-                              'No devices found. Make sure USB debugging is enabled and your device is connected.'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-              {selectedDevice && (
-                    <div className={styles.instructionsStep}>
-                      <div className={styles.stepNumber}>3</div>
-                      <div className={styles.stepContent}>
-                        <h3>Select App to Debug</h3>
-                        <div className={styles.appSelectionPanel}>
-                          <div className={styles.searchContainer}>
-                            <input
-                              type="text"
-                              className={styles.searchInput}
-                              placeholder="Search installed apps..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <button 
-                              className={`${styles.refreshButton} ${styles.secondaryButton}`}
-                              onClick={fetchInstalledApps}
-                              disabled={isLoadingApps}
+                          filteredApps.map(app => (
+                            <div
+                              key={app.packageName}
+                              className={`${styles.appCard} ${selectedApp === app.packageName ? styles.selectedApp : ''}`}
+                              onClick={() => setSelectedApp(app.packageName)}
                             >
-                              {isLoadingApps ? 'Refreshing...' : 'Refresh'}
-                            </button>
-                          </div>
-                          
-                          {appError && (
-                            <div className={styles.errorMessage}>{appError}</div>
-                          )}
-                          
-                          {isLoadingApps ? (
-                            <div className={styles.loadingContainer}>
-                              <div className={styles.spinner}></div>
-                              <p>Loading installed apps...</p>
-                            </div>
-                          ) : apps.length === 0 ? (
-                            <div className={styles.noApps}>
-                              <p>No apps found on this device. Make sure third-party apps are installed.</p>
-                            </div>
-                          ) : (
-                            <div className={styles.appsGridContainer}>
-                              <div className={styles.appsGrid}>
-                                {filteredApps.length === 0 ? (
-                                  <div className={styles.noSearchResults}>No apps match your search</div>
-                                ) : (
-                                  filteredApps.map(app => (
-                                    <div
-                                      key={app.packageName}
-                                      className={`${styles.appCard} ${selectedApp === app ? styles.selectedApp : ''}`}
-                                      onClick={() => setSelectedApp(app)}
-                                    >
-                                      <div className={styles.appIcon}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
-                                          <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2m0 2v14h14V5H5z"/>
-                                        </svg>
-                                      </div>
-                                      <div className={styles.appInfo}>
-                                        <h3 className={styles.appName}>{app.appName}</h3>
-                                        <p className={styles.packageName}>{app.packageName}</p>
-                                      </div>
-                                    </div>
-                                  ))
-                                )}
+                              <div className={styles.appIcon}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M17 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H7V5h10v14z" fill="currentColor"/>
+                                  <path d="M12 7c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" fill="currentColor"/>
+                                </svg>
+                              </div>
+                              <div className={styles.appInfo}>
+                                <p className={styles.packageName}>{app.packageName}</p>
                               </div>
                             </div>
-                          )}
-
-                          {selectedApp && (
-                            <button 
-                              className={`${styles.continueButton} ${styles.launchButton}`}
-                              onClick={handleAppLaunch}
-                              disabled={isLoadingApps}
-                            >
-                              Launch & Debug
-                            </button>
-                          )}
-                        </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
-              {isLoadingApps && launchStatus.step && (
-                <div className={styles.overlayLoading}>
-                  <div className={styles.loadingContent}>
-                    <div className={styles.spinner}></div>
-                    <h3>{launchStatus.step === 'error' ? 'Error' : 'Launching App'}</h3>
-                    <p>{launchStatus.message}</p>
-                    {launchStatus.step === 'error' && (
-                      <button 
-                        className={styles.retryButton}
-                        onClick={() => {
-                          setAppError('');
-                          setIsLoadingApps(false);
-                          setLaunchStatus({ step: '', message: '' });
-                        }}
-                      >
-                        Dismiss
-                      </button>
-                    )}
-                  </div>
+
+                  {selectedApp && (
+                    <button 
+                      className={`${styles.continueButton} ${styles.launchButton}`}
+                      onClick={handleAppLaunch}
+                      disabled={isLoadingApps}
+                    >
+                      Launch & Debug
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* iOS Section */}
+      <div className={styles.platformSection}>
+        <h2>iOS</h2>
+        <div className={styles.instructionsContainer}>
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>1</div>
+            <div className={styles.stepContent}>
+              <h3>Connect to the same WiFi network</h3>
+              <p>Make sure your iOS device and this computer are on the same WiFi network.</p>
             </div>
           </div>
+
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>2</div>
+            <div className={styles.stepContent}>
+              <h3>Install the MitmProxy certificate</h3>
+              <p>On your iOS device, go to <strong>http://mitm.it</strong> in Safari and install the certificate for iOS.</p>
+            </div>
           </div>
-          <div className={styles.container} style={{width: '50%', minHeight: '100vh' }}>
-          
-          <div className={styles.content}>
-            <div className={styles.instructionsContainer} style={{minHeight: '80vh', minWidth: '95%'}}>
-              <h2 className={styles.instructionsTitle}>iOS</h2>
-              
-              <div className={styles.instructionsStep}>
-                <div className={styles.stepNumber}>1</div>
-                <div className={styles.stepContent}>
-                  <h3>Connect to the same WiFi network</h3>
-                  <p>Make sure your iOS device and this computer are on the same WiFi network.</p>
+
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>3</div>
+            <div className={styles.stepContent}>
+              <h3>Trust the certificate</h3>
+              <p>Go to <strong>Settings &gt; General &gt; About &gt; Certificate Trust Settings</strong> and enable full trust for the MitmProxy certificate.</p>
+            </div>
+          </div>
+
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>4</div>
+            <div className={styles.stepContent}>
+              <h3>Set up proxy</h3>
+              <p>Go to <strong>Settings &gt; WiFi</strong>, tap the (i) icon next to your network, scroll down to "Configure Proxy" and select "Manual".</p>
+              <div className={styles.proxyDetails}>
+                <div className={styles.proxyItem}>
+                  <span className={styles.proxyLabel}>Server:</span>
+                  <span className={styles.proxyValue}>{localIp}</span>
+                </div>
+                <div className={styles.proxyItem}>
+                  <span className={styles.proxyLabel}>Port:</span>
+                  <span className={styles.proxyValue}>8080</span>
                 </div>
               </div>
-              
-              <div className={styles.instructionsStep}>
-                <div className={styles.stepNumber}>2</div>
-                <div className={styles.stepContent}>
-                  <h3>Install the MitmProxy certificate</h3>
-                  <p>On your iOS device, go to <strong>http://mitm.it</strong> in Safari and install the certificate for iOS.</p>
-                </div>
-              </div>
-              
-              <div className={styles.instructionsStep}>
-                <div className={styles.stepNumber}>3</div>
-                <div className={styles.stepContent}>
-                  <h3>Trust the certificate</h3>
-                  <p>Go to <strong>Settings {`>`} General {`>`} About {`>`} Certificate Trust Settings</strong> and enable full trust for the MitmProxy certificate.</p>
-                </div>
-              </div>
-              
-              <div className={styles.instructionsStep}>
-                <div className={styles.stepNumber}>4</div>
-                <div className={styles.stepContent}>
-                  <h3>Set up proxy</h3>
-                  <p>Go to <strong>Settings {`>`} WiFi</strong>, tap the (i) icon next to your network, scroll down to "Configure Proxy" and select "Manual".</p>
-                  <div className={styles.proxyDetails}>
-                    <div className={styles.proxyItem}>
-                      <span className={styles.proxyLabel}>Server:</span>
-                      <span className={styles.proxyValue} id="proxy-ip">{localIp}</span>
-                    </div>
-                    <div className={styles.proxyItem}>
-                      <span className={styles.proxyLabel}>Port:</span>
-                      <span className={styles.proxyValue}>8080</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className={styles.instructionsStep}>
-                <div className={styles.stepNumber}>5</div>
-                <div className={styles.stepContent}>
-                  <h3>Start capturing</h3>
-                  <p>Once configured, click the button below to start capturing network traffic.</p>
-                </div>
-              </div>
-              
-              <button 
-                className={styles.continueButton}
-                onClick={handleStartCapturing}
-              >
+            </div>
+          </div>
+
+          <div className={styles.instructionsStep}>
+            <div className={styles.stepNumber}>5</div>
+            <div className={styles.stepContent}>
+              <h3>Start capturing</h3>
+              <p>Once configured, click the button below to start capturing network traffic.</p>
+              <button className={styles.continueButton}>
                 Start Capturing
               </button>
             </div>
           </div>
-          </div>
         </div>
+      </div>
+    </div>
+  );
 
-      </>
-    );
-  }
-
-  if (showAndroidInstructions || showIOSInstructions) {
-    return content;
-  }
-
-  // Platform selection view
   return (
     <>
       <Head>
@@ -1156,7 +892,7 @@ export default function DeviceSetup() {
             </svg>
             Back
           </button>
-          <h1 className={styles.pageTitle}>Android Device Setup</h1>
+          <h1 className={styles.pageTitle}>Device Setup</h1>
           <button 
             className={styles.rtmpButton}
             onClick={handleRTMPClick}

@@ -1,51 +1,51 @@
 @import './fonts.css';
 
 @font-face {
-  font-family: 'Travelia';
-  src: url('/fonts/Travelia-Bold.woff2') format('woff2');
+  font-family: 'Travelia Bold';
+  src: url('/fonts/Travelia-Bold.woff2') format('woff2'),
+       url('/fonts/Travelia-Bold.woff') format('woff');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Travelia';
-  src: url('/fonts/Travelia-Black.woff2') format('woff2');
+  font-family: 'Travelia Black';
+  src: url('/fonts/Travelia-Black.woff2') format('woff2'),
+       url('/fonts/Travelia-Black.woff') format('woff');
   font-weight: 900;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Travelia';
-  src: url('/fonts/Travelia-Medium.woff2') format('woff2');
+  font-family: 'Travelia Medium';
+  src: url('/fonts/Travelia-Medium.woff2') format('woff2'),
+       url('/fonts/Travelia-Medium.woff') format('woff');
   font-weight: 500;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Azeret Mono';
-  src: url('/fonts/AzeretMono-Light.woff2') format('woff2');
+  font-family: 'Azeret Mono Light';
+  src: url('/fonts/AzeretMono-Light.woff2') format('woff2'),
+       url('/fonts/AzeretMono-Light.woff') format('woff');
   font-weight: 300;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Azeret Mono';
-  src: url('/fonts/AzeretMono-Regular.woff2') format('woff2');
+  font-family: 'Azeret Mono Regular';
+  src: url('/fonts/AzeretMono-Regular.woff2') format('woff2'),
+       url('/fonts/AzeretMono-Regular.woff') format('woff');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Doto';
-  src: url('/fonts/Doto-SemiBold.woff2') format('woff2');
+  font-family: 'Doto Semi-Bold';
+  src: url('/fonts/Doto-SemiBold.woff2') format('woff2'),
+       url('/fonts/Doto-SemiBold.woff') format('woff');
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
 }
 
 @font-face {
@@ -57,6 +57,24 @@
 }
 
 :root {
+  /* Font Families */
+  --font-primary-bold: 'Travelia Bold', sans-serif;
+  --font-primary-black: 'Travelia Black', sans-serif;
+  --font-primary-medium: 'Travelia Medium', sans-serif;
+  --font-body-light: 'Azeret Mono Light', monospace;
+  --font-body-regular: 'Azeret Mono Regular', monospace;
+  --font-supporting: 'Doto Semi-Bold', sans-serif;
+
+  /* Font Sizes */
+  --font-size-header: 200px;
+  --font-size-subheader: 50px;
+  --font-size-body: 30px;
+  --font-size-small: 14px;
+  --font-size-xs: 12px;
+
+  /* Line Heights */
+  --line-height-body: 42px; /* 40% more than font size */
+
   /* Brand Colors */
   --color-black: #262628;
   --color-purple: #9C54AD;
@@ -134,5 +152,59 @@ a {
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
+  }
+}
+
+/* Typography Utility Classes */
+.header-bold {
+  font-family: var(--font-primary-bold);
+  font-size: var(--font-size-header);
+  line-height: 1.2;
+}
+
+.header-black {
+  font-family: var(--font-primary-black);
+  font-size: var(--font-size-header);
+  line-height: 1.2;
+}
+
+.subheader {
+  font-family: var(--font-primary-medium);
+  font-size: var(--font-size-subheader);
+  line-height: 1.3;
+}
+
+.body-light {
+  font-family: var(--font-body-light);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.body-regular {
+  font-family: var(--font-body-regular);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.supporting-text {
+  font-family: var(--font-supporting);
+  font-size: var(--font-size-body);
+  line-height: 1.4;
+}
+
+/* Responsive Typography */
+@media (max-width: 1200px) {
+  :root {
+    --font-size-header: 160px;
+    --font-size-subheader: 40px;
+    --font-size-body: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --font-size-header: 120px;
+    --font-size-subheader: 32px;
+    --font-size-body: 20px;
   }
 } 

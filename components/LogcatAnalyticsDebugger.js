@@ -393,7 +393,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
       
       setTimeout(async () => {
         await loadScreenshotData(selectedLog.id);
-        setSelectedScreenshot(screenshots[selectedLog.id]);
+        setSelectedScreenshot(screenshots[selectedLog.id]?.dataUrl || null);
       }, 500);
     } catch (error) {
       console.error('Error retaking screenshot:', error);
@@ -420,7 +420,7 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
       if (screenshots[selectedLog.id] && !screenshots[selectedLog.id].dataUrl) {
         loadScreenshotData(selectedLog.id);
       }
-      setSelectedScreenshot(screenshots[selectedLog.id]);
+      setSelectedScreenshot(screenshots[selectedLog.id]?.dataUrl || null);
     } else {
       setSelectedScreenshot(null);
     }
@@ -523,14 +523,16 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
   
   // Filter logs based on search query
   const filteredLogs = searchQuery
-    ? analyticsLogs.filter(log => 
-        log.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (log.eventName && log.eventName.toLowerCase().includes(searchQuery.toLowerCase())))
+    ? analyticsLogs.filter(log => {
+        const message = log.rawData || log.message;
+        return message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (log.eventName && log.eventName.toLowerCase().includes(searchQuery.toLowerCase()));
+      })
     : analyticsLogs;
     
   // Further filter to show only real analytics events
   const isAnalyticsEvent = (log) => {
-    if (!log || !log.rawLog) return false;
+    if (!log) return false;
     
     // Always show system messages
     if (log.isSystemMessage) return true;
@@ -538,29 +540,12 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     // If log has a source property, it's from network capture
     if (log.source === 'network') return true;
     
-    const message = log.rawLog;
-    log.message = log.rawLog;
+    const message = log.rawData || log.message;
+    if (!message) return false;
     
     // Check for "Logging event:" pattern first as it's the most common
     if (message.includes('Logging event:')) {
-      // Extract the event name
-      /* const eventMatch = message.match(/name=([^,]+)/);
-      if (eventMatch) {
-        const eventName = eventMatch[1].replace(/\(_vs\)/, '').trim();
-        // Valid event names we want to capture
-        const validEvents = [
-          'screen_view',
-          'view_item',
-          'view_item_list',
-          'select_item',
-          'add_to_cart',
-          'remove_from_cart',
-          'begin_checkout',
-          'purchase'
-        ];
-        return validEvents.some(event => eventName.includes(event));
-      } */
-      return true; // If we can't extract the name but it has "Logging event:", show it anyway
+      return true;
     }
     
     // Fallback patterns for other analytics events
@@ -616,227 +601,178 @@ export default function LogcatAnalyticsDebugger({ deviceId, packageName, show })
     <div className={styles.container}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <button 
-            className={`${styles.captureButton} ${isCapturing ? styles.stopButton : styles.startButton}`}
+          <button
+            className={`${styles.button} ${isCapturing ? styles.stopButton : styles.startButton}`}
             onClick={handleToggleCapture}
           >
-            {isCapturing ? 'Stop Capture' : 'Start Capture'}
+            <span className="body-regular">
+              {isCapturing ? 'Stop Capture' : 'Start Capture'}
+            </span>
           </button>
-          
-          <button 
-            className={styles.clearButton}
+          <button
+            className={`${styles.button} ${styles.clearButton}`}
             onClick={handleClearLogs}
-            disabled={analyticsLogs.length === 0}
           >
-            Clear Logs
+            <span className="body-regular">Clear Events</span>
           </button>
-          
-
-        </div>
-        <div className={styles.toolbarRight}>
-          <div className={styles.searchContainer}>
+          <div className={styles.filterContainer}>
             <input
               type="text"
+              className={`${styles.searchInput} body-light`}
               placeholder="Search events..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={styles.searchInput}
             />
           </div>
-          
-          <label className={styles.autoRefreshLabel}>
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={handleToggleAutoRefresh}
-            />
-            Auto Refresh
-          </label>
-          
-          <label className={styles.autoRefreshLabel}>
-            <input
-              type="checkbox"
-              checked={showOnlyAnalytics}
-              onChange={handleToggleOnlyAnalytics}
-            />
-            Filter for Analytics
-          </label>
-          
+        </div>
+        <div className={styles.toolbarRight}>
+          <select
+            className={`${styles.select} body-regular`}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="all">All Analytics</option>
+            <option value="firebase">Firebase Only</option>
+            <option value="adobe">Adobe Only</option>
+          </select>
+          <button
+            className={`${styles.viewModeButton} ${viewMode === 'parsed' ? styles.activeMode : ''}`}
+            onClick={() => setViewMode('parsed')}
+          >
+            <span className="supporting-text">Parsed</span>
+          </button>
+          <button
+            className={`${styles.viewModeButton} ${viewMode === 'raw' ? styles.activeMode : ''}`}
+            onClick={() => setViewMode('raw')}
+          >
+            <span className="supporting-text">Raw</span>
+          </button>
+          <div className={styles.autoRefreshContainer}>
+            <label className="supporting-text">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={handleToggleAutoRefresh}
+              />
+              Auto Refresh
+            </label>
+          </div>
         </div>
       </div>
-      
-      {displayedLogs.length === 0 ? (
-        <div className={styles.emptyState}>
-          {isCapturing ? (
-            <p>Waiting for analytics events to be captured...</p>
-          ) : (
-            <p>No analytics events captured. Click "Start Capture" to begin monitoring.</p>
-          )}
-        </div>
-      ) : (
-        <div className={styles.threeColumnLayout}>
-          {/* Events Column */}
-          <div className={styles.logList}>
-            <h3 className={styles.columnHeader}>Analytics Events ({displayedLogs.length})</h3>
-            {displayedLogs.map((log, index) => {
-              if (!log) return null;
-              try {
-                const eventName = parseEventName(log);
-                const eventType = log.eventType || (log.message?.includes('b/ss') ? 'adobe' : 
-                  (log.message?.includes('firebase') || log.message?.includes('FA-SVC') ? 'firebase' : 
-                  (log.message?.includes('google-analytics') ? 'ga' : 'unknown')));
-                
-                return (
-                  <div 
-                    key={index}
-                    className={`${styles.logItem} ${selectedLog === log ? styles.selected : ''} ${log.isSystemMessage ? styles.systemMessage : ''} ${log.source === 'network' ? styles.networkLog : ''}`}
-                    onClick={() => setSelectedLog(log)}
-                  >
-                    <div className={styles.logItemHeader}>
-                      <div className={styles.eventName}>
-                        {log.isSystemMessage ? 'System Message' : eventName}
-                        {eventType && <span className={styles.eventType}>[{eventType.toUpperCase()}]</span>}
-                      </div>
-                      <div className={styles.logTimestamp}>
-                        {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Unknown time'}
-                      </div>
-                    </div>
-                    <div className={styles.logPreview}>
-                      {log.message?.substring(0, 100) || ''}{log.message?.length > 100 ? '...' : ''}
-                    </div>
-                  </div>
-                );
-              } catch (error) {
-                console.error('Error rendering log item:', error);
-                return null;
-              }
-            })}
-          </div>
 
-          {/* Parameters Column */}
-          <div className={styles.logDetail}>
-            {selectedLog ? (
-              <div className={styles.logDetailContent}>
-                <div className={styles.logDetailHeader}>
-                  <h3 className={styles.columnHeader}>Event Details: {parseEventName(selectedLog)}</h3>
-                  <div className={styles.logDetailTimestamp}>
-                    {selectedLog.timestamp ? new Date(selectedLog.timestamp).toLocaleString() : 'Unknown time'}
+      <div className={styles.content}>
+        <div className={styles.eventsList}>
+          <h2 className={`${styles.columnHeader} header-bold`}>Analytics Events ({analyticsLogs.length})</h2>
+          <div className={styles.eventsContainer}>
+            {displayedLogs.map((log, index) => (
+              <div
+                key={index}
+                className={`${styles.eventItem} ${selectedLog === log ? styles.selected : ''}`}
+                onClick={() => setSelectedLog(log)}
+              >
+                <div className={styles.eventHeader}>
+                  <div className={styles.eventInfo}>
+                    <span className={`${styles.eventName} subheader`}>
+                      {log.eventName || 'Unknown Event'}
+                    </span>
+                    <span className={`${styles.eventType} supporting-text`}>
+                      {log.eventType || 'Unknown Type'}
+                    </span>
                   </div>
+                  <span className={`${styles.timestamp} supporting-text`}>
+                    {formatTimestamp(log.timestamp)}
+                  </span>
                 </div>
-                
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.eventDetails}>
+          {selectedLog ? (
+            <>
+              <h2 className={`${styles.columnHeader} header-bold`}>
+                Event Details: {selectedLog.eventName}
+              </h2>
+              <div className={styles.detailsContent}>
                 {viewMode === 'parsed' ? (
-                  <div className={styles.eventParams}>
-                    <h4 className={styles.sectionHeader}>Event Parameters</h4>
-                    {Object.keys(parseEventParams(selectedLog)).length > 0 ? (
-                      <div className={styles.paramsTable}>
+                  <div className={styles.parsedView}>
+                    <div className={styles.section}>
+                      <h3 className="subheader">Event Parameters</h3>
+                      <div className={styles.parametersTable}>
                         <table>
                           <thead>
                             <tr>
-                              <th>Parameter</th>
-                              <th>Value</th>
+                              <th className="supporting-text">Parameter</th>
+                              <th className="supporting-text">Value</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {Object.entries(parseEventParams(selectedLog) || {}).map(([key, value], idx) => (
-                              <tr key={idx}>
-                                <td className={styles.paramName}>{key}</td>
-                                <td className={styles.paramValue}>
-                                  {typeof value === 'string' && value.startsWith('[') ? (
-                                    <div className={styles.arrayValue}>
-                                      {value}
-                                    </div>
-                                  ) : (
-                                    value
-                                  )}
+                            {Object.entries(parseEventParams(selectedLog)).map(([key, value]) => (
+                              <tr key={key}>
+                                <td className={`${styles.paramName} body-regular`}>{key}</td>
+                                <td className={`${styles.paramValue} body-light`}>
+                                  {typeof value === 'object' ? JSON.stringify(value) : value}
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    ) : (
-                      <div className={styles.noParams}>
-                        No parameters available for this event
-                      </div>
-                    )}
+                    </div>
                   </div>
                 ) : (
                   <div className={styles.rawView}>
-                    <h4 className={styles.sectionHeader}>Raw Log</h4>
-                    <pre className={styles.rawLog}>
-                      {selectedLog.rawLog || selectedLog.message || 'No raw log available'}
+                    <pre className={`${styles.rawLog} body-light`}>
+                      {selectedLog.rawData || selectedLog.message}
                     </pre>
                   </div>
                 )}
               </div>
+            </>
+          ) : (
+            <div className={styles.noSelection}>
+              <span className="body-light">Select an event to view details</span>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.screenshotColumn}>
+          <h2 className={`${styles.columnHeader} header-bold`}>Screenshot</h2>
+          <div className={styles.screenshotControls}>
+            <button
+              className={`${styles.retakeButton} supporting-text`}
+              onClick={handleRetakeScreenshot}
+              disabled={!selectedLog}
+            >
+              Retake Screenshot
+            </button>
+            <button
+              className={`${styles.deleteButton} supporting-text`}
+              onClick={handleDeleteScreenshot}
+              disabled={!selectedScreenshot}
+            >
+              Delete Screenshot
+            </button>
+          </div>
+          <div className={styles.screenshotContainer}>
+            {selectedScreenshot ? (
+              <div className={styles.screenshotWrapper}>
+                <img
+                  src={selectedScreenshot}
+                  alt="Event Screenshot"
+                  className={styles.screenshot}
+                />
+              </div>
             ) : (
-              <div className={styles.noSelection}>
-                <p>Select an event from the list to view details</p>
+              <div className={styles.noScreenshot}>
+                <p className="body-light">No screenshot available</p>
+                <p className="body-light">Select an event to capture a screenshot</p>
               </div>
             )}
           </div>
-
-          {/* Screenshot Column */}
-          <div className={styles.screenshotColumn}>
-            <h3 className={styles.columnHeader}>Screenshot</h3>
-            <div className={styles.screenshotControls}>
-              <button 
-                className={styles.retakeButton}
-                onClick={handleRetakeScreenshot}
-                disabled={!selectedLog || screenshotStatus === 'capturing'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-                {screenshotStatus === 'capturing' ? 'Capturing...' : 'Retake'}
-              </button>
-              <button 
-                className={styles.deleteButton}
-                onClick={handleDeleteScreenshot}
-                disabled={!selectedLog || !selectedScreenshot}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18"/>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                </svg>
-                Delete
-              </button>
-            </div>
-            <div className={styles.screenshotContainer}>
-              {selectedScreenshot ? (
-                <>
-                  {selectedScreenshot.dataUrl ? (
-                    <>
-                      <div className={styles.screenshotWrapper}>
-                        <img 
-                          src={selectedScreenshot.dataUrl} 
-                          alt="Screenshot for selected event"
-                          className={styles.screenshot}
-                        />
-                      </div>
-                      <div className={styles.screenshotInfo}>
-                        <span className={styles.dimensions}>
-                          {selectedScreenshot.width} x {selectedScreenshot.height}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className={styles.screenshotLoading}>
-                      Loading screenshot...
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className={styles.noScreenshot}>
-                  <p>No screenshot available</p>
-                  <p>Select an event to capture a screenshot</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 } 

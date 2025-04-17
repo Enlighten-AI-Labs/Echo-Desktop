@@ -52,6 +52,51 @@ function parseGA4Beacon(url, queryParams) {
   }
 }
 
+function parseLogcatParameters(message) {
+  if (!message) return {};
+  
+  // Look for params=Bundle[{...}] pattern
+  const paramsMatch = message.match(/params=Bundle\[(.*)\]$/);
+  if (!paramsMatch) return {};
+  
+  const paramsStr = paramsMatch[1];
+  if (!paramsStr) return {};
+  
+  const params = {};
+  
+  try {
+    // Remove outer braces and split by comma
+    const cleanParamsStr = paramsStr.replace(/^\{|\}$/g, '');
+    const paramPairs = cleanParamsStr.split(',').map(pair => pair.trim());
+    
+    paramPairs.forEach(pair => {
+      const [key, ...valueParts] = pair.split('=');
+      if (key && valueParts.length > 0) {
+        // Join value parts in case the value contains equals signs
+        const value = valueParts.join('=').trim();
+        
+        // Clean up the key by removing Firebase Analytics suffixes
+        const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
+        
+        // Clean up the value
+        let cleanValue = value;
+        // If value is a number, convert it
+        if (/^-?\d+$/.test(cleanValue)) {
+          cleanValue = parseInt(cleanValue, 10);
+        } else if (/^-?\d*\.\d+$/.test(cleanValue)) {
+          cleanValue = parseFloat(cleanValue);
+        }
+        
+        params[cleanKey] = cleanValue;
+      }
+    });
+  } catch (error) {
+    console.error('Error parsing parameters:', error);
+  }
+  
+  return params;
+}
+
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
@@ -233,6 +278,18 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             filteredEvents.forEach(event => {
               if (!processedEventIds.current.has(event.id)) {
                 processedEventIds.current.add(event.id);
+                
+                // Parse event name from logcat message
+                if (event.message?.includes('Logging event:')) {
+                  const nameMatch = event.message.match(/name=([^,]+)/);
+                  if (nameMatch) {
+                    event.eventName = nameMatch[1].replace(/\(_vs\)/, '').trim();
+                  }
+                  
+                  // Parse parameters from logcat message
+                  event.parameters = parseLogcatParameters(event.message);
+                }
+                
                 captureScreenshot(event.id);
               }
             });
@@ -573,34 +630,43 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                     )}
                   </div>
 
-                  {selectedEvent.parameters && Object.keys(selectedEvent.parameters).length > 0 && (
-                    <div className={styles.section}>
-                      <div 
-                        className={styles.sectionHeader}
-                        onClick={() => setExpandedSections(prev => ({
-                          ...prev,
-                          parameters: !prev.parameters
-                        }))}
-                      >
-                        <h3>Parameters</h3>
-                        <span>{expandedSections.parameters ? '−' : '+'}</span>
-                      </div>
-                      {expandedSections.parameters && (
-                        <div className={styles.sectionContent}>
-                          <div className={styles.parametersTable}>
-                            {Object.entries(selectedEvent.parameters).map(([key, value]) => (
-                              <div key={key} className={styles.parameterRow}>
+                  <div className={styles.section}>
+                    <div 
+                      className={styles.sectionHeader}
+                      onClick={() => setExpandedSections(prev => ({
+                        ...prev,
+                        parameters: !prev.parameters
+                      }))}
+                    >
+                      <h3>Parameters</h3>
+                      <span>{expandedSections.parameters ? '−' : '+'}</span>
+                    </div>
+                    {expandedSections.parameters && (
+                      <div className={styles.sectionContent}>
+                        <div className={styles.parametersTable}>
+                          {selectedEvent.source === 'logcat' ? (
+                            Object.entries(parseLogcatParameters(selectedEvent.message) || {}).map(([key, value], index) => (
+                              <div key={index} className={styles.parameterRow}>
                                 <span className={styles.paramName}>{key}</span>
                                 <span className={styles.paramValue}>
                                   {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                 </span>
                               </div>
-                            ))}
-                          </div>
+                            ))
+                          ) : (
+                            Object.entries(selectedEvent.parameters || {}).map(([key, value], index) => (
+                              <div key={index} className={styles.parameterRow}>
+                                <span className={styles.paramName}>{key}</span>
+                                <span className={styles.paramValue}>
+                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                </span>
+                              </div>
+                            ))
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className={styles.section}>

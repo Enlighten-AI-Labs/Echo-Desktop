@@ -4,6 +4,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
+import UnifiedAnalyticsDebugger from '@/components/UnifiedAnalyticsDebugger';
 import styles from '@/styles/Debugger.module.css';
 
 // Dynamically import ReactFlow to avoid SSR issues
@@ -63,7 +64,7 @@ export default function DebuggerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
-  const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat'
+  const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat' or 'unified'
   const [splitRatio, setSplitRatio] = useState(0); // Start with 0 since left panel is collapsed
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -109,7 +110,7 @@ export default function DebuggerPage() {
       const { deviceId, packageName, tab } = router.query;
       if (deviceId) setDeviceId(deviceId);
       if (packageName) setPackageName(packageName);
-      if (tab === 'logcat' || tab === 'network') setActiveTab(tab);
+      if (tab === 'logcat' || tab === 'network' || tab === 'unified') setActiveTab(tab);
     }
   }, [router.isReady, router.query]);
 
@@ -984,6 +985,12 @@ export default function DebuggerPage() {
                   >
                     Logcat Capture
                   </button>
+                  <button 
+                    className={`${styles.tabButton} ${activeTab === 'unified' ? styles.activeTab : ''}`}
+                    onClick={() => changeTab('unified')}
+                  >
+                    Unified Debugger
+                  </button>
                 </div>
                 <button
                   className={styles.collapseButton}
@@ -1004,8 +1011,14 @@ export default function DebuggerPage() {
                   packageName={packageName}
                   show={true}
                 />
-              ) : (
+              ) : activeTab === 'logcat' ? (
                 <LogcatAnalyticsDebugger
+                  deviceId={deviceId}
+                  packageName={packageName}
+                  show={true}
+                />
+              ) : (
+                <UnifiedAnalyticsDebugger
                   deviceId={deviceId}
                   packageName={packageName}
                   show={true}

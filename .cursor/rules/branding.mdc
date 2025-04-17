@@ -26,7 +26,7 @@ alwaysApply: true
   - Use only for title pages in decks, never for formal applications
 
 ### Type Hierarchy
-- **Headers**: Travelia Bold (200pt)
+- **Headers**: Travelia Bold (100pt)
 - **Sub-headers**: Travelia Medium (50pt)
 - **Body copy categories**: Azeret Mono Regular (30pt)
 - **Body copy**: Azeret Mono Light (30pt)

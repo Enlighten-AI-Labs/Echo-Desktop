@@ -4,6 +4,15 @@
   height: 100vh;
   background-color: #f8f9fa;
   color: #212529;
+  /* CSS Variables */
+  --border-color: #e9ecef;
+  --hover-bg: #f8f9fa;
+  --selected-bg: #e9ecef;
+  --text-color: #212529;
+  --text-secondary: #6c757d;
+  --tag-bg: #f8f9fa;
+  --beacon-bg: #3C76A9;
+  --font-mono: 'Azeret Mono Regular', monospace;
 }
 
 .toolbar {
@@ -32,7 +41,7 @@
 }
 
 .startButton {
-  background-color: #28a745;
+  background-color: #6DC19C;
   color: white;
   border: none;
 }
@@ -94,32 +103,38 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow-y: auto;
-  padding: 1rem;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
 }
 
 .eventCard {
-  padding: 1rem;
+  padding: 1.25rem;
   border-radius: 4px;
-  background-color: #f8f9fa;
+  background-color: #ffffff;
   margin-bottom: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
 }
 
 .eventCard:hover {
-  background-color: #e9ecef;
+  background-color: var(--hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .eventCard.selected {
-  background-color: #e9ecef;
-  border-left: 4px solid #007bff;
+  background-color: var(--selected-bg);
+  border-left: 4px solid #3C76A9;
 }
 
 .eventHeader {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .eventSource {
@@ -131,23 +146,23 @@
 }
 
 .eventType {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 8px;
   border-radius: 4px;
+  font-weight: 600;
 }
 
-.eventType[data-type="Adobe"] {
-  background-color: #e83e8c;
-  color: white;
+.eventType[data-analytics-type="GA4"] {
+  color: #FFA500;
+}
+
+.eventType[data-analytics-type="Adobe"] {
+  color: #9C54AD;
 }
 
 .eventType[data-type="Firebase"] {
   background-color: #fd7e14;
-  color: white;
-}
-
-.eventType[data-type="GA4"] {
-  background-color: #20c997;
   color: white;
 }
 
@@ -157,19 +172,24 @@
 }
 
 .eventTime {
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
 }
 
 .eventName {
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 14px;
   font-weight: 500;
-  margin-bottom: 0.25rem;
+  margin-bottom: 4px;
+  color: var(--text-color);
 }
 
 .eventPage {
-  font-size: 0.9rem;
-  color: #6c757d;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -180,7 +200,11 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow-y: auto;
-  padding: 1rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  font-family: 'Azeret Mono Light', monospace;
 }
 
 .detailsHeader {
@@ -208,9 +232,9 @@
 }
 
 .viewButton.active {
-  background-color: #007bff;
+  background-color: #3C76A9;
   color: white;
-  border-color: #007bff;
+  border-color: #3C76A9;
 }
 
 .section {
@@ -231,14 +255,13 @@
 .sectionHeader h3 {
   margin: 0;
   font-size: 0.9rem;
+  font-family: 'Travelia Medium', sans-serif;
   font-weight: 500;
 }
 
 .sectionContent {
   padding: 1rem;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .infoRow {
@@ -247,6 +270,7 @@
 }
 
 .label {
+  font-family: 'Azeret Mono Regular', monospace;
   font-weight: 500;
   min-width: 120px;
 }
@@ -257,9 +281,13 @@
 }
 
 .parametersTable {
-  display: table;
   width: 100%;
   border-collapse: collapse;
+  margin: 1rem 0 3rem 0;
+}
+
+.parameterRow:last-child {
+  margin-bottom: 3rem;
 }
 
 .parameterRow {
@@ -268,11 +296,12 @@
 
 .paramName, .paramValue {
   display: table-cell;
-  padding: 0.5rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid #e9ecef;
 }
 
 .paramName {
+  font-family: 'Azeret Mono Regular', monospace;
   font-weight: 500;
   width: 30%;
 }
@@ -317,7 +346,7 @@
 }
 
 .retakeButton {
-  background-color: #28a745;
+  background-color: #6DC19C;
   color: white;
   border: none;
 }
@@ -433,4 +462,98 @@
 .eventDetails::-webkit-scrollbar-thumb:hover,
 .screenshotPanel::-webkit-scrollbar-thumb:hover {
   background: #adb5bd;
+}
+
+/* Font Declarations */
+@font-face {
+  font-family: 'Travelia Bold';
+  src: url('/fonts/Travelia-Bold.woff2') format('woff2'),
+       url('/fonts/Travelia-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Travelia Medium';
+  src: url('/fonts/Travelia-Medium.woff2') format('woff2'),
+       url('/fonts/Travelia-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Azeret Mono Regular';
+  src: url('/fonts/AzeretMono-Regular.woff2') format('woff2'),
+       url('/fonts/AzeretMono-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Azeret Mono Light';
+  src: url('/fonts/AzeretMono-Light.woff2') format('woff2'),
+       url('/fonts/AzeretMono-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+}
+
+/* Fix the typography selectors to be more specific */
+.container h1,
+.container h2,
+.container h3 {
+  font-family: 'Travelia Bold', sans-serif;
+}
+
+/* Categories and Labels */
+.label,
+.paramName,
+.eventSource,
+.eventType,
+.viewButton {
+  font-family: 'Azeret Mono Regular', monospace;
+}
+
+/* Body Text */
+.eventPage,
+.paramValue,
+.value,
+.eventTime,
+.noScreenshot,
+.noSelection {
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.beaconId {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: var(--beacon-bg);
+  color: white;
+  margin-left: auto;
+}
+
+.detailsHeaderTop {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.detailsHeaderTop .beaconId {
+  margin-left: 0;
+}
+
+.eventCounter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #9C54AD;
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  margin-right: 4px;
 }

@@ -495,18 +495,47 @@
   
   .qrCodeContainer {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 1.5rem 0;
+    justify-content: center;
+    margin-bottom: 16px;
   }
   
   .qrCode {
-    width: 240px;
-    height: 240px;
-    background-color: white;
-    padding: 1rem;
+    width: 200px;
+    height: 200px;
     border-radius: 8px;
-    margin-bottom: 1rem;
+    background-color: white;
+    padding: 8px;
+  }
+  
+  .qrCodeInfo {
+    text-align: center;
+  }
+  
+  .qrCodeMessage {
+    margin-bottom: 12px;
+    color: var(--text-color);
+  }
+  
+  .discoveryStatus {
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+  
+  .discoveryStatus.waiting {
+    background-color: var(--info-background);
+    color: var(--info-text);
+  }
+  
+  .discoveryStatus.success {
+    background-color: var(--success-background);
+    color: var(--success-text);
+  }
+  
+  .discoveryStatus.error {
+    background-color: var(--error-background);
+    color: var(--error-text);
   }
   
   .loadingQrContainer {
@@ -713,24 +742,6 @@
   
   .discoveryStatus p {
     margin: 0;
-  }
-  
-  .discoveryStatus.waiting {
-    background-color: rgba(255, 196, 0, 0.15);
-    color: #FFC400;
-    border: 1px solid rgba(255, 196, 0, 0.3);
-  }
-  
-  .discoveryStatus.success {
-    background-color: rgba(76, 175, 80, 0.15);
-    color: #4CAF50;
-    border: 1px solid rgba(76, 175, 80, 0.3);
-  }
-  
-  .discoveryStatus.error {
-    background-color: rgba(244, 67, 54, 0.15);
-    color: #F44336;
-    border: 1px solid rgba(244, 67, 54, 0.3);
   }
   
   .spinner {

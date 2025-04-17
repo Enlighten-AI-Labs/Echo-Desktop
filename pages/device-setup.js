@@ -136,31 +136,19 @@ export default function DeviceSetup() {
   const generateQrCode = async () => {
     setPairingInProgress(true);
     setConnectionError('');
-    setDiscoveryStatus(null);
+    setDiscoveryStatus({
+      status: 'waiting',
+      message: 'Generating QR code and preparing for device discovery...'
+    });
     
     // Get IP address early so it's available for the timeout handler
     const localIpAddress = await getLocalIpAddress();
-    
-    // Set a timeout to prevent the UI from being stuck indefinitely
-    const timeoutId = setTimeout(async () => {
-      console.log('QR code generation timed out');
-      setQrCodeData({
-        usingTerminalQr: false,
-        hostIp: localIpAddress || "Unknown",
-        pairingPort: "5555",
-        message: "QR code generation timed out. Please try again or use manual connection."
-      });
-      setPairingInProgress(false);
-    }, 10000); // Increase timeout to 10 seconds for slower systems
     
     try {
       console.log('Attempting to generate QR code');
       
       // Execute our custom QR code generator
       const result = await window.api.adb.generateAdbWifiQRCode();
-      
-      // Clear the timeout since we got a response
-      clearTimeout(timeoutId);
       
       console.log('QR code generation successful, received result:', result);
       
@@ -172,7 +160,7 @@ export default function DeviceSetup() {
       
       // Set the qrCodeData with connection information and QR code image
       setQrCodeData({
-        usingTerminalQr: false, // We're using a UI QR code now
+        usingTerminalQr: false,
         qrCodePath: result.qrCodePath,
         hostIp: result.hostIp || localIpAddress || "Unknown",
         pairingPort: result.pairingPort || "5555",
@@ -180,45 +168,22 @@ export default function DeviceSetup() {
         message: result.message || "Scan the QR code with your Android device to connect wirelessly."
       });
     } catch (error) {
-      // Clear the timeout since we got an error
-      clearTimeout(timeoutId);
-      
       console.error('Failed to generate QR code:', error);
-      setConnectionError('Failed to generate QR code for wireless debugging. Trying fallback method...');
+      setConnectionError('Failed to generate QR code for wireless debugging. Please try manual connection.');
       
-      // Fall back to the original method if our QR code method fails
-      try {
-        console.log('Using fallback QR code generation method');
-        const qrData = await window.api.adb.generateQRCode();
-        
-        if (qrData && qrData.qrCodePath) {
-          console.log('Fallback QR code generation successful');
-          setQrCodeData(qrData);
-        } else {
-          // If the fallback didn't provide a QR code path, use minimal info
-          console.warn('Fallback QR code did not include image data, using available info');
-          setQrCodeData({
-            usingTerminalQr: false,
-            hostIp: qrData?.hostIp || localIpAddress || "Unknown",
-            pairingPort: qrData?.pairingPort || "5555",
-            pairingCode: qrData?.pairingCode,
-            message: "Failed to generate QR code image. Please try manual connection."
-          });
-        }
-      } catch (fallbackError) {
-        console.error('Fallback QR code generation also failed:', fallbackError);
-        setConnectionError('Failed to generate QR code for wireless debugging. Please use manual connection.');
-        
-        // Set minimal QR data to prevent UI from being stuck in loading state
-        setQrCodeData({
-          usingTerminalQr: false,
-          hostIp: localIpAddress || "Unknown",
-          pairingPort: "5555",
-          message: "Failed to generate QR code. Please use manual connection."
-        });
-      }
+      // Set minimal QR data to prevent UI from being stuck in loading state
+      setQrCodeData({
+        usingTerminalQr: false,
+        hostIp: localIpAddress || "Unknown",
+        pairingPort: "5555",
+        message: "Failed to generate QR code. Please try manual connection."
+      });
+      
+      setDiscoveryStatus({
+        status: 'error',
+        message: 'Failed to start device discovery. Please try again.'
+      });
     } finally {
-      // Make sure we're not stuck in the loading state
       setPairingInProgress(false);
     }
   };
@@ -720,14 +685,41 @@ export default function DeviceSetup() {
                       setAndroidConnectionMethod('wireless');
                       generateQrCode();
                     }}
+                    disabled={pairingInProgress}
                   >
                     <div className={styles.methodIcon}>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                         <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
                       </svg>
                     </div>
-                    <span>Pair New Device Wirelessly</span>
+                    <span>{pairingInProgress ? 'Preparing QR Code...' : 'Pair New Device Wirelessly'}</span>
                   </button>
+                  
+                  {/* QR Code Display */}
+                  {qrCodeData && (
+                    <div className={styles.qrCodeSection}>
+                      {qrCodeData.qrCodePath && (
+                        <div className={styles.qrCodeContainer}>
+                          <img 
+                            src={qrCodeData.qrCodePath} 
+                            alt="QR Code for wireless debugging"
+                            className={styles.qrCode}
+                          />
+                        </div>
+                      )}
+                      <div className={styles.qrCodeInfo}>
+                        <p className={styles.qrCodeMessage}>{qrCodeData.message}</p>
+                        {discoveryStatus && (
+                          <div className={`${styles.discoveryStatus} ${styles[discoveryStatus.status]}`}>
+                            {discoveryStatus.message}
+                          </div>
+                        )}
+                        {connectionError && (
+                          <div className={styles.errorMessage}>{connectionError}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -17,6 +17,7 @@ const fullAdbPath = path.join(adbPath, adbExecutable);
 // Variables for device discovery
 let discoveryInProgress = false;
 let deviceDiscoveryTimeout = null;
+let dnssdInstance = null;
 
 // Variables for logcat capture
 let logcatProcess = null;
@@ -309,36 +310,6 @@ async function generateAdbWifiQRCode() {
   }
 }
 
-// Function to start discovering ADB devices over the network
-function startDeviceDiscovery(pairingCode) {
-  if (discoveryInProgress) {
-    console.log('Device discovery already in progress, restarting...');
-    stopDeviceDiscovery();
-  }
-  
-  discoveryInProgress = true;
-  console.log('Starting device discovery...');
-  
-  // Set a timeout to stop discovery after 60 seconds
-  deviceDiscoveryTimeout = setTimeout(() => {
-    console.log('Device discovery timeout after 60 seconds');
-    stopDeviceDiscovery();
-  }, 60000);
-  
-  // Start the discovery process
-  discoverAndConnectDevice(pairingCode);
-}
-
-// Function to stop device discovery
-function stopDeviceDiscovery() {
-  if (deviceDiscoveryTimeout) {
-    clearTimeout(deviceDiscoveryTimeout);
-    deviceDiscoveryTimeout = null;
-  }
-  discoveryInProgress = false;
-  console.log('Device discovery stopped');
-}
-
 // Function to discover and connect to a device
 async function discoverAndConnectDevice(pairingCode) {
   if (!discoveryInProgress) return;
@@ -346,14 +317,15 @@ async function discoverAndConnectDevice(pairingCode) {
   try {
     console.log('Searching for ADB pairing devices...');
     
-    // Use mDnsSd to discover devices
+    // Use mDnsSd.discover directly as it's a static method
     const deviceList = await mDnsSd.discover({
-      name: '_adb-tls-pairing._tcp.local'
+      name: '_adb-tls-pairing._tcp.local',
+      timeout: 10000 // Add a 10 second timeout
     });
     
     console.log('Device discovery result:', deviceList);
     
-    if (deviceList.length === 0) {
+    if (!deviceList || deviceList.length === 0) {
       // If no devices found, retry after a short delay
       setTimeout(() => {
         if (discoveryInProgress) {
@@ -365,9 +337,14 @@ async function discoverAndConnectDevice(pairingCode) {
     
     // Get the first discovered device
     const device = deviceList[0];
-    const address = device.address;
     
-    // Make sure we get the port correctly from the discovered service
+    // Make sure we have the required device information
+    if (!device || !device.address || !device.service || !device.service.port) {
+      console.error('Invalid device information:', device);
+      throw new Error('Invalid device information received');
+    }
+    
+    const address = device.address;
     const port = device.service.port;
     
     console.log(`Device found! Address: ${address}, Port: ${port}`);
@@ -387,13 +364,42 @@ async function discoverAndConnectDevice(pairingCode) {
   } catch (error) {
     console.error('Error discovering devices:', error);
     
-    // Retry after delay if discovery is still active
+    // For any errors, retry after delay if discovery is still active
     setTimeout(() => {
       if (discoveryInProgress) {
         discoverAndConnectDevice(pairingCode);
       }
     }, 3000);
   }
+}
+
+// Function to stop device discovery
+function stopDeviceDiscovery() {
+  if (deviceDiscoveryTimeout) {
+    clearTimeout(deviceDiscoveryTimeout);
+    deviceDiscoveryTimeout = null;
+  }
+  
+  discoveryInProgress = false;
+  console.log('Device discovery stopped');
+}
+
+// Function to start discovering ADB devices over the network
+function startDeviceDiscovery(pairingCode) {
+  // First ensure we clean up any existing discovery
+  stopDeviceDiscovery();
+  
+  discoveryInProgress = true;
+  console.log('Starting device discovery...');
+  
+  // Set a timeout to stop discovery after 60 seconds
+  deviceDiscoveryTimeout = setTimeout(() => {
+    console.log('Device discovery timeout after 60 seconds');
+    stopDeviceDiscovery();
+  }, 60000);
+  
+  // Start the discovery process
+  discoverAndConnectDevice(pairingCode);
 }
 
 // Function to pair with a discovered device
@@ -405,25 +411,39 @@ async function pairWithDevice(address, port, pairingCode) {
     const pairOutput = await execAdbCommand(`pair ${address}:${port} ${pairingCode}`);
     console.log('Pairing output:', pairOutput);
     let guid = pairOutput.match(/\[guid=([^\]]+)\]/)?.[1];
+    
     if (pairOutput.includes('Successfully paired')) {
       console.log('Pairing successful, now connecting...');
       
-      // The pairing output might include a GUID in the format:
-      // Successfully paired to 192.168.0.X:XXXXX [guid=adb-XXXX-XXXX]
-      let connectAddress = address;
-      let connectPort = port;
+      // After successful pairing, always use port 5555 for the connection
+      const connectPort = 5555;
       
-      // First try connecting to the same port used for pairing
-      console.log(`Trying to connect using pairing port: ${address}:${port}`);
-      let connectOutput = await execAdbCommand(`connect ${address}:${port}`);
+      // Try to connect using port 5555
+      console.log(`Trying to connect using standard ADB port: ${address}:${connectPort}`);
+      let connectOutput = await execAdbCommand(`connect ${address}:${connectPort}`);
       console.log('Connect output:', connectOutput);
       
       if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
         return true;
       }
+      
+      // If the first attempt fails, wait a moment and try again
+      if (!connectOutput.includes('connected to')) {
+        console.log('First connection attempt failed, waiting 2 seconds and trying again...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        connectOutput = await execAdbCommand(`connect ${address}:${connectPort}`);
+        console.log('Second connect attempt output:', connectOutput);
+        
+        if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
+          return true;
+        }
+      }
+      
+      // Check if the device appears in the devices list
       let getDevicesOutput = await execAdbCommand(`devices -l`);
       console.log('Devices output:', getDevicesOutput);
-      if (getDevicesOutput.includes(guid)) {
+      if (getDevicesOutput.includes(guid) || getDevicesOutput.includes(`${address}:${connectPort}`)) {
         return true;
       }
       

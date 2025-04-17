@@ -91,7 +91,7 @@
 
 .content {
   display: grid;
-  grid-template-columns: 300px 1fr 300px;
+  grid-template-columns: 375px 1fr 300px;
   gap: 1rem;
   padding: 1rem;
   height: calc(100vh - 80px);
@@ -162,51 +162,134 @@
   font-family: var(--font-mono);
 }
 
+/* Timeline container */
 .eventsList {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #f8f9fa;
   overflow-y: auto;
-  padding: 2rem 1rem;
+  padding: 2rem 1rem 2rem 4rem;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 100px);
+  position: relative;
 }
 
+/* Event card */
 .eventCard {
-  padding: 1.25rem;
-  border-radius: 4px;
+  position: relative;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
   background-color: #ffffff;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  margin-left: 2rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E9EDF3;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.eventCard:hover {
-  background-color: var(--hover-bg);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+/* Timeline node */
+.eventCard::before {
+  content: attr(data-event-number);
+  position: absolute;
+  left: -3.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: #F69757; /* Default GA4 color */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 1rem;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Adobe Analytics node color */
+.eventCard[data-analytics-type="Adobe"]::before {
+  background-color: #9C54AD;
+}
+
+/* GA4 Analytics node color - explicitly set for clarity */
+.eventCard[data-analytics-type="GA4"]::before {
+  background-color: #F69757;
 }
 
 .eventCard.selected {
-  background-color: var(--selected-bg);
-  border-left: 4px solid #3C76A9;
+  border: 1px solid #3C76A9;
+  box-shadow: 0 0 0 1px #3C76A9;
+  background-color: rgba(60, 118, 169, 0.02);
 }
 
+.eventCard:hover {
+  transform: translateX(4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Make sure hover doesn't override the selected state */
+.eventCard.selected:hover {
+  transform: translateX(4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px #3C76A9;
+}
+
+/* Event card header */
 .eventHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.eventSource {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.4rem;
-  background-color: #6c757d;
+/* Beacon ID */
+.beaconId {
+  padding: 0.25rem 0.75rem;
+  background-color: #3C76A9;
   color: white;
   border-radius: 4px;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.875rem;
+}
+
+/* Event time */
+.eventTime {
+  color: #6c757d;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Event name and page */
+.eventName {
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 1rem;
+  color: #262628;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.eventPage {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Separator */
+.separator {
+  margin: 0 0.5rem;
+  color: #6c757d;
 }
 
 .eventType {
@@ -221,10 +304,6 @@
   color: #FFA500;
 }
 
-.eventType[data-analytics-type="Adobe"] {
-  color: #9C54AD;
-}
-
 .eventType[data-type="Firebase"] {
   background-color: #fd7e14;
   color: white;
@@ -233,30 +312,6 @@
 .eventType[data-type="Logcat"] {
   background-color: #6f42c1;
   color: white;
-}
-
-.eventTime {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-family: var(--font-mono);
-}
-
-.eventName {
-  font-family: 'Travelia Medium', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: var(--text-color);
-}
-
-.eventPage {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .eventDetails {
@@ -585,26 +640,6 @@
 .noScreenshot,
 .noSelection {
   font-family: 'Azeret Mono Light', monospace;
-}
-
-.beaconId {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background-color: var(--beacon-bg);
-  color: white;
-  margin-left: auto;
-}
-
-.detailsHeaderTop {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.detailsHeaderTop .beaconId {
-  margin-left: 0;
 }
 
 .eventCounter {

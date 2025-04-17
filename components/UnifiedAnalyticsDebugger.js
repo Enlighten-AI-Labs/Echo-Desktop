@@ -993,25 +993,23 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               key={event.id}
               className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.selected : ''}`}
               onClick={() => setSelectedEvent(event)}
+              data-event-number={filteredEvents.length - index}
+              data-analytics-type={
+                event.source === 'logcat'
+                  ? (event.message?.includes('/b/ss/') ? 'Adobe' : 'GA4')
+                  : (event.analyticsType === 'adobe' ? 'Adobe' : 'GA4')
+              }
             >
               <div className={styles.eventHeader}>
-                <span className={styles.eventCounter}>
-                  {filteredEvents.length - index}
-                </span>
-                <span 
-                  className={styles.eventType} 
-                  data-analytics-type={event.source === 'logcat' 
-                    ? (event.message?.includes('/b/ss/') ? 'Adobe' : 'GA4')
-                    : (event.analyticsType === 'adobe' ? 'Adobe' : 'GA4')}
-                >
-                  {event.source === 'logcat' 
-                    ? (event.message?.includes('/b/ss/') ? 'Adobe' : 'GA4')
-                    : (event.analyticsType === 'adobe' ? 'Adobe' : 'GA4')}
-                </span>
                 <span className={styles.beaconId}>{event.beaconId}</span>
-              </div>
-              <div className={styles.eventTime}>
-                {new Date(event.timestamp).toLocaleTimeString()}
+                <span className={styles.eventTime}>
+                  {new Date(event.timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                  })}
+                </span>
               </div>
               <div className={styles.eventName}>
                 {event.source === 'logcat'
@@ -1019,15 +1017,16 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                       ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
                       : 'Analytics Event')
                   : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
-              </div>
-              <div className={styles.eventPage}>
-                {event.source === 'logcat' 
-                  ? (event.message?.includes('/b/ss/') 
-                      ? event.pageName || 'Unknown Page'
-                      : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
-                  : (event.analyticsType === 'adobe' 
-                      ? event.pageName || 'Unknown Page'
-                      : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+                <span className={styles.separator}>|</span>
+                <span className={styles.eventPage}>
+                  {event.source === 'logcat' 
+                    ? (event.message?.includes('/b/ss/') 
+                        ? event.pageName || 'Unknown Page'
+                        : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
+                    : (event.analyticsType === 'adobe' 
+                        ? event.pageName || 'Unknown Page'
+                        : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+                </span>
               </div>
             </div>
           ))}

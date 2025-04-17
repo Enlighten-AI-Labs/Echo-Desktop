@@ -369,7 +369,7 @@ export default function DeviceSetup() {
         pathname: '/debugger',
         query: {
           deviceId: selectedDevice,
-          packageName: selectedApp.packageName,
+          packageName: selectedApp,
           tab: 'unified' // Default to network tab
         }
       });

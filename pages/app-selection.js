@@ -292,7 +292,7 @@ export default function AppSelection() {
     setLaunchStatus({ step: 'starting', message: 'Starting launch process...' });
 
     try {
-      console.log('Launching app:', selectedApp.packageName);
+      console.log('Launching app:', selectedApp);
 
       // Set Firebase Analytics debug properties and start logcat capture
       setLaunchStatus({ step: 'debug', message: 'Setting up Firebase Analytics debug mode...' });
@@ -333,7 +333,7 @@ export default function AppSelection() {
       // Launch the app on the device
       setLaunchStatus({ step: 'launchApp', message: 'Launching app on device...' });
       console.log('Launching app on device:', deviceId);
-      const launchResult = await window.api.adb.launchApp(deviceId, selectedApp.packageName);
+      const launchResult = await window.api.adb.launchApp(deviceId, selectedApp);
 
       if (!launchResult.success) {
         throw new Error(`Failed to launch app: ${launchResult.message}`);
@@ -347,7 +347,7 @@ export default function AppSelection() {
         pathname: '/debugger',
         query: {
           deviceId,
-          packageName: selectedApp.packageName,
+          packageName: selectedApp,
           tab: 'unified' // Default to unified tab
         }
       });

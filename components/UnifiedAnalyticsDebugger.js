@@ -494,7 +494,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             className={styles.sourceSelect}
           >
             <option value="all">All Sources</option>
-            <option value="logcat">Logcat</option>
+            <option value="logcat">Android Debug Bridge</option>
             <option value="proxy">Network</option>
           </select>
 

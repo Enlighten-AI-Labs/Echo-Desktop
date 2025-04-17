@@ -40,7 +40,7 @@ export default function Dashboard() {
 
   const handleStartDebugging = () => {
     // Navigate directly to the debugger
-    router.push('/debugger?tab=network');
+    router.push('/debugger?tab=unified');
   };
 
   const handleCloseAppSelector = () => {

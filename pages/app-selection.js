@@ -348,7 +348,7 @@ export default function AppSelection() {
         query: {
           deviceId,
           packageName: selectedApp.packageName,
-          tab: 'network' // Default to network tab
+          tab: 'unified' // Default to unified tab
         }
       });
     } catch (error) {

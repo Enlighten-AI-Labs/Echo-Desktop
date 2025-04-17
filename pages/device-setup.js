@@ -369,7 +369,7 @@ export default function DeviceSetup() {
         query: {
           deviceId: selectedDevice,
           packageName: selectedApp.packageName,
-          tab: 'network' // Default to network tab
+          tab: 'unified' // Default to network tab
         }
       });
     } catch (error) {

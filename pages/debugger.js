@@ -64,7 +64,7 @@ export default function DebuggerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
-  const [activeTab, setActiveTab] = useState('network'); // 'network' or 'logcat' or 'unified'
+  const [activeTab, setActiveTab] = useState('unified'); // 'network' or 'logcat' or 'unified'
   const [splitRatio, setSplitRatio] = useState(0); // Start with 0 since left panel is collapsed
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -974,6 +974,12 @@ export default function DebuggerPage() {
               <div className={styles.headerControls}>
                 <div className={styles.tabs}>
                   <button 
+                    className={`${styles.tabButton} ${activeTab === 'unified' ? styles.activeTab : ''}`}
+                    onClick={() => changeTab('unified')}
+                  >
+                    Unified Debugger
+                  </button>
+                  <button 
                     className={`${styles.tabButton} ${activeTab === 'network' ? styles.activeTab : ''}`}
                     onClick={() => changeTab('network')}
                   >
@@ -985,12 +991,7 @@ export default function DebuggerPage() {
                   >
                     Logcat Capture
                   </button>
-                  <button 
-                    className={`${styles.tabButton} ${activeTab === 'unified' ? styles.activeTab : ''}`}
-                    onClick={() => changeTab('unified')}
-                  >
-                    Unified Debugger
-                  </button>
+                  
                 </div>
                 <button
                   className={styles.collapseButton}

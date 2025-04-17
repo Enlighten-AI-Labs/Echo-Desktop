@@ -441,44 +441,7 @@
   background-color: #1a1a1a;
   border-radius: 4px;
   padding: 8px;
-  font-family: monospace;
-  font-size: 12px;
   scroll-behavior: smooth;
-}
-
-.logEntry {
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  border-radius: 2px;
-  display: flex;
-  align-items: flex-start;
-}
-
-.logTime {
-  color: #999;
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
-.logMessage {
-  word-break: break-word;
-}
-
-/* Log entry types */
-.info {
-  color: #e0e0e0;
-}
-
-.success {
-  color: #4caf50;
-}
-
-.warning {
-  color: #ff9800;
-}
-
-.error {
-  color: #f44336;
 }
 
 .emptyLogs {

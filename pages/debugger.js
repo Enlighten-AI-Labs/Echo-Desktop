@@ -6,6 +6,7 @@ import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
 import UnifiedAnalyticsDebugger from '@/components/UnifiedAnalyticsDebugger';
 import styles from '@/styles/Debugger.module.css';
+import LogEntry from '@/components/LogEntry';
 
 // Dynamically import ReactFlow to avoid SSR issues
 const ReactFlow = dynamic(
@@ -103,6 +104,12 @@ export default function DebuggerPage() {
     ignoreElements: ['android.widget.ImageView'], // Element types to ignore for interaction
     stayInApp: true
   });
+  
+  // New state variables for vertical split
+  const [verticalSplitRatio, setVerticalSplitRatio] = useState(40); // Start with 40% for settings
+  const [isVerticalResizing, setIsVerticalResizing] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const leftPanelRef = useRef(null);
   
   useEffect(() => {
     // Get query parameters when the page loads
@@ -632,6 +639,37 @@ export default function DebuggerPage() {
     }
   }, [crawlStatus]);
 
+  // Add vertical resize handlers
+  const startVerticalResize = (e) => {
+    setIsVerticalResizing(true);
+    setStartY(e.clientY);
+  };
+
+  const stopVerticalResize = () => {
+    setIsVerticalResizing(false);
+  };
+
+  const verticalResize = useCallback((e) => {
+    if (isVerticalResizing && leftPanelRef.current) {
+      const containerHeight = leftPanelRef.current.offsetHeight;
+      const newRatio = ((e.clientY / containerHeight) * 100);
+      setVerticalSplitRatio(Math.min(Math.max(newRatio, 20), 80)); // Keep ratio between 20% and 80%
+    }
+  }, [isVerticalResizing]);
+
+  // Add vertical resize effect
+  useEffect(() => {
+    if (isVerticalResizing) {
+      window.addEventListener('mousemove', verticalResize);
+      window.addEventListener('mouseup', stopVerticalResize);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', verticalResize);
+      window.removeEventListener('mouseup', stopVerticalResize);
+    };
+  }, [isVerticalResizing, verticalResize]);
+
   return (
     <>
       <Head>
@@ -788,10 +826,7 @@ export default function DebuggerPage() {
                     {logs.length > 0 ? (
                       <>
                         {logs.map((log, index) => (
-                          <div key={index} className={`${styles.logEntry} ${styles[log.type] || styles.info}`}>
-                            <span className={styles.logTime}>{formatTime(log.timestamp)}</span>
-                            <span className={styles.logMessage}>{log.message}</span>
-                          </div>
+                          <LogEntry key={`${log.timestamp}-${index}`} log={log} />
                         ))}
                         <div ref={logsEndRef} className={styles.logsEndRef} />
                       </>

@@ -1,0 +1,95 @@
+.logEntry {
+  background-color: #262628;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-left: 3px solid transparent;
+  font-family: 'Azeret Mono Light', monospace;
+}
+
+.logEntry:hover {
+  background-color: #2d2d2f;
+}
+
+.logHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.logMessage {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expandIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #888;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.logDetails {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3a3a3c;
+}
+
+.logTime {
+  font-size: 12px;
+  color: #888;
+  font-family: 'Doto Semi-Bold', monospace;
+}
+
+/* Log type styles */
+.info {
+  border-left-color: #3C76A9;
+}
+
+.info .logIcon {
+  color: #3C76A9;
+}
+
+.success {
+  border-left-color: #6DC19C;
+}
+
+.success .logIcon {
+  color: #6DC19C;
+}
+
+.warning {
+  border-left-color: #F69757;
+}
+
+.warning .logIcon {
+  color: #F69757;
+}
+
+.error {
+  border-left-color: #EB2726;
+}
+
+.error .logIcon {
+  color: #EB2726;
+} 

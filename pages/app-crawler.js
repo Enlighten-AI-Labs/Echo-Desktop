@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/AppCrawler.module.css';
 import dynamic from 'next/dynamic';
+import LogEntry from '@/components/LogEntry';
 
 // Dynamically import ReactFlow to avoid SSR issues
 const ReactFlow = dynamic(

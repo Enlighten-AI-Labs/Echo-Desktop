@@ -69,29 +69,113 @@ function parseLogcatParameters(message) {
   const params = {};
   
   try {
-    // Remove outer braces and split by comma
-    const cleanParamsStr = paramsStr.replace(/^\{|\}$/g, '');
-    const paramPairs = cleanParamsStr.split(',').map(pair => pair.trim());
+    // Remove outer braces and split by comma, but handle nested structures
+    let cleanParamsStr = paramsStr.replace(/^\{|\}$/g, '');
+    let currentKey = '';
+    let currentValue = '';
+    let inArray = false;
+    let bracketCount = 0;
+    let braceCount = 0;
+    let parts = [];
     
-    paramPairs.forEach(pair => {
+    for (let i = 0; i < cleanParamsStr.length; i++) {
+      const char = cleanParamsStr[i];
+      
+      if (char === '[') {
+        inArray = true;
+        bracketCount++;
+        currentValue += char;
+      } else if (char === ']') {
+        bracketCount--;
+        currentValue += char;
+        if (bracketCount === 0) inArray = false;
+      } else if (char === '{') {
+        braceCount++;
+        currentValue += char;
+      } else if (char === '}') {
+        braceCount--;
+        currentValue += char;
+      } else if (char === ',' && !inArray && bracketCount === 0 && braceCount === 0) {
+        if (currentKey && currentValue) {
+          parts.push(`${currentKey}=${currentValue}`);
+        }
+        currentKey = '';
+        currentValue = '';
+      } else if (char === '=' && !inArray && bracketCount === 0 && braceCount === 0) {
+        currentKey = currentValue;
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+    
+    if (currentKey && currentValue) {
+      parts.push(`${currentKey}=${currentValue}`);
+    }
+
+    // Process each part
+    parts.forEach(pair => {
       const [key, ...valueParts] = pair.split('=');
       if (key && valueParts.length > 0) {
-        // Join value parts in case the value contains equals signs
         const value = valueParts.join('=').trim();
+        const cleanKey = key.trim().replace(/\([^)]+\)/g, '');
         
-        // Clean up the key by removing Firebase Analytics suffixes like (_vs), (_e)
-        const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
-        
-        // Clean up the value
-        let cleanValue = value;
-        // If value is a number, convert it
-        if (/^-?\d+$/.test(cleanValue)) {
-          cleanValue = parseInt(cleanValue, 10);
-        } else if (/^-?\d*\.\d+$/.test(cleanValue)) {
-          cleanValue = parseFloat(cleanValue);
+        // Special handling for items array
+        if (cleanKey === 'items') {
+          try {
+            // Extract items between the outer brackets
+            const itemsStr = value.slice(1, -1); // Remove outer []
+            const items = [];
+            let currentItem = '';
+            let depth = 0;
+            
+            // Parse items character by character to handle nested structures
+            for (let i = 0; i < itemsStr.length; i++) {
+              const char = itemsStr[i];
+              
+              if (char === '{') {
+                depth++;
+                if (depth === 1) {
+                  currentItem = '';
+                  continue;
+                }
+              } else if (char === '}') {
+                depth--;
+                if (depth === 0) {
+                  // Process completed item
+                  const itemObj = {};
+                  currentItem.split(',').forEach(prop => {
+                    const [k, v] = prop.split('=').map(s => s.trim());
+                    if (k && v) {
+                      const cleanItemKey = k.replace(/\([^)]+\)/g, '');
+                      itemObj[cleanItemKey] = v.replace(/^["']|["']$/g, '');
+                    }
+                  });
+                  items.push(itemObj);
+                  continue;
+                }
+              }
+              
+              if (depth > 0) {
+                currentItem += char;
+              }
+            }
+            
+            params[cleanKey] = items;
+          } catch (e) {
+            console.error('Error parsing items array:', e);
+            params[cleanKey] = value;
+          }
+        } else {
+          // Handle regular values
+          let cleanValue = value;
+          if (/^-?\d+$/.test(cleanValue)) {
+            cleanValue = parseInt(cleanValue, 10);
+          } else if (/^-?\d*\.\d+$/.test(cleanValue)) {
+            cleanValue = parseFloat(cleanValue);
+          }
+          params[cleanKey] = cleanValue;
         }
-        
-        params[cleanKey] = cleanValue;
       }
     });
   } catch (error) {
@@ -303,12 +387,15 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [viewMode, setViewMode] = useState('parsed'); // 'parsed' or 'raw'
   const [expandedSections, setExpandedSections] = useState({
-    basicInfo: true,
-    events: true,
+    basicInfo: false,
     parameters: true,
+    eCommerce: true,
     userProperties: true,
     rawData: false
   });
+  
+  // New state for the filter box
+  const [filterText, setFilterText] = useState('');
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
@@ -436,6 +523,137 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     });
     
     setSelectedScreenshot(null);
+  };
+
+  // Helper function to identify eCommerce parameters
+  const isEcommerceParameter = (key) => {
+    const ecommerceKeys = [
+      'item_id', 'item_name', 'item_brand', 'item_category', 'item_variant', 'item_list_name', 'item_list_id',
+      'price', 'quantity', 'currency', 'value', 'transaction_id', 'tax', 'shipping', 'items',
+      'product_id', 'product_name', 'product_brand', 'product_category', 'product_variant', 'product_list_name', 'product_list_id',
+      'product_price', 'product_quantity', 'product_value',
+      'cart_id', 'cart_value', 'cart_items',
+      'checkout_id', 'checkout_value', 'checkout_items',
+      'promotion_id', 'promotion_name', 'promotion_creative_name', 'promotion_creative_slot',
+      'product', 'products', 'product_id', 'product_name', 'product_brand', 'product_category', 'product_variant',
+      'product_list_name', 'product_list_id', 'product_price', 'product_quantity', 'product_value',
+      'cart', 'cart_id', 'cart_value', 'cart_items',
+      'checkout', 'checkout_id', 'checkout_value', 'checkout_items',
+      'promotion', 'promotion_id', 'promotion_name', 'promotion_creative_name', 'promotion_creative_slot'
+    ];
+    
+    return ecommerceKeys.some(ecommerceKey => 
+      key.toLowerCase().includes(ecommerceKey.toLowerCase())
+    );
+  };
+
+  // Helper function to separate eCommerce parameters from general parameters
+  const separateParameters = (parameters) => {
+    if (!parameters) return { ecommerce: {}, general: {} };
+    
+    const ecommerce = {};
+    const general = {};
+    
+    Object.entries(parameters).forEach(([key, value]) => {
+      if (isEcommerceParameter(key)) {
+        ecommerce[key] = value;
+      } else {
+        general[key] = value;
+      }
+    });
+    
+    return { ecommerce, general };
+  };
+
+  // Helper function to extract items from parameters
+  const extractItems = (parameters) => {
+    if (!parameters) return [];
+    
+    // For logcat items array
+    if (parameters.items) {
+      // If items is already an array of objects
+      if (Array.isArray(parameters.items)) {
+        return parameters.items.map(item => ({
+          item_id: item.item_id || item.id || 'N/A',
+          item_name: item.item_name || item.name || 'Unknown Item',
+          quantity: parseInt(item.quantity) || 1,
+          price: parseFloat(item.price || item.value) || 0
+        }));
+      }
+      
+      // If items is a string that needs to be parsed
+      if (typeof parameters.items === 'string') {
+        try {
+          // Clean up the string and try to parse it
+          const cleanItemsStr = parameters.items.replace(/^\[|\]$/g, '');
+          const items = cleanItemsStr.split('}, {').map(itemStr => {
+            // Clean up each item string
+            const cleanStr = itemStr.replace(/[{}]/g, '');
+            const itemObj = {};
+            
+            // Split by comma and parse each key-value pair
+            cleanStr.split(',').forEach(pair => {
+              const [key, value] = pair.split('=').map(s => s.trim());
+              if (key && value) {
+                // Remove any analytics suffixes from keys
+                const cleanKey = key.replace(/\([^)]+\)/g, '');
+                itemObj[cleanKey] = value;
+              }
+            });
+            
+            return {
+              item_id: itemObj.item_id || itemObj.id || 'N/A',
+              item_name: itemObj.item_name || itemObj.name || 'Unknown Item',
+              quantity: parseInt(itemObj.quantity) || 1,
+              price: parseFloat(itemObj.price || itemObj.value) || 0
+            };
+          });
+          
+          return items;
+        } catch (e) {
+          console.error('Error parsing items string:', e);
+        }
+      }
+    }
+    
+    // For individual item parameters
+    const itemData = {};
+    Object.entries(parameters).forEach(([key, value]) => {
+      const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
+      
+      if (cleanKey.includes('item_name') || cleanKey.includes('product_name')) {
+        itemData.item_name = value;
+      }
+      if (cleanKey.includes('item_id') || cleanKey.includes('product_id')) {
+        itemData.item_id = String(value).replace(/[\[\]{}]/g, '').trim();
+      }
+      if (cleanKey.includes('quantity')) {
+        itemData.quantity = parseInt(value) || 1;
+      }
+      if (cleanKey.includes('price') || cleanKey.includes('value')) {
+        itemData.price = parseFloat(value) || 0;
+      }
+    });
+
+    // If we have at least a name or ID, create an item
+    if (itemData.item_name || itemData.item_id) {
+      return [{
+        item_id: itemData.item_id || 'N/A',
+        item_name: itemData.item_name || 'Unknown Item',
+        quantity: itemData.quantity || 1,
+        price: itemData.price || 0
+      }];
+    }
+    
+    return [];
+  };
+
+  // Helper function to format price
+  const formatPrice = (price) => {
+    if (typeof price === 'number') {
+      return price.toFixed(2);
+    }
+    return price;
   };
 
   // Effect to fetch data from both sources
@@ -662,6 +880,23 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       );
     }
 
+    // Filter by the new filter box - simplified to search across all fields
+    if (filterText) {
+      const searchText = filterText.toLowerCase();
+      return (
+        event.beaconId?.toLowerCase().includes(searchText) ||
+        event.eventName?.toLowerCase().includes(searchText) ||
+        (event.source === 'logcat' 
+          ? (event.message?.includes('/b/ss/') 
+              ? event.pageName?.toLowerCase().includes(searchText)
+              : (parseLogcatParameters(event.message)?.ga_screen || '').toLowerCase().includes(searchText))
+          : (event.analyticsType === 'adobe' 
+              ? event.pageName?.toLowerCase().includes(searchText)
+              : event.parameters?.ga_screen?.toLowerCase().includes(searchText) || 
+                event.parameters?.screen_name?.toLowerCase().includes(searchText)))
+      );
+    }
+
     return true;
   });
 
@@ -731,6 +966,28 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
       <div className={styles.content}>
         <div className={styles.eventsList}>
+          {/* Add the new filter box above the event list */}
+          <div className={styles.filterBox}>
+            <div className={styles.filterInputContainer}>
+              <input
+                type="text"
+                placeholder="Filter by beaconID, event name, or screen..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                className={styles.filterInput}
+              />
+              {filterText && (
+                <button 
+                  className={styles.clearFilterButton}
+                  onClick={() => setFilterText('')}
+                  title="Clear filter"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+          
           {filteredEvents.map((event, index) => (
             <div
               key={event.id}
@@ -779,132 +1036,177 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         <div className={styles.eventDetails}>
           {selectedEvent ? (
             <>
-              <div className={styles.detailsHeader}>
-                <div className={styles.detailsHeaderTop}>
-                  <h2>Event Details</h2>
+              <div className={styles.section}>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setExpandedSections(prev => ({
+                    ...prev,
+                    basicInfo: !prev.basicInfo
+                  }))}
+                >
+                  <h3>Basic Information</h3>
+                  <span>{expandedSections.basicInfo ? '−' : '+'}</span>
                 </div>
-                <div className={styles.viewControls}>
-                  <button
-                    className={`${styles.viewButton} ${viewMode === 'parsed' ? styles.active : ''}`}
-                    onClick={() => setViewMode('parsed')}
-                  >
-                    Parsed
-                  </button>
-                  <button
-                    className={`${styles.viewButton} ${viewMode === 'raw' ? styles.active : ''}`}
-                    onClick={() => setViewMode('raw')}
-                  >
-                    Raw
-                  </button>
-                </div>
+                {expandedSections.basicInfo && (
+                  <div className={styles.sectionContent}>
+                    <div className={styles.basicInfo}>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Source:</span>
+                        <span className={styles.infoValue}>{selectedEvent.source}</span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Type:</span>
+                        <span className={styles.infoValue}>{selectedEvent.analyticsType || 'GA4'}</span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Beacon ID:</span>
+                        <span className={styles.infoValue}>{selectedEvent.beaconId}</span>
+                      </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.infoLabel}>Timestamp:</span>
+                        <span className={styles.infoValue}>{selectedEvent.timestamp}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {viewMode === 'parsed' ? (
-                <>
-                  <div className={styles.section}>
-                    <div 
-                      className={styles.sectionHeader}
-                      onClick={() => setExpandedSections(prev => ({
-                        ...prev,
-                        basicInfo: !prev.basicInfo
-                      }))}
-                    >
-                      <h3>Basic Information</h3>
-                      <span>{expandedSections.basicInfo ? '−' : '+'}</span>
-                    </div>
-                    {expandedSections.basicInfo && (
-                      <div className={styles.sectionContent}>
-                        <div className={styles.infoRow}>
-                          <span className={styles.label}>Source:</span>
-                          <span className={styles.value}>{selectedEvent.source}</span>
-                        </div>
-                        <div className={styles.infoRow}>
-                          <span className={styles.label}>Type:</span>
-                          <span className={styles.value}>
-                            {selectedEvent.source === 'logcat'
-                              ? (selectedEvent.message?.includes('/b/ss/') ? 'Adobe' : 'GA4')
-                              : (selectedEvent.analyticsType === 'adobe' ? 'Adobe' : 'GA4')}
-                          </span>
-                        </div>
-                        <div className={styles.infoRow}>
-                          <span className={styles.label}>Beacon ID:</span>
-                          <span className={styles.value}>{selectedEvent.beaconId}</span>
-                        </div>
-                        <div className={styles.infoRow}>
-                          <span className={styles.label}>Timestamp:</span>
-                          <span className={styles.value}>
-                            {new Date(selectedEvent.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                        {selectedEvent.pageName && (
-                          <div className={styles.infoRow}>
-                            <span className={styles.label}>Page Name:</span>
-                            <span className={styles.value}>{selectedEvent.pageName}</span>
-                          </div>
-                        )}
-                        {selectedEvent.url && (
-                          <div className={styles.infoRow}>
-                            <span className={styles.label}>URL:</span>
-                            <span className={styles.value}>{selectedEvent.url}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={styles.section}>
-                    <div 
-                      className={styles.sectionHeader}
-                      onClick={() => setExpandedSections(prev => ({
-                        ...prev,
-                        parameters: !prev.parameters
-                      }))}
-                    >
-                      <h3>Parameters</h3>
-                      <span>{expandedSections.parameters ? '−' : '+'}</span>
-                    </div>
-                    {expandedSections.parameters && (
-                      <div className={styles.sectionContent}>
-                        <div className={styles.parametersTable}>
-                          {selectedEvent.source === 'logcat' ? (
-                            Object.entries(parseLogcatParameters(selectedEvent.message) || {}).map(([key, value], index) => (
-                              <div key={index} className={styles.parameterRow}>
-                                <span className={styles.paramName}>{key}</span>
-                                <span className={styles.paramValue}>
-                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            Object.entries(selectedEvent.parameters || {}).map(([key, value], index) => (
-                              <div key={index} className={styles.parameterRow}>
-                                <span className={styles.paramName}>{key}</span>
-                                <span className={styles.paramValue}>
-                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className={styles.section}>
-                  <div className={styles.rawData}>
-                    <pre>
-                      {selectedEvent.source === 'proxy'
-                        ? selectedEvent.rawRequest
-                        : selectedEvent.message}
-                    </pre>
-                  </div>
+              <div className={styles.section}>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setExpandedSections(prev => ({
+                    ...prev,
+                    parameters: !prev.parameters
+                  }))}
+                >
+                  <h3>Parameters</h3>
+                  <span>{expandedSections.parameters ? '−' : '+'}</span>
                 </div>
-              )}
+                {expandedSections.parameters && (
+                  <div className={styles.sectionContent}>
+                    <div className={styles.parametersTable}>
+                      {selectedEvent.source === 'logcat' ? (
+                        (() => {
+                          const params = parseLogcatParameters(selectedEvent.message) || {};
+                          const { general } = separateParameters(params);
+                          
+                          if (Object.keys(general).length === 0) {
+                            return <div className={styles.noData}>No general parameters available</div>;
+                          }
+                          
+                          return Object.entries(general).map(([key, value], index) => (
+                            <div key={index} className={styles.parameterRow}>
+                              <span className={styles.paramName}>{key}</span>
+                              <span className={styles.paramValue}>
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          ));
+                        })()
+                      ) : (
+                        (() => {
+                          const { general } = separateParameters(selectedEvent.parameters || {});
+                          
+                          if (Object.keys(general).length === 0) {
+                            return <div className={styles.noData}>No general parameters available</div>;
+                          }
+                          
+                          return Object.entries(general).map(([key, value], index) => (
+                            <div key={index} className={styles.parameterRow}>
+                              <span className={styles.paramName}>{key}</span>
+                              <span className={styles.paramValue}>
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          ));
+                        })()
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.section}>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setExpandedSections(prev => ({
+                    ...prev,
+                    eCommerce: !prev.eCommerce
+                  }))}
+                >
+                  <h3>eCommerce</h3>
+                  <span>{expandedSections.eCommerce ? '−' : '+'}</span>
+                </div>
+                {expandedSections.eCommerce && (
+                  <div className={styles.sectionContent}>
+                    {selectedEvent.source === 'logcat' ? (
+                      (() => {
+                        const params = parseLogcatParameters(selectedEvent.message) || {};
+                        const items = extractItems(params);
+                        
+                        if (items.length === 0) {
+                          return <div className={styles.noData}>No eCommerce data available</div>;
+                        }
+                        
+                        return (
+                          <div className={styles.itemsTable}>
+                            <div className={styles.itemsHeader}>
+                              <div className={styles.itemNumber}>#</div>
+                              <div className={styles.productName}>PRODUCT NAME</div>
+                              <div className={styles.itemId}>ITEM ID</div>
+                              <div className={styles.quantity}>QTY</div>
+                              <div className={styles.price}>PRICE</div>
+                            </div>
+                            {items.map((item, index) => (
+                              <div key={index} className={styles.itemRow}>
+                                <div className={styles.itemNumber}>#{index + 1}</div>
+                                <div className={styles.productName}>{item.item_name || item.product_name}</div>
+                                <div className={styles.itemId}>{item.item_id || item.product_id}</div>
+                                <div className={styles.quantity}>{item.quantity || 1}</div>
+                                <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      (() => {
+                        const items = extractItems(selectedEvent.parameters || {});
+                        
+                        if (items.length === 0) {
+                          return <div className={styles.noData}>No eCommerce data available</div>;
+                        }
+                        
+                        return (
+                          <div className={styles.itemsTable}>
+                            <div className={styles.itemsHeader}>
+                              <div className={styles.itemNumber}>#</div>
+                              <div className={styles.productName}>PRODUCT NAME</div>
+                              <div className={styles.itemId}>ITEM ID</div>
+                              <div className={styles.quantity}>QTY</div>
+                              <div className={styles.price}>PRICE</div>
+                            </div>
+                            {items.map((item, index) => (
+                              <div key={index} className={styles.itemRow}>
+                                <div className={styles.itemNumber}>#{index + 1}</div>
+                                <div className={styles.productName}>{item.item_name || item.product_name}</div>
+                                <div className={styles.itemId}>{item.item_id || item.product_id}</div>
+                                <div className={styles.quantity}>{item.quantity || 1}</div>
+                                <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
-            <div className={styles.noSelection}>
-              <p>Select an event to view details</p>
+            <div className={styles.noEventSelected}>
+              <p>No event selected</p>
+              <p>Select an event from the list to view details</p>
             </div>
           )}
         </div>

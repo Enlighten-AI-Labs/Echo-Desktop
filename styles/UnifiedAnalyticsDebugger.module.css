@@ -98,6 +98,70 @@
   overflow: hidden;
 }
 
+/* New filter box styles */
+.filterBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.filterInputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filterInput {
+  width: 100%;
+  padding: 0.5rem;
+  padding-right: 2rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.clearFilterButton {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+}
+
+.clearFilterButton:hover {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.filterTypeContainer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filterTypeSelect {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
 .eventsList {
   background-color: white;
   border-radius: 8px;
@@ -556,4 +620,71 @@
   font-size: 11px;
   font-weight: 500;
   margin-right: 4px;
+}
+
+.itemsTable {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  margin-top: 10px;
+  font-family: 'Azeret Mono', monospace;
+}
+
+.itemsHeader {
+  display: grid;
+  grid-template-columns: 50px 1fr 100px 80px 100px;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 50px 1fr 100px 80px 100px;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: center;
+  font-size: 14px;
+}
+
+.itemRow:last-child {
+  border-bottom: none;
+}
+
+.itemNumber {
+  color: #666;
+  font-size: 12px;
+}
+
+.productName {
+  font-weight: 500;
+  color: #333;
+}
+
+.itemId {
+  color: #666;
+  font-family: 'Azeret Mono', monospace;
+}
+
+.quantity {
+  text-align: center;
+  color: #333;
+}
+
+.price {
+  text-align: right;
+  color: #333;
+  font-weight: 500;
+}
+
+.price::before {
+  content: '$';
+  margin-right: 2px;
+  color: #666;
 }

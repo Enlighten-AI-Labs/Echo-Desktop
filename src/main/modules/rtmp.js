@@ -20,10 +20,10 @@ if (!fs.existsSync(rtmpMediaPath)) {
 const rtmpConfig = {
   rtmp: {
     port: 1935,
-    chunk_size: 60000,
+    chunk_size: 4096,  // Reduced from 60000 to minimize buffering
     gop_cache: false,  // Disable GOP cache to reduce latency
-    ping: 30,
-    ping_timeout: 60
+    ping: 10,         // Reduced from 30 to detect disconnections faster
+    ping_timeout: 20  // Reduced from 60 to match ping reduction
   },
   http: {
     port: 8000,
@@ -38,9 +38,9 @@ const rtmpConfig = {
       {
         app: 'live',
         hls: true,
-        hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments+append_list:hls_allow_cache=false]',
+        hlsFlags: '[hls_time=1:hls_list_size=2:hls_flags=delete_segments+append_list+discont_start:hls_allow_cache=false]',
         dash: true,
-        dashFlags: '[f=dash:window_size=3:extra_window_size=5]'
+        dashFlags: '[f=dash:window_size=2:extra_window_size=1]'
       }
     ]
   }

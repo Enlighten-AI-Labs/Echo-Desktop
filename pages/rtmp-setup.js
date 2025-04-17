@@ -376,11 +376,11 @@ export default function RtmpSetup() {
           withCredentials: false,
           config: {
             enableWorker: true,
-            enableStashBuffer: true,        // Enable stash buffer for smoother playback
-            stashInitialSize: 128,          // Increase buffer size for stability
+            enableStashBuffer: false,       // Disable stash buffer for lowest latency
+            stashInitialSize: 32,          // Minimum buffer size for stability
             autoCleanupSourceBuffer: true,  // Enable source buffer auto cleanup
-            autoCleanupMaxBackwardDuration: 5,  // Increase to reduce buffer pressure
-            autoCleanupMinBackwardDuration: 2,  // Increase for more stable playback
+            autoCleanupMaxBackwardDuration: 2,  // Reduced from 5 to minimize buffer
+            autoCleanupMinBackwardDuration: 1,  // Reduced from 2 to minimize buffer
             lazyLoad: false,                // Don't use lazy loading
             lazyLoadMaxDuration: 0,
             lazyLoadRecoverDuration: 0,
@@ -389,8 +389,8 @@ export default function RtmpSetup() {
             fixAudioTimestampGap: false,    // Don't fix timestamp gaps
             accurateSeek: false,            // Don't need accurate seeking for live
             liveBufferLatencyChasing: true, // Chase buffer latency for live stream
-            liveBufferLatencyMaxLatency: 2.0, // Allow higher latency for stability
-            liveBufferLatencyMinRemain: 0.5,  // Increase for more stable playback
+            liveBufferLatencyMaxLatency: 1.0, // Reduced from 2.0 for lower latency
+            liveBufferLatencyMinRemain: 0.1,  // Reduced from 0.5 for lower latency
             liveSync: true                  // Enable live sync
           }
         });

@@ -1,5 +1,5 @@
 import styles from '@/styles/UnifiedAnalyticsDebugger.module.css';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 
 function parseGA4Beacon(url, queryParams) {
@@ -372,6 +372,13 @@ function determineAdobeElement(params) {
   return '00';
 }
 
+// Add this function before the component
+const TrashIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
@@ -396,9 +403,35 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   
   // New state for the filter box
   const [filterText, setFilterText] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  // Add new state variables for journey functionality
+  const [showJourneyModal, setShowJourneyModal] = useState(false);
+  const [journeyName, setJourneyName] = useState('');
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [journeys, setJourneys] = useState([]);
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
+
+  // Function to generate a consistent color based on journey name
+  const getJourneyColor = useCallback((journeyName) => {
+    const colors = [
+      '#9C54AD', // Purple
+      '#EB2726', // Red
+      '#3C76A9', // Blue
+      '#6DC19C', // Green
+      '#F69757', // Orange
+      '#FFCF4F'  // Yellow
+    ];
+    
+    // Create a hash of the journey name
+    const hash = journeyName.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    // Use the hash to select a color
+    return colors[Math.abs(hash) % colors.length];
+  }, []);
 
   // Function to generate a unique event ID
   const generateEventId = (event) => {
@@ -656,6 +689,15 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     return price;
   };
 
+  // Add delete event handler
+  const handleDeleteEvent = (eventToDelete, e) => {
+    e.stopPropagation(); // Prevent event card selection when deleting
+    setEvents(currentEvents => currentEvents.filter(event => event.id !== eventToDelete.id));
+    if (selectedEvent?.id === eventToDelete.id) {
+      setSelectedEvent(null);
+    }
+  };
+
   // Effect to fetch data from both sources
   useEffect(() => {
     async function fetchData() {
@@ -900,6 +942,138 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     return true;
   });
 
+  // Journey related functions
+  const handleAddJourney = () => {
+    setShowJourneyModal(true);
+    setJourneyName('');
+    setSelectedEvents([]);
+  };
+
+  const handleCloseModal = () => {
+    setShowJourneyModal(false);
+    setJourneyName('');
+    setSelectedEvents([]);
+  };
+
+  const handleSaveJourney = () => {
+    if (!journeyName.trim()) {
+      alert('Please enter a journey name');
+      return;
+    }
+
+    if (selectedEvents.length === 0) {
+      alert('Please select at least one event');
+      return;
+    }
+
+    const newJourney = {
+      id: Date.now(),
+      name: journeyName.trim(),
+      events: selectedEvents
+    };
+
+    // Update journeys state
+    setJourneys(prevJourneys => [...prevJourneys, newJourney]);
+
+    // Update events with their journey assignments
+    setEvents(prevEvents => 
+      prevEvents.map(event => {
+        if (selectedEvents.includes(event.id)) {
+          // Ensure journeys array exists and add new journey
+          const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
+          return {
+            ...event,
+            journeys: [...existingJourneys, newJourney]
+          };
+        }
+        return event;
+      })
+    );
+
+    handleCloseModal();
+  };
+
+  const toggleEventSelection = (eventId) => {
+    setSelectedEvents(prev => 
+      prev.includes(eventId)
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const getEventJourneys = useCallback((eventId) => {
+    if (!eventId) return [];
+    return journeys.filter(journey => 
+      journey.events.includes(eventId)
+    );
+  }, [journeys]);
+
+  // Update the event card rendering to use the journey information
+  const renderEventCard = (event, index) => {
+    const eventJourneys = getEventJourneys(event.id);
+    
+    return (
+      <div
+        key={event.id}
+        className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.selected : ''}`}
+        onClick={() => setSelectedEvent(event)}
+        data-event-number={filteredEvents.length - index}
+      >
+        {eventJourneys.length > 0 && (
+          <div className={styles.journeyTags}>
+            {eventJourneys.map((journey) => (
+              <div
+                key={journey.id}
+                className={styles.journeyTag}
+                style={{ backgroundColor: getJourneyColor(journey.name) }}
+              >
+                {journey.name}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          className={styles.deleteEventButton}
+          onClick={(e) => handleDeleteEvent(event, e)}
+          title="Delete event"
+        >
+          <TrashIcon />
+        </button>
+
+        <div className={styles.eventHeader}>
+          <span className={styles.beaconId}>{event.beaconId}</span>
+          <span className={styles.eventTime}>
+            {new Date(event.timestamp).toLocaleTimeString([], { 
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
+          </span>
+        </div>
+
+        <div className={styles.eventName}>
+          {event.source === 'logcat'
+            ? (event.message?.includes('Logging event:') 
+                ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
+                : 'Analytics Event')
+            : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
+          <span className={styles.separator}>|</span>
+          <span className={styles.eventPage}>
+            {event.source === 'logcat' 
+              ? (event.message?.includes('/b/ss/') 
+                  ? event.pageName || 'Unknown Page'
+                  : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
+              : (event.analyticsType === 'adobe' 
+                  ? event.pageName || 'Unknown Page'
+                  : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   if (!show) {
     return null;
   }
@@ -908,34 +1082,58 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     <div className={styles.container}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <button 
+          <button
             className={`${styles.captureButton} ${isCapturingLogcat ? styles.stopButton : styles.startButton}`}
             onClick={handleToggleLogcat}
+            disabled={!deviceId || !packageName}
           >
             {isCapturingLogcat ? 'Stop Logcat' : 'Start Logcat'}
           </button>
-          
-          <button 
+          <button
             className={styles.clearButton}
             onClick={handleClearEvents}
             disabled={events.length === 0}
           >
             Clear Events
           </button>
-        </div>
-
-        <div className={styles.toolbarRight}>
-          <select 
+          <div className={styles.filterContainer}>
+            <input
+              type="text"
+              className={styles.filterInput}
+              placeholder="Filter events..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+            <select
+              className={styles.filterTypeSelect}
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="beaconId">Beacon ID</option>
+              <option value="eventName">Event Name</option>
+              <option value="screen">Screen</option>
+            </select>
+          </div>
+          <select
+            className={styles.sourceSelect}
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className={styles.sourceSelect}
           >
             <option value="all">All Sources</option>
             <option value="logcat">Android Debug Bridge</option>
             <option value="proxy">Network</option>
           </select>
+          <button 
+            className={styles.addJourneyButton}
+            onClick={handleAddJourney}
+          >
+            <span>+ Add Journey</span>
+          </button>
+        </div>
 
-          <select
+        <div className={styles.toolbarRight}>
+          <select 
             value={analyticsType}
             onChange={(e) => setAnalyticsType(e.target.value)}
             className={styles.typeSelect}
@@ -966,75 +1164,23 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
       <div className={styles.content}>
         <div className={styles.eventsList}>
-          {/* Add the new filter box above the event list */}
-          <div className={styles.filterBox}>
-            <div className={styles.filterInputContainer}>
-              <input
-                type="text"
-                placeholder="Filter by beaconID, event name, or screen..."
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className={styles.filterInput}
-              />
-              {filterText && (
-                <button 
-                  className={styles.clearFilterButton}
-                  onClick={() => setFilterText('')}
-                  title="Clear filter"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {filteredEvents.map((event, index) => (
-            <div
-              key={event.id}
-              className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.selected : ''}`}
-              onClick={() => setSelectedEvent(event)}
-              data-event-number={filteredEvents.length - index}
-              data-analytics-type={
-                event.source === 'logcat'
-                  ? (event.message?.includes('/b/ss/') ? 'Adobe' : 'GA4')
-                  : (event.analyticsType === 'adobe' ? 'Adobe' : 'GA4')
-              }
-            >
-              <div className={styles.eventHeader}>
-                <span className={styles.beaconId}>{event.beaconId}</span>
-                <span className={styles.eventTime}>
-                  {new Date(event.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                  })}
-                </span>
-              </div>
-              <div className={styles.eventName}>
-                {event.source === 'logcat'
-                  ? (event.message?.includes('Logging event:') 
-                      ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
-                      : 'Analytics Event')
-                  : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
-                <span className={styles.separator}>|</span>
-                <span className={styles.eventPage}>
-                  {event.source === 'logcat' 
-                    ? (event.message?.includes('/b/ss/') 
-                        ? event.pageName || 'Unknown Page'
-                        : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
-                    : (event.analyticsType === 'adobe' 
-                        ? event.pageName || 'Unknown Page'
-                        : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
-                </span>
-              </div>
-            </div>
-          ))}
+          {filteredEvents.map((event, index) => renderEventCard(event, index))}
         </div>
 
         <div className={styles.eventDetails}>
           {selectedEvent ? (
             <>
+              <div className={styles.eventDetailsHeader}>
+                <h2 className={styles.eventDetailsTitle}>
+                  {selectedEvent.source === 'logcat'
+                    ? (selectedEvent.message?.includes('Logging event:')
+                        ? cleanEventName(selectedEvent.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
+                        : 'Analytics Event')
+                    : cleanEventName(selectedEvent.eventName || selectedEvent.type) || 'Unknown Event'}
+                  <span className={styles.beaconId}>{selectedEvent.beaconId}</span>
+                </h2>
+              </div>
+
               <div className={styles.section}>
                 <div 
                   className={styles.sectionHeader}
@@ -1084,6 +1230,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 {expandedSections.parameters && (
                   <div className={styles.sectionContent}>
                     <div className={styles.parametersTable}>
+                      <div className={styles.parametersHeader}>
+                        <div>PARAMETER</div>
+                        <div>VALUE</div>
+                      </div>
                       {selectedEvent.source === 'logcat' ? (
                         (() => {
                           const params = parseLogcatParameters(selectedEvent.message) || {};
@@ -1095,10 +1245,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                           
                           return Object.entries(general).map(([key, value], index) => (
                             <div key={index} className={styles.parameterRow}>
-                              <span className={styles.paramName}>{key}</span>
-                              <span className={styles.paramValue}>
+                              <div className={styles.paramName}>{key}</div>
+                              <div className={styles.paramValue}>
                                 {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </span>
+                              </div>
                             </div>
                           ));
                         })()
@@ -1112,10 +1262,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                           
                           return Object.entries(general).map(([key, value], index) => (
                             <div key={index} className={styles.parameterRow}>
-                              <span className={styles.paramName}>{key}</span>
-                              <span className={styles.paramValue}>
+                              <div className={styles.paramName}>{key}</div>
+                              <div className={styles.paramValue}>
                                 {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </span>
+                              </div>
                             </div>
                           ));
                         })()
@@ -1256,6 +1406,75 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           </div>
         </div>
       </div>
+
+      {/* Journey Modal */}
+      {showJourneyModal && (
+        <div className={styles.modalOverlay} onClick={handleCloseModal}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Create New Journey</h2>
+              <button className={styles.modalClose} onClick={handleCloseModal}>×</button>
+            </div>
+            <div className={styles.modalContent}>
+              <input
+                type="text"
+                className={styles.journeyNameInput}
+                placeholder="Enter journey name..."
+                value={journeyName}
+                onChange={e => setJourneyName(e.target.value)}
+              />
+              <div className={styles.eventCheckList}>
+                {events.map(event => {
+                  const currentJourneys = getEventJourneys(event.id);
+                  return (
+                    <div key={event.id} className={styles.eventCheckItem}>
+                      <input
+                        type="checkbox"
+                        className={styles.eventCheckbox}
+                        checked={selectedEvents.includes(event.id)}
+                        onChange={() => toggleEventSelection(event.id)}
+                      />
+                      <div className={styles.eventInfo}>
+                        <div className={styles.beaconId}>{event.beaconId}</div>
+                        <div className={styles.eventName}>
+                          {event.source === 'logcat'
+                            ? (event.message?.includes('Logging event:')
+                                ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
+                                : 'Analytics Event')
+                            : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
+                          <span className={styles.separator}>|</span>
+                          <span className={styles.eventPage}>
+                            {event.source === 'logcat'
+                              ? (event.message?.includes('/b/ss/')
+                                  ? event.pageName || 'Unknown Page'
+                                  : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
+                              : (event.analyticsType === 'adobe'
+                                  ? event.pageName || 'Unknown Page'
+                                  : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+                          </span>
+                        </div>
+                        {currentJourneys.length > 0 && (
+                          <div className={styles.currentJourneys}>
+                            Current journeys: {currentJourneys.map(j => j.name).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={handleCloseModal}>
+                Cancel
+              </button>
+              <button className={`${styles.modalButton} ${styles.saveButton}`} onClick={handleSaveJourney}>
+                Save Journey
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -75,82 +75,21 @@
   min-width: 120px;
 }
 
-.searchInput {
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  min-width: 200px;
-}
-
-.autoRefreshLabel {
+/* Move filter styles to toolbar section */
+.filterContainer {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
-}
-
-.content {
-  display: grid;
-  grid-template-columns: 375px 1fr 300px;
-  gap: 1rem;
-  padding: 1rem;
-  height: calc(100vh - 80px);
-  overflow: hidden;
-}
-
-/* New filter box styles */
-.filterBox {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background-color: #ffffff;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.filterInputContainer {
-  position: relative;
-  display: flex;
-  align-items: center;
+  margin-left: 1rem;
 }
 
 .filterInput {
-  width: 100%;
   padding: 0.5rem;
-  padding-right: 2rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 0.9rem;
-}
-
-.clearFilterButton {
-  position: absolute;
-  right: 0.5rem;
-  background: none;
-  border: none;
-  color: #6c757d;
-  font-size: 1.2rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-}
-
-.clearFilterButton:hover {
-  background-color: #f8f9fa;
-  color: #212529;
-}
-
-.filterTypeContainer {
-  display: flex;
-  justify-content: flex-end;
+  width: 200px;
 }
 
 .filterTypeSelect {
@@ -162,11 +101,29 @@
   font-family: var(--font-mono);
 }
 
+.content {
+  display: grid;
+  grid-template-columns: 375px 1fr 300px;
+  gap: 1rem;
+  padding: 1rem;
+  height: calc(100vh - 80px);
+  overflow: hidden;
+}
+
+/* Remove old filter box styles since we moved them to toolbar */
+.filterBox {
+  display: none;
+}
+
+.filterInputContainer {
+  display: none;
+}
+
 /* Timeline container */
 .eventsList {
   background-color: #f8f9fa;
   overflow-y: auto;
-  padding: 2rem 1rem 2rem 4rem;
+  padding: 0 1rem 2rem 4rem;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 100px);
@@ -180,7 +137,8 @@
   border-radius: 8px;
   background-color: #ffffff;
   margin-bottom: 1.5rem;
-  margin-left: 2rem;
+  margin-left: 1.5rem;
+  margin-top: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -189,6 +147,11 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  width: calc(100% - 1.5rem);
+}
+
+.eventCard:first-child {
+  margin-top: 0;
 }
 
 /* Timeline node */
@@ -223,9 +186,8 @@
 }
 
 .eventCard.selected {
-  border: 1px solid #3C76A9;
-  box-shadow: 0 0 0 1px #3C76A9;
-  background-color: rgba(60, 118, 169, 0.02);
+  border: 2px solid #3C76A9;
+  box-shadow: 0 4px 16px rgba(60, 118, 169, 0.15);
 }
 
 .eventCard:hover {
@@ -249,12 +211,9 @@
 
 /* Beacon ID */
 .beaconId {
-  padding: 0.25rem 0.75rem;
-  background-color: #3C76A9;
-  color: white;
-  border-radius: 4px;
   font-family: 'Azeret Mono Regular', monospace;
   font-size: 0.875rem;
+  color: var(--text-color);
 }
 
 /* Event time */
@@ -264,6 +223,7 @@
   font-size: 0.75rem;
   margin-left: auto;
   white-space: nowrap;
+  margin-right: 2rem;
 }
 
 /* Event name and page */
@@ -315,25 +275,39 @@
 }
 
 .eventDetails {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #F0F2F5;
+  border-radius: 0;
+  box-shadow: none;
   overflow-y: auto;
   padding: 2rem;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 100px);
-  font-family: 'Azeret Mono Light', monospace;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
-.detailsHeader {
+.eventDetailsHeader {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.eventDetailsTitle {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 1rem;
+  color: #262628;
+  margin: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e9ecef;
-  min-height: 36px;
+  gap: 1rem;
+  font-weight: bold;
+}
+
+.eventDetailsTitle .beaconId {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 1rem;
+  color: #3C76A9;
+  font-weight: normal;
 }
 
 .viewControls {
@@ -357,30 +331,42 @@
 }
 
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  background: transparent;
 }
 
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  padding: 0.75rem 1.25rem;
+  background-color: #F0F2F5;
+  border: 1px solid #E9EDF3;
+  border-radius: 6px;
   cursor: pointer;
-  min-height: 36px;
+  min-height: 40px;
+  margin-bottom: 0;
+}
+
+.sectionHeader.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .sectionHeader h3 {
   margin: 0;
-  font-size: 0.9rem;
-  font-family: 'Travelia Medium', sans-serif;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-weight: normal;
+  color: #262628;
 }
 
 .sectionContent {
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+  padding: 0;
+  margin-bottom: 0;
+  border: 1px solid #E9EDF3;
+  border-top: none;
+  background: white;
 }
 
 .infoRow {
@@ -402,27 +388,55 @@
 .parametersTable {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0 3rem 0;
+  margin: 0;
+  background: white;
 }
 
-.parameterRow:last-child {
-  margin-bottom: 3rem;
+.parametersHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0.75rem 1.25rem;
+  background: #F0F2F5;
+  border-bottom: 1px solid #E9EDF3;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.875rem;
+  color: #262628;
 }
 
 .parameterRow {
-  display: table-row;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #E9EDF3;
+  align-items: center;
+  font-size: 0.875rem;
+  background-color: white;
 }
 
-.paramName, .paramValue {
-  display: table-cell;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e9ecef;
+.parameterRow:nth-child(even) {
+  background-color: #F8F9FA;
 }
 
 .paramName {
   font-family: 'Azeret Mono Regular', monospace;
-  font-weight: 500;
-  width: 30%;
+  color: #262628;
+}
+
+.paramValue {
+  font-family: 'Azeret Mono Regular', monospace;
+  color: #3C76A9;
+}
+
+.noData {
+  padding: 1rem;
+  text-align: center;
+  color: #6c757d;
+  font-family: 'Azeret Mono Light', monospace;
+  font-style: italic;
+  background: white;
+  border-bottom: 1px solid #E9EDF3;
 }
 
 .rawData {
@@ -659,67 +673,311 @@
 
 .itemsTable {
   width: 100%;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #fff;
-  margin-top: 10px;
-  font-family: 'Azeret Mono', monospace;
+  border-collapse: collapse;
+  margin: 0;
+  background: white;
 }
 
 .itemsHeader {
   display: grid;
   grid-template-columns: 50px 1fr 100px 80px 100px;
   gap: 10px;
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e0e0e0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
+  padding: 0.75rem 1.25rem;
+  background: #F0F2F5;
+  border-bottom: 1px solid #E9EDF3;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.875rem;
+  color: #262628;
 }
 
 .itemRow {
   display: grid;
   grid-template-columns: 50px 1fr 100px 80px 100px;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #E9EDF3;
   align-items: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
-.itemRow:last-child {
-  border-bottom: none;
+.itemRow:nth-child(odd) {
+  background-color: white;
+}
+
+.itemRow:nth-child(even) {
+  background-color: rgba(233, 237, 243, 0.3);
 }
 
 .itemNumber {
-  color: #666;
-  font-size: 12px;
+  color: #262628;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .productName {
-  font-weight: 500;
-  color: #333;
+  color: #3C76A9;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .itemId {
-  color: #666;
-  font-family: 'Azeret Mono', monospace;
+  color: #262628;
+  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .quantity {
-  text-align: center;
-  color: #333;
+  color: #262628;
+  font-family: 'Azeret Mono Regular', monospace;
+  text-align: left;
 }
 
 .price {
+  color: #6DC19C;
+  font-family: 'Azeret Mono Regular', monospace;
   text-align: right;
-  color: #333;
-  font-weight: 500;
 }
 
 .price::before {
   content: '$';
-  margin-right: 2px;
-  color: #666;
+  margin-right: 1px;
+}
+
+.deleteEventButton {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #6c757d;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+}
+
+.deleteEventButton:hover {
+  opacity: 1;
+  color: #dc3545;
+}
+
+/* Add Journey Button */
+.addJourneyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background-color: white;
+  border: 1.5px solid #9C54AD;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 1rem;
+}
+
+.addJourneyButton span {
+  font-family: 'Doto Semi-Bold', sans-serif;
+  font-size: 14px;
+  color: #9C54AD;
+}
+
+.addJourneyButton:hover {
+  background-color: rgba(156, 84, 173, 0.05);
+}
+
+.addJourneyButton:active {
+  background-color: rgba(156, 84, 173, 0.1);
+}
+
+/* Journey Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalTitle {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0.5rem;
+}
+
+.modalContent {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.journeyNameInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  font-family: 'Azeret Mono Regular', monospace;
+}
+
+.eventCheckList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.eventCheckItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  background-color: white;
+  transition: background-color 0.2s ease;
+}
+
+.eventCheckItem:hover {
+  background-color: #f8f9fa;
+}
+
+.eventCheckbox {
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+}
+
+.eventInfo {
+  flex: 1;
+}
+
+.eventInfo .beaconId {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
+  color: #3C76A9;
+  background-color: rgba(60, 118, 169, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.eventInfo .eventName {
+  font-size: 14px;
+  color: #262628;
+}
+
+.modalFooter {
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.modalButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-family: 'Travelia Medium', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton {
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  color: #6c757d;
+}
+
+.saveButton {
+  background-color: #3C76A9;
+  border: none;
+  color: white;
+}
+
+.saveButton:hover {
+  background-color: #2c5a8a;
+}
+
+/* Journey Tags */
+.journeyTags {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  display: flex;
+  gap: 0;
+  z-index: 1;
+}
+
+.journeyTag {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: white;
+  margin-right: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* Current Journeys in Modal */
+.currentJourneys {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Remove the border radius overrides since we want rectangular tags */
+.journeyTag:first-child {
+  border-top-left-radius: 0;
+}
+
+.journeyTag:last-child {
+  border-top-right-radius: 0;
+}
+
+.journeyTag + .journeyTag {
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Expand/Collapse Icons */
+.sectionHeader .expandIcon {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 1rem;
+  color: #262628;
 }

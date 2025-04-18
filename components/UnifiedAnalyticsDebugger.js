@@ -379,6 +379,14 @@ const TrashIcon = () => (
   </svg>
 );
 
+// Add the ShoppingCartIcon component
+const ShoppingCartIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 14.5a0.5 0.5 0 11-1 0 0.5 0.5 0 011 0zM12.5 14.5a0.5 0.5 0 11-1 0 0.5 0.5 0 011 0z" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M1 1h2.5l2.4 8h7.8l1.3-5H4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
@@ -587,11 +595,20 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     const ecommerce = {};
     const general = {};
     
-    Object.entries(parameters).forEach(([key, value]) => {
-      if (isEcommerceParameter(key)) {
-        ecommerce[key] = value;
+    // Handle both direct parameters and nested params object
+    const allParams = parameters.params ? { ...parameters, ...parameters.params } : parameters;
+    
+    Object.entries(allParams).forEach(([key, value]) => {
+      // Skip the 'params' object itself since we've already merged it
+      if (key === 'params') return;
+      
+      // Clean the key name by removing analytics suffixes
+      const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
+      
+      if (isEcommerceParameter(cleanKey)) {
+        ecommerce[cleanKey] = value;
       } else {
-        general[key] = value;
+        general[cleanKey] = value;
       }
     });
     
@@ -602,11 +619,14 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const extractItems = (parameters) => {
     if (!parameters) return [];
     
+    // Handle both direct parameters and nested params object
+    const allParams = parameters.params ? { ...parameters, ...parameters.params } : parameters;
+    
     // For logcat items array
-    if (parameters.items) {
+    if (allParams.items) {
       // If items is already an array of objects
-      if (Array.isArray(parameters.items)) {
-        return parameters.items.map(item => ({
+      if (Array.isArray(allParams.items)) {
+        return allParams.items.map(item => ({
           item_id: item.item_id || item.id || 'N/A',
           item_name: item.item_name || item.name || 'Unknown Item',
           quantity: parseInt(item.quantity) || 1,
@@ -615,10 +635,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }
       
       // If items is a string that needs to be parsed
-      if (typeof parameters.items === 'string') {
+      if (typeof allParams.items === 'string') {
         try {
           // Clean up the string and try to parse it
-          const cleanItemsStr = parameters.items.replace(/^\[|\]$/g, '');
+          const cleanItemsStr = allParams.items.replace(/^\[|\]$/g, '');
           const items = cleanItemsStr.split('}, {').map(itemStr => {
             // Clean up each item string
             const cleanStr = itemStr.replace(/[{}]/g, '');
@@ -651,7 +671,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     
     // For individual item parameters
     const itemData = {};
-    Object.entries(parameters).forEach(([key, value]) => {
+    Object.entries(allParams).forEach(([key, value]) => {
       const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
       
       if (cleanKey.includes('item_name') || cleanKey.includes('product_name')) {
@@ -700,133 +720,168 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
   // Effect to fetch data from both sources
   useEffect(() => {
+    let isMounted = true; // Add mounted check
+
     async function fetchData() {
+      if (!isMounted) return; // Skip if unmounted
+
       try {
         // Get logcat status and data if running
         let isRunning = false;
         try {
           isRunning = await window.api.adb.isLogcatRunning();
+          if (!isMounted) return; // Check if still mounted after await
         } catch (error) {
           console.error('Error checking logcat status:', error);
         }
         
-        setIsCapturingLogcat(isRunning);
+        if (isMounted) {
+          setIsCapturingLogcat(isRunning);
+        }
         
+        let newEvents = [];
+        
+        // Try to get logcat events
         if (isRunning) {
-          const logcatLogs = await window.api.adb.getAnalyticsLogs();
-          if (Array.isArray(logcatLogs)) {
-            const parsedLogcatEvents = logcatLogs
-              .filter(log => log.message?.includes('Logging event:') || log.message?.includes('FirebaseAnalytics'))
-              .map(log => {
-                const event = {
-                  ...log,
-                  source: 'logcat',
-                  timestamp: log.timestamp || new Date().toISOString()
-                };
+          try {
+            const logcatLogs = await window.api.adb.getAnalyticsLogs();
+            if (!isMounted) return; // Check if still mounted after await
 
-                // Parse event name and parameters for Firebase/GA4 events
-                if (log.message?.includes('Logging event:')) {
-                  const nameMatch = log.message.match(/name=([^,]+)/);
-                  if (nameMatch) {
-                    event.eventName = cleanEventName(nameMatch[1]);
+            if (Array.isArray(logcatLogs)) {
+              const parsedLogcatEvents = logcatLogs
+                .filter(log => log.message?.includes('Logging event:') || log.message?.includes('FirebaseAnalytics'))
+                .map(log => {
+                  const event = {
+                    ...log,
+                    source: 'logcat',
+                    timestamp: log.timestamp || new Date().toISOString()
+                  };
+
+                  // Parse event name and parameters for Firebase/GA4 events
+                  if (log.message?.includes('Logging event:')) {
+                    const nameMatch = log.message.match(/name=([^,]+)/);
+                    if (nameMatch) {
+                      event.eventName = cleanEventName(nameMatch[1]);
+                    }
+                    event.parameters = parseLogcatParameters(log.message);
                   }
-                  event.parameters = parseLogcatParameters(log.message);
-                }
-                // Parse Adobe Analytics events
-                else if (log.message?.includes('/b/ss/')) {
-                  const adobeParams = parseAdobeAnalyticsBeacon(log.message);
-                  event.parameters = adobeParams;
-                  event.pageName = adobeParams.pageName;
-                  event.events = adobeParams.events;
-                  event.analyticsType = 'adobe';
-                }
+                  // Parse Adobe Analytics events
+                  else if (log.message?.includes('/b/ss/')) {
+                    const adobeParams = parseAdobeAnalyticsBeacon(log.message);
+                    event.parameters = adobeParams;
+                    event.pageName = adobeParams.pageName;
+                    event.events = adobeParams.events;
+                    event.analyticsType = 'adobe';
+                  }
 
-                event.id = generateEventId(event);
-                event.beaconId = generateBeaconId(event);
-                
-                return event;
+                  event.id = generateEventId(event);
+                  event.beaconId = generateBeaconId(event);
+                  
+                  return event;
+                });
+
+              // Process new logcat events
+              parsedLogcatEvents.forEach(event => {
+                if (!processedEventIds.current.has(event.id)) {
+                  processedEventIds.current.add(event.id);
+                  if (isMounted) {
+                    captureScreenshot(event.id);
+                  }
+                }
               });
-
-            // Process new logcat events
-            parsedLogcatEvents.forEach(event => {
-              if (!processedEventIds.current.has(event.id)) {
-                processedEventIds.current.add(event.id);
-                captureScreenshot(event.id);
-              }
-            });
-            
-            // Merge with existing events
-            setEvents(currentEvents => {
-              const existingEventsMap = new Map(currentEvents.map(e => [e.id, e]));
-              parsedLogcatEvents.forEach(e => existingEventsMap.set(e.id, e));
-              return Array.from(existingEventsMap.values())
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            });
+              
+              newEvents = [...newEvents, ...parsedLogcatEvents];
+            }
+          } catch (error) {
+            console.error('Error fetching logcat events:', error);
           }
         }
 
-        // Get proxy data
-        const proxyTraffic = await window.api.mitmproxy.getTraffic();
-        const analyticsBeacons = proxyTraffic
-          .filter(entry => 
-            entry.type === 'request' && 
-            entry.fullUrl && (
-              entry.fullUrl.includes('/b/ss/') || // Adobe Analytics
-              entry.fullUrl.includes('/collect') || // GA4
-              entry.fullUrl.includes('/g/collect') // GA4 alternative endpoint
+        // Try to get proxy data
+        try {
+          const proxyTraffic = await window.api.mitmproxy.getTraffic();
+          if (!isMounted) return; // Check if still mounted after await
+
+          const analyticsBeacons = proxyTraffic
+            .filter(entry => 
+              entry.type === 'request' && 
+              entry.fullUrl && (
+                entry.fullUrl.includes('/b/ss/') || // Adobe Analytics
+                entry.fullUrl.includes('/collect') || // GA4
+                entry.fullUrl.includes('/g/collect') // GA4 alternative endpoint
+              )
             )
-          )
-          .map(entry => {
-            let parsedBeacon = null;
-            if (entry.fullUrl.includes('/b/ss/')) {
-              parsedBeacon = { 
-                ...parseAdobeAnalyticsBeacon(entry.fullUrl),
-                source: 'proxy',
-                analyticsType: 'adobe',
-                timestamp: entry.timestamp || new Date().toISOString(),
-                rawRequest: entry.fullUrl
-              };
-            } else if (entry.fullUrl.includes('/collect') || entry.fullUrl.includes('/g/collect')) {
-              const url = new URL(entry.fullUrl);
-              parsedBeacon = { 
-                ...parseGA4Beacon(entry.fullUrl, url.search),
-                source: 'proxy',
-                analyticsType: 'ga4',
-                timestamp: entry.timestamp || new Date().toISOString(),
-                rawRequest: entry.fullUrl
-              };
-            }
-            
-            if (parsedBeacon) {
-              parsedBeacon.id = generateEventId(parsedBeacon);
-              parsedBeacon.beaconId = generateBeaconId(parsedBeacon);
-              return parsedBeacon;
-            }
-            
-            return null;
-          })
-          .filter(Boolean);
+            .map(entry => {
+              let parsedBeacon = null;
+              if (entry.fullUrl.includes('/b/ss/')) {
+                parsedBeacon = { 
+                  ...parseAdobeAnalyticsBeacon(entry.fullUrl),
+                  source: 'proxy',
+                  analyticsType: 'adobe',
+                  timestamp: entry.timestamp || new Date().toISOString(),
+                  rawRequest: entry.fullUrl
+                };
+              } else if (entry.fullUrl.includes('/collect') || entry.fullUrl.includes('/g/collect')) {
+                const url = new URL(entry.fullUrl);
+                parsedBeacon = { 
+                  ...parseGA4Beacon(entry.fullUrl, url.search),
+                  source: 'proxy',
+                  analyticsType: 'ga4',
+                  timestamp: entry.timestamp || new Date().toISOString(),
+                  rawRequest: entry.fullUrl
+                };
+              }
+              
+              if (parsedBeacon) {
+                parsedBeacon.id = generateEventId(parsedBeacon);
+                parsedBeacon.beaconId = generateBeaconId(parsedBeacon);
+                return parsedBeacon;
+              }
+              
+              return null;
+            })
+            .filter(Boolean);
 
-        // Process new proxy events
-        analyticsBeacons.forEach(beacon => {
-          if (!processedEventIds.current.has(beacon.id)) {
-            processedEventIds.current.add(beacon.id);
-            captureScreenshot(beacon.id);
-          }
-        });
+          // Process new proxy events
+          analyticsBeacons.forEach(beacon => {
+            if (!processedEventIds.current.has(beacon.id)) {
+              processedEventIds.current.add(beacon.id);
+              if (isMounted) {
+                captureScreenshot(beacon.id);
+              }
+            }
+          });
 
-        // Merge with existing events
-        setEvents(currentEvents => {
-          const existingEventsMap = new Map(currentEvents.map(e => [e.id, e]));
-          analyticsBeacons.forEach(e => existingEventsMap.set(e.id, e));
-          return Array.from(existingEventsMap.values())
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        });
+          newEvents = [...newEvents, ...analyticsBeacons];
+        } catch (error) {
+          console.error('Error fetching proxy events:', error);
+        }
+
+        // Only update events if we have new ones to add and component is still mounted
+        if (newEvents.length > 0 && isMounted) {
+          setEvents(currentEvents => {
+            // Create a map of existing events for faster lookup
+            const existingEventsMap = new Map(currentEvents.map(e => [e.id, e]));
+            
+            // Add new events to the map, preserving existing ones
+            newEvents.forEach(e => {
+              if (!existingEventsMap.has(e.id)) {
+                existingEventsMap.set(e.id, e);
+              }
+            });
+            
+            // Convert map back to array and sort
+            return Array.from(existingEventsMap.values())
+              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          });
+        }
 
       } catch (error) {
-        console.error('Error fetching analytics data:', error);
+        console.error('Error in fetchData:', error);
       } finally {
-        setIsCheckingStatus(false);
+        if (isMounted) {
+          setIsCheckingStatus(false);
+        }
       }
     }
 
@@ -834,14 +889,16 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     fetchData();
 
     // Set up polling if autoRefresh is enabled
+    let intervalId = null;
     if (autoRefresh) {
-      intervalRef.current = setInterval(fetchData, 1000);
+      intervalId = setInterval(fetchData, 1000);
     }
 
+    // Cleanup function
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, [autoRefresh]);
@@ -1010,7 +1067,29 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
   // Update the event card rendering to use the journey information
   const renderEventCard = (event, index) => {
-    const eventJourneys = getEventJourneys(event.id);
+    const eventJourneys = event.journeys || [];
+    
+    // Check if the event has eCommerce data
+    const hasEcommerceData = (() => {
+      if (event.source === 'logcat') {
+        const params = parseLogcatParameters(event.message) || {};
+        const items = extractItems(params);
+        return items.length > 0;
+      } else {
+        const items = extractItems(event.parameters || {});
+        return items.length > 0;
+      }
+    })();
+
+    // Determine analytics type and event type
+    const analyticsType = (() => {
+      if (event.analyticsType) return event.analyticsType;
+      if (event.source === 'logcat' && (event.message?.includes('/b/ss/') || event.message?.includes('s.t') || event.message?.includes('s.tl'))) return 'Adobe';
+      return 'GA4';
+    })();
+
+    const isAdobeTrackingEvent = event.type === 's.t' || event.type === 's.tl' || 
+      (event.message && (event.message.includes('s.t') || event.message.includes('s.tl')));
     
     return (
       <div
@@ -1018,6 +1097,8 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.selected : ''}`}
         onClick={() => setSelectedEvent(event)}
         data-event-number={filteredEvents.length - index}
+        data-analytics-type={analyticsType}
+        data-adobe-tracking={isAdobeTrackingEvent}
       >
         {eventJourneys.length > 0 && (
           <div className={styles.journeyTags}>
@@ -1033,13 +1114,13 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           </div>
         )}
 
-        <button
-          className={styles.deleteEventButton}
-          onClick={(e) => handleDeleteEvent(event, e)}
-          title="Delete event"
-        >
-          <TrashIcon />
-        </button>
+        <div className={styles.eventCardIcons}>
+          {hasEcommerceData && (
+            <div className={styles.ecommerceIcon} title="Contains eCommerce data">
+              <ShoppingCartIcon />
+            </div>
+          )}
+        </div>
 
         <div className={styles.eventHeader}>
           <span className={styles.beaconId}>{event.beaconId}</span>
@@ -1143,14 +1224,6 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             <option value="adobe">Adobe Analytics</option>
           </select>
 
-          <input
-            type="text"
-            placeholder="Search events..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className={styles.searchInput}
-          />
-
           <label className={styles.autoRefreshLabel}>
             <input
               type="checkbox"
@@ -1171,14 +1244,20 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           {selectedEvent ? (
             <>
               <div className={styles.eventDetailsHeader}>
-                <h2 className={styles.eventDetailsTitle}>
-                  {selectedEvent.source === 'logcat'
-                    ? (selectedEvent.message?.includes('Logging event:')
-                        ? cleanEventName(selectedEvent.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
-                        : 'Analytics Event')
-                    : cleanEventName(selectedEvent.eventName || selectedEvent.type) || 'Unknown Event'}
-                  <span className={styles.beaconId}>{selectedEvent.beaconId}</span>
-                </h2>
+                <div className={styles.eventDetailsTitle}>
+                  <span className={styles.beaconId}>{selectedEvent.id}</span>
+                  {selectedEvent.eventName}
+                </div>
+                <button
+                  className={styles.deleteEventButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteEvent(selectedEvent, e);
+                  }}
+                  title="Delete event"
+                >
+                  <TrashIcon />
+                </button>
               </div>
 
               <div className={styles.section}>
@@ -1234,25 +1313,60 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                         <div>PARAMETER</div>
                         <div>VALUE</div>
                       </div>
-                      {selectedEvent.source === 'logcat' ? (
-                        (() => {
-                          const params = parseLogcatParameters(selectedEvent.message) || {};
-                          const { general } = separateParameters(params);
-                          
-                          if (Object.keys(general).length === 0) {
-                            return <div className={styles.noData}>No general parameters available</div>;
-                          }
-                          
-                          return Object.entries(general).map(([key, value], index) => (
-                            <div key={index} className={styles.parameterRow}>
-                              <div className={styles.paramName}>{key}</div>
-                              <div className={styles.paramValue}>
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </div>
+                      {selectedEvent.analyticsType === 'adobe' ? (
+                        <>
+                          {/* Adobe Analytics specific parameters */}
+                          {/* Remove Basic Information group */}
+
+                          {/* eVars */}
+                          {selectedEvent.eVars && Object.keys(selectedEvent.eVars).length > 0 && (
+                            <div className={styles.parameterGroup}>
+                              <div className={styles.parameterGroupHeader}>eVars</div>
+                              {Object.entries(selectedEvent.eVars).map(([key, value], index) => (
+                                <div key={index} className={styles.parameterRow}>
+                                  <div className={styles.paramName}>eVar {key}</div>
+                                  <div className={styles.paramValue}>{value}</div>
+                                </div>
+                              ))}
                             </div>
-                          ));
-                        })()
+                          )}
+
+                          {/* Props */}
+                          {selectedEvent.props && Object.keys(selectedEvent.props).length > 0 && (
+                            <div className={styles.parameterGroup}>
+                              <div className={styles.parameterGroupHeader}>Props</div>
+                              {Object.entries(selectedEvent.props).map(([key, value], index) => (
+                                <div key={index} className={styles.parameterRow}>
+                                  <div className={styles.paramName}>Prop {key}</div>
+                                  <div className={styles.paramValue}>{value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Other Parameters */}
+                          <div className={styles.parameterGroup}>
+                            <div className={styles.parameterGroupHeader}>Other Parameters</div>
+                            {Object.entries(selectedEvent.parameters || {}).map(([key, value], index) => {
+                              // Skip parameters that are already shown in other sections
+                              if (['rsid', 'pageName', 'type', 'url', 'timestamp'].includes(key)) return null;
+                              if (key.startsWith('c') && key.length <= 3) return null; // Skip props
+                              if (key.startsWith('v') && key.length <= 3) return null; // Skip eVars
+                              if (key === 'events') return null;
+                              
+                              return (
+                                <div key={index} className={styles.parameterRow}>
+                                  <div className={styles.paramName}>{key}</div>
+                                  <div className={styles.paramValue}>
+                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
                       ) : (
+                        // Existing non-Adobe parameters rendering
                         (() => {
                           const { general } = separateParameters(selectedEvent.parameters || {});
                           
@@ -1348,6 +1462,46 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                         );
                       })()
                     )}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.section}>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setExpandedSections(prev => ({
+                    ...prev,
+                    rawData: !prev.rawData
+                  }))}
+                >
+                  <h3>Raw Data</h3>
+                  <span>{expandedSections.rawData ? '−' : '+'}</span>
+                </div>
+                {expandedSections.rawData && (
+                  <div className={styles.sectionContent}>
+                    <div className={styles.rawDataContainer}>
+                      <div className={styles.rawDataHeader}>
+                        <span>Raw network request</span>
+                        <button 
+                          className={styles.copyButton}
+                          onClick={() => {
+                            const rawData = selectedEvent.source === 'logcat' 
+                              ? selectedEvent.message 
+                              : JSON.stringify(selectedEvent, null, 2);
+                            navigator.clipboard.writeText(rawData);
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className={styles.rawData}>
+                        <pre>
+                          {selectedEvent.source === 'logcat' 
+                            ? selectedEvent.message 
+                            : JSON.stringify(selectedEvent, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

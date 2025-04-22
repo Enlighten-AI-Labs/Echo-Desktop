@@ -1065,7 +1065,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
   }, [journeys]);
 
-  // Update the event card rendering to use the journey information
+  // Update the event card rendering to use the new eCommerce tab instead of the icon
   const renderEventCard = (event, index) => {
     const eventJourneys = event.journeys || [];
     
@@ -1114,25 +1114,11 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           </div>
         )}
 
-        <div className={styles.eventCardIcons}>
-          {hasEcommerceData && (
-            <div className={styles.ecommerceIcon} title="Contains eCommerce data">
-              <ShoppingCartIcon />
-            </div>
-          )}
-        </div>
-
-        <div className={styles.eventHeader}>
-          <span className={styles.beaconId}>{event.beaconId}</span>
-          <span className={styles.eventTime}>
-            {new Date(event.timestamp).toLocaleTimeString([], { 
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            })}
-          </span>
-        </div>
+        {hasEcommerceData && (
+          <div className={styles.ecommerceTab} title="Contains eCommerce data">
+            <ShoppingCartIcon />
+          </div>
+        )}
 
         <div className={styles.eventName}>
           {event.source === 'logcat'
@@ -1149,6 +1135,18 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               : (event.analyticsType === 'adobe' 
                   ? event.pageName || 'Unknown Page'
                   : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+          </span>
+        </div>
+
+        <div className={styles.eventHeader}>
+          <span className={styles.beaconId}>{event.beaconId}</span>
+          <span className={styles.eventTime}>
+            {new Date(event.timestamp).toLocaleTimeString([], { 
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
           </span>
         </div>
       </div>
@@ -1273,22 +1271,31 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 </div>
                 {expandedSections.basicInfo && (
                   <div className={styles.sectionContent}>
-                    <div className={styles.basicInfo}>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Source:</span>
-                        <span className={styles.infoValue}>{selectedEvent.source}</span>
+                    <div className={styles.parametersTable}>
+                      <div className={styles.parametersHeader}>
+                        <div className={styles.paramNumber}>#</div>
+                        <div className={styles.paramName}>FIELD</div>
+                        <div className={styles.paramValue}>VALUE</div>
                       </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Type:</span>
-                        <span className={styles.infoValue}>{selectedEvent.analyticsType || 'GA4'}</span>
+                      <div className={styles.parameterRow}>
+                        <div className={styles.paramNumber}>#1</div>
+                        <div className={styles.paramName}>Source</div>
+                        <div className={styles.paramValue}>{selectedEvent.source}</div>
                       </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Beacon ID:</span>
-                        <span className={styles.infoValue}>{selectedEvent.beaconId}</span>
+                      <div className={styles.parameterRow}>
+                        <div className={styles.paramNumber}>#2</div>
+                        <div className={styles.paramName}>Type</div>
+                        <div className={styles.paramValue}>{selectedEvent.analyticsType || 'GA4'}</div>
                       </div>
-                      <div className={styles.infoRow}>
-                        <span className={styles.infoLabel}>Timestamp:</span>
-                        <span className={styles.infoValue}>{selectedEvent.timestamp}</span>
+                      <div className={styles.parameterRow}>
+                        <div className={styles.paramNumber}>#3</div>
+                        <div className={styles.paramName}>Beacon ID</div>
+                        <div className={styles.paramValue}>{selectedEvent.beaconId}</div>
+                      </div>
+                      <div className={styles.parameterRow}>
+                        <div className={styles.paramNumber}>#4</div>
+                        <div className={styles.paramName}>Timestamp</div>
+                        <div className={styles.paramValue}>{selectedEvent.timestamp}</div>
                       </div>
                     </div>
                   </div>
@@ -1308,83 +1315,32 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 </div>
                 {expandedSections.parameters && (
                   <div className={styles.sectionContent}>
-                    <div className={styles.parametersTable}>
-                      <div className={styles.parametersHeader}>
-                        <div>PARAMETER</div>
-                        <div>VALUE</div>
-                      </div>
-                      {selectedEvent.analyticsType === 'adobe' ? (
-                        <>
-                          {/* Adobe Analytics specific parameters */}
-                          {/* Remove Basic Information group */}
-
-                          {/* eVars */}
-                          {selectedEvent.eVars && Object.keys(selectedEvent.eVars).length > 0 && (
-                            <div className={styles.parameterGroup}>
-                              <div className={styles.parameterGroupHeader}>eVars</div>
-                              {Object.entries(selectedEvent.eVars).map(([key, value], index) => (
-                                <div key={index} className={styles.parameterRow}>
-                                  <div className={styles.paramName}>eVar {key}</div>
-                                  <div className={styles.paramValue}>{value}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Props */}
-                          {selectedEvent.props && Object.keys(selectedEvent.props).length > 0 && (
-                            <div className={styles.parameterGroup}>
-                              <div className={styles.parameterGroupHeader}>Props</div>
-                              {Object.entries(selectedEvent.props).map(([key, value], index) => (
-                                <div key={index} className={styles.parameterRow}>
-                                  <div className={styles.paramName}>Prop {key}</div>
-                                  <div className={styles.paramValue}>{value}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Other Parameters */}
-                          <div className={styles.parameterGroup}>
-                            <div className={styles.parameterGroupHeader}>Other Parameters</div>
-                            {Object.entries(selectedEvent.parameters || {}).map(([key, value], index) => {
-                              // Skip parameters that are already shown in other sections
-                              if (['rsid', 'pageName', 'type', 'url', 'timestamp'].includes(key)) return null;
-                              if (key.startsWith('c') && key.length <= 3) return null; // Skip props
-                              if (key.startsWith('v') && key.length <= 3) return null; // Skip eVars
-                              if (key === 'events') return null;
-                              
-                              return (
-                                <div key={index} className={styles.parameterRow}>
-                                  <div className={styles.paramName}>{key}</div>
-                                  <div className={styles.paramValue}>
-                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                    {(() => {
+                      const { general } = separateParameters(selectedEvent.parameters || {});
+                      
+                      if (Object.keys(general).length === 0) {
+                        return <div className={styles.noData}>No general parameters available</div>;
+                      }
+                      
+                      return (
+                        <div className={styles.parametersTable}>
+                          <div className={styles.parametersHeader}>
+                            <div className={styles.paramNumber}>#</div>
+                            <div className={styles.paramName}>PARAMETER NAME</div>
+                            <div className={styles.paramValue}>VALUE</div>
                           </div>
-                        </>
-                      ) : (
-                        // Existing non-Adobe parameters rendering
-                        (() => {
-                          const { general } = separateParameters(selectedEvent.parameters || {});
-                          
-                          if (Object.keys(general).length === 0) {
-                            return <div className={styles.noData}>No general parameters available</div>;
-                          }
-                          
-                          return Object.entries(general).map(([key, value], index) => (
+                          {Object.entries(general).map(([key, value], index) => (
                             <div key={index} className={styles.parameterRow}>
+                              <div className={styles.paramNumber}>#{index + 1}</div>
                               <div className={styles.paramName}>{key}</div>
                               <div className={styles.paramValue}>
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                               </div>
                             </div>
-                          ));
-                        })()
-                      )}
-                    </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

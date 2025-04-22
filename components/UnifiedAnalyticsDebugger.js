@@ -416,7 +416,12 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const [showJourneyModal, setShowJourneyModal] = useState(false);
   const [journeyName, setJourneyName] = useState('');
   const [selectedEvents, setSelectedEvents] = useState([]);
-  const [journeys, setJourneys] = useState([]);
+  const [journeys, setJourneys] = useState(() => {
+    // Initialize journeys from localStorage
+    const savedJourneys = localStorage.getItem('analyticsJourneys');
+    return savedJourneys ? JSON.parse(savedJourneys) : [];
+  });
+  const [selectedJourneyId, setSelectedJourneyId] = useState(null);
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
@@ -999,17 +1004,33 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     return true;
   });
 
+  // Save journeys to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('analyticsJourneys', JSON.stringify(journeys));
+  }, [journeys]);
+
   // Journey related functions
   const handleAddJourney = () => {
     setShowJourneyModal(true);
     setJourneyName('');
     setSelectedEvents([]);
+    setSelectedJourneyId(null);
   };
 
   const handleCloseModal = () => {
     setShowJourneyModal(false);
     setJourneyName('');
     setSelectedEvents([]);
+    setSelectedJourneyId(null);
+  };
+
+  const handleSelectExistingJourney = (journeyId) => {
+    const journey = journeys.find(j => j.id === journeyId);
+    if (journey) {
+      setSelectedJourneyId(journeyId);
+      setJourneyName(journey.name);
+      setSelectedEvents(journey.events);
+    }
   };
 
   const handleSaveJourney = () => {
@@ -1023,25 +1044,48 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       return;
     }
 
-    const newJourney = {
-      id: Date.now(),
-      name: journeyName.trim(),
-      events: selectedEvents
-    };
+    let journeyToAdd;
+    
+    if (selectedJourneyId) {
+      // Update existing journey
+      setJourneys(prevJourneys => 
+        prevJourneys.map(journey => {
+          if (journey.id === selectedJourneyId) {
+            journeyToAdd = journey;
+            return { ...journey, events: Array.from(new Set([...journey.events, ...selectedEvents])) };
+          }
+          return journey;
+        })
+      );
+    } else {
+      // Create new journey
+      const newJourney = {
+        id: Date.now(),
+        name: journeyName.trim(),
+        events: selectedEvents,
+        createdAt: new Date().toISOString()
+      };
+      journeyToAdd = newJourney;
 
-    // Update journeys state
-    setJourneys(prevJourneys => [...prevJourneys, newJourney]);
+      setJourneys(prevJourneys => [...prevJourneys, newJourney]);
+    }
 
     // Update events with their journey assignments
     setEvents(prevEvents => 
       prevEvents.map(event => {
         if (selectedEvents.includes(event.id)) {
-          // Ensure journeys array exists and add new journey
           const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
-          return {
-            ...event,
-            journeys: [...existingJourneys, newJourney]
-          };
+          const journeyExists = existingJourneys.some(j => j.id === journeyToAdd.id);
+          
+          if (!journeyExists) {
+            return {
+              ...event,
+              journeys: [...existingJourneys, {
+                id: journeyToAdd.id,
+                name: journeyToAdd.name
+              }]
+            };
+          }
         }
         return event;
       })
@@ -1067,7 +1111,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
   // Update the event card rendering to use the new eCommerce tab instead of the icon
   const renderEventCard = (event, index) => {
-    const eventJourneys = event.journeys || [];
+    // Filter event journeys to only include those that still exist in the journeys list
+    const validJourneys = (event.journeys || []).filter(eventJourney => 
+      journeys.some(j => j.id === eventJourney.id)
+    );
     
     // Check if the event has eCommerce data
     const hasEcommerceData = (() => {
@@ -1100,9 +1147,9 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         data-analytics-type={analyticsType}
         data-adobe-tracking={isAdobeTrackingEvent}
       >
-        {eventJourneys.length > 0 && (
+        {validJourneys.length > 0 && (
           <div className={styles.journeyTags}>
-            {eventJourneys.map((journey) => (
+            {validJourneys.map((journey) => (
               <div
                 key={journey.id}
                 className={styles.journeyTag}
@@ -1151,6 +1198,61 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         </div>
       </div>
     );
+  };
+
+  const handleDeleteJourney = (journeyId, e) => {
+    e.stopPropagation(); // Prevent journey selection when deleting
+    
+    if (window.confirm('Are you sure you want to delete this journey?')) {
+      // Remove the journey from the journeys list
+      setJourneys(prevJourneys => prevJourneys.filter(j => j.id !== journeyId));
+      
+      // If the deleted journey was selected, clear the selection
+      if (selectedJourneyId === journeyId) {
+        setSelectedJourneyId(null);
+        setJourneyName('');
+        setSelectedEvents([]);
+      }
+      
+      // Remove journey reference from all events
+      setEvents(prevEvents => 
+        prevEvents.map(event => ({
+          ...event,
+          // Remove the journey from the event's journeys array if it exists
+          journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+        }))
+      );
+    }
+  };
+
+  const handleRemoveEventFromJourney = (journeyId, eventId, e) => {
+    e.stopPropagation(); // Prevent event selection when removing
+    
+    // Update the journey's events
+    setJourneys(prevJourneys => 
+      prevJourneys.map(journey => 
+        journey.id === journeyId
+          ? { ...journey, events: journey.events.filter(id => id !== eventId) }
+          : journey
+      )
+    );
+    
+    // Update the event's journey references
+    setEvents(prevEvents => 
+      prevEvents.map(event => 
+        event.id === eventId
+          ? {
+              ...event,
+              journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+            }
+          : event
+      )
+    );
+    
+    // If this event was selected in the modal, remove it from selection
+    if (selectedEvents.includes(eventId)) {
+      setSelectedEvents(prev => prev.filter(id => id !== eventId));
+    }
   };
 
   if (!show) {
@@ -1243,7 +1345,6 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             <>
               <div className={styles.eventDetailsHeader}>
                 <div className={styles.eventDetailsTitle}>
-                  <span className={styles.beaconId}>{selectedEvent.id}</span>
                   {selectedEvent.eventName}
                 </div>
                 <button
@@ -1522,64 +1623,125 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         <div className={styles.modalOverlay} onClick={handleCloseModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Create New Journey</h2>
+              <h2 className={styles.modalTitle}>
+                {selectedJourneyId ? 'Add to Journey' : 'Create New Journey'}
+              </h2>
               <button className={styles.modalClose} onClick={handleCloseModal}>×</button>
             </div>
             <div className={styles.modalContent}>
-              <input
-                type="text"
-                className={styles.journeyNameInput}
-                placeholder="Enter journey name..."
-                value={journeyName}
-                onChange={e => setJourneyName(e.target.value)}
-              />
-              <div className={styles.eventCheckList}>
-                {events.map(event => {
-                  const currentJourneys = getEventJourneys(event.id);
-                  return (
-                    <div key={event.id} className={styles.eventCheckItem}>
-                      <input
-                        type="checkbox"
-                        className={styles.eventCheckbox}
-                        checked={selectedEvents.includes(event.id)}
-                        onChange={() => toggleEventSelection(event.id)}
-                      />
-                      <div className={styles.eventInfo}>
-                        <div className={styles.beaconId}>{event.beaconId}</div>
-                        <div className={styles.eventName}>
-                          {event.source === 'logcat'
-                            ? (event.message?.includes('Logging event:')
-                                ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
-                                : 'Analytics Event')
-                            : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
-                          <span className={styles.separator}>|</span>
-                          <span className={styles.eventPage}>
-                            {event.source === 'logcat'
-                              ? (event.message?.includes('/b/ss/')
-                                  ? event.pageName || 'Unknown Page'
-                                  : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
-                              : (event.analyticsType === 'adobe'
-                                  ? event.pageName || 'Unknown Page'
-                                  : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
-                          </span>
-                        </div>
-                        {currentJourneys.length > 0 && (
-                          <div className={styles.currentJourneys}>
-                            Current journeys: {currentJourneys.map(j => j.name).join(', ')}
-                          </div>
-                        )}
+              {journeys.length > 0 && (
+                <div className={styles.existingJourneys}>
+                  <h3 className={styles.sectionTitle}>Existing Journeys</h3>
+                  <div className={styles.journeyList}>
+                    {journeys.map((journey, index) => (
+                      <div key={index} className={styles.journeyActions}>
+                        <button
+                          className={`${styles.journeyButton} ${selectedJourneyId === journey.id ? styles.selected : ''}`}
+                          onClick={() => handleSelectExistingJourney(journey.id)}
+                          style={{ 
+                            borderColor: getJourneyColor(journey.name),
+                            color: selectedJourneyId === journey.id ? getJourneyColor(journey.name) : 'inherit'
+                          }}
+                        >
+                          {journey.name}
+                        </button>
+                        <button
+                          className={styles.deleteJourneyButton}
+                          onClick={(e) => handleDeleteJourney(journey.id, e)}
+                          title="Delete journey"
+                        >
+                          <TrashIcon />
+                        </button>
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                  <div className={styles.divider}>
+                    <span>OR</span>
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.newJourney}>
+                <h3 className={styles.sectionTitle}>
+                  {selectedJourneyId ? 'Selected Journey' : 'New Journey'}
+                </h3>
+                <input
+                  type="text"
+                  className={styles.journeyNameInput}
+                  placeholder="Enter journey name..."
+                  value={journeyName}
+                  onChange={e => setJourneyName(e.target.value)}
+                  disabled={selectedJourneyId !== null}
+                />
+                <div className={styles.eventSelection}>
+                  <h3 className={styles.sectionTitle}>
+                    {selectedJourneyId ? 'Journey Events' : 'Select Events'}
+                  </h3>
+                  <div className={styles.eventCheckList}>
+                    {events.map((event, index) => {
+                      const currentJourneys = getEventJourneys(event.id);
+                      const isInSelectedJourney = selectedJourneyId && currentJourneys.some(j => j.id === selectedJourneyId);
+
+                      return (
+                        <div
+                          key={index}
+                          className={`${styles.eventCheckItem} ${isInSelectedJourney ? styles.inJourney : ''}`}
+                        >
+                          {!selectedJourneyId && (
+                            <input
+                              type="checkbox"
+                              checked={selectedEvents.includes(event.id)}
+                              onChange={() => toggleEventSelection(event.id)}
+                              id={`event-${event.id}`}
+                            />
+                          )}
+                          <div className={styles.eventInfo}>
+                            <span className={styles.eventName}>
+                              {event.eventName || event.type || 'Unknown Event'}
+                            </span>
+                            {currentJourneys.length > 0 && !selectedJourneyId && (
+                              <div className={styles.currentJourneys}>
+                                In journeys: {currentJourneys.map(j => (
+                                  <span 
+                                    key={j.id} 
+                                    className={styles.journeyTag}
+                                    style={{ backgroundColor: getJourneyColor(j.name) }}
+                                  >
+                                    {j.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {isInSelectedJourney && (
+                            <button
+                              className={styles.removeEventButton}
+                              onClick={(e) => handleRemoveEventFromJourney(selectedJourneyId, event.id, e)}
+                              title="Remove from journey"
+                            >
+                              <TrashIcon />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
             <div className={styles.modalFooter}>
-              <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={handleCloseModal}>
+              <button 
+                className={`${styles.modalButton} ${styles.cancelButton}`} 
+                onClick={handleCloseModal}
+              >
                 Cancel
               </button>
-              <button className={`${styles.modalButton} ${styles.saveButton}`} onClick={handleSaveJourney}>
-                Save Journey
+              <button 
+                className={`${styles.modalButton} ${styles.saveButton}`} 
+                onClick={handleSaveJourney}
+                disabled={!journeyName.trim() || selectedEvents.length === 0}
+              >
+                {selectedJourneyId ? 'Add to Journey' : 'Create Journey'}
               </button>
             </div>
           </div>

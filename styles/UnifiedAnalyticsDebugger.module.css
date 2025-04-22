@@ -218,7 +218,7 @@
 .eventName {
   font-family: 'Travelia Bold', sans-serif;
   font-size: 1.25rem;
-  color: #EB2726;
+  color: #4e4d4d;
   margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
@@ -641,8 +641,8 @@
 .eventInfo .beaconId {
   font-family: 'Azeret Mono Regular', monospace;
   font-size: 14px;
-  color: #3C76A9;
-  background-color: rgba(60, 118, 169, 0.1);
+  color: #370000;
+  background-color: rgba(169, 60, 60, 0.1);
   padding: 4px 8px;
   border-radius: 4px;
   display: inline-block;
@@ -1499,4 +1499,179 @@ border-top-right-radius: 6px;
 
 .deleteEventButton:hover {
   color: #dc3545;
+}
+
+/* Journey Modal Additions */
+.existingJourneys {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 1rem;
+  color: #262628;
+  margin: 0 0 1rem 0;
+}
+
+.journeyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.journeyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.journeyItem:hover {
+  border-color: #3C76A9;
+  background-color: rgba(60, 118, 169, 0.05);
+}
+
+.journeyItem.selected {
+  border-color: #3C76A9;
+  background-color: rgba(60, 118, 169, 0.1);
+}
+
+.journeyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.journeyName {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 0.9rem;
+  color: #262628;
+}
+
+.journeyMeta {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.journeyColor {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.divider span {
+  padding: 0 1rem;
+  color: #6c757d;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 0.8rem;
+}
+
+.newJourney {
+  margin-bottom: 1.5rem;
+}
+
+.eventSelection {
+  margin-top: 1.5rem;
+}
+
+.eventCheckItem.alreadyInJourney {
+  opacity: 0.7;
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.alreadyInJourneyNote {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+.journeyNameInput:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+/* Journey Actions */
+.journeyActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deleteJourneyButton {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.deleteJourneyButton:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.removeEventButton {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.removeEventButton:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.eventCheckItem.inJourney {
+  border-color: #3C76A9;
+  background-color: rgba(60, 118, 169, 0.05);
+}
+
+/* Remove the old styles that are no longer needed */
+.eventCheckItem.alreadyInJourney {
+  display: none;
+}
+
+.alreadyInJourneyNote {
+  display: none;
 }

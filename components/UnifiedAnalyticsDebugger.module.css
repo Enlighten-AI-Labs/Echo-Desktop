@@ -1,0 +1,109 @@
+.journeyActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.journeyButton {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.journeyButton:hover {
+  background: #f5f5f5;
+}
+
+.journeyButton.selected {
+  background: #e0e7ff;
+  font-weight: 600;
+}
+
+.deleteJourneyButton {
+  padding: 6px;
+  border: 1px solid #fee2e2;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  color: #ef4444;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.deleteJourneyButton:hover {
+  background: #fee2e2;
+}
+
+.eventCheckItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.eventCheckItem:hover {
+  background: #f9fafb;
+}
+
+.eventCheckItem.inJourney {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.eventInfo {
+  flex: 1;
+}
+
+.eventName {
+  font-weight: 500;
+  color: #111827;
+}
+
+.currentJourneys {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.currentJourneys::before {
+  content: "In journeys:";
+  margin-right: 4px;
+}
+
+.journeyTag {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.removeEventButton {
+  padding: 4px;
+  border: 1px solid #fee2e2;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  color: #ef4444;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.removeEventButton:hover {
+  background: #fee2e2;
+} 

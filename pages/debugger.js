@@ -1080,7 +1080,9 @@ export default function DebuggerPage() {
               marginLeft: leftPanelCollapsed ? '20px' : '0px'
             }}>
             <div className={styles.panelHeader}>
-              <h2>Analytics Debugger</h2>
+              <div className={styles.headerLogo}>
+                <img src="/transparent_logo.png" alt="Logo" height="24" />
+              </div>
               <div className={styles.headerControls}>
                 <div className={styles.tabs}>
                   <button 

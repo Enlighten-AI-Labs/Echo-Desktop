@@ -186,8 +186,8 @@ async function captureScreenshot(beaconId) {
         }
         
         // Now detect crop values using cropdetect filter with very aggressive settings
-        // Using threshold=24 (very low = more aggressive cropping), round to 16 (even numbers), and skip 0 pixels from edges
-        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf "cropdetect=24:16:0" -f null -`, async (err, stdout, stderr) => {
+        // Using threshold=12 (very low = more aggressive cropping), round to 8 (more precise), and skip 0 pixels from edges
+        exec(`"${ffmpegPath}" -i "${cropDetectPath}" -vf "cropdetect=12:8:0" -f null -`, async (err, stdout, stderr) => {
           try {
             // Clean up temp file
             if (fs.existsSync(cropDetectPath)) {
@@ -223,10 +223,10 @@ async function captureScreenshot(beaconId) {
                 const [_, width, height, x, y] = dimensions;
                 
                 // Apply a very aggressive crop - add additional padding to crop more from each side
-                const newWidth = parseInt(width) - 32;
-                const newHeight = parseInt(height) - 32;
-                const newX = parseInt(x) + 16;
-                const newY = parseInt(y) + 16;
+                const newWidth = parseInt(width) - 48;
+                const newHeight = parseInt(height) - 48;
+                const newX = parseInt(x) + 24;
+                const newY = parseInt(y) + 24;
                 
                 // Ensure dimensions are positive
                 if (newWidth > 0 && newHeight > 0) {

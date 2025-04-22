@@ -1594,15 +1594,12 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               <>
                 {selectedScreenshot.dataUrl ? (
                   <div className={styles.screenshotWrapper}>
+                    <div className={styles.statusBarIcons}></div>
                     <img 
                       src={selectedScreenshot.dataUrl} 
                       alt="Event Screenshot"
                       className={styles.screenshot}
                     />
-                    <div className={styles.screenshotInfo}>
-                      <span>{selectedScreenshot.width} x {selectedScreenshot.height}</span>
-                      <span>{new Date(selectedScreenshot.timestamp).toLocaleTimeString()}</span>
-                    </div>
                   </div>
                 ) : (
                   <div className={styles.loading}>Loading screenshot...</div>

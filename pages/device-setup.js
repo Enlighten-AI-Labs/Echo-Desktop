@@ -40,6 +40,8 @@ export default function DeviceSetup() {
     message: ''
   });
 
+  const [isDeviceSectionCollapsed, setIsDeviceSectionCollapsed] = useState(false);
+
   // Helper function to get local IP address if needed during timeout
   const getLocalIpAddress = async () => {
     // If we already have it in state, use that
@@ -346,11 +348,21 @@ export default function DeviceSetup() {
     }
   };
 
-  // Filter apps based on search term
-  const filteredApps = apps.filter(app => 
-    app.packageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (app.appName && app.appName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter apps based on search term and sort alphabetically
+  const filteredApps = apps
+    .map(app => ({
+      ...app,
+      displayName: (app.appName || app.packageName).replace(/^com\./, '')
+    }))
+    .filter(app => 
+      app.packageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (app.displayName && app.displayName.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort((a, b) => {
+      const nameA = a.displayName || a.packageName;
+      const nameB = b.displayName || b.packageName;
+      return nameA.localeCompare(nameB);
+    });
 
   const handleContinue = () => {
     if (!selectedPlatform) return;
@@ -592,6 +604,12 @@ export default function DeviceSetup() {
     router.push('/rtmp-setup');
   };
 
+  const handleDeviceSelect = (deviceId) => {
+    setSelectedDevice(deviceId);
+    setIsDeviceSectionCollapsed(true);
+    fetchInstalledApps();
+  };
+
   var content = (
     <div className={styles.splitView}>
       {/* Android Section */}
@@ -607,117 +625,79 @@ export default function DeviceSetup() {
             </div>
           </div>
           
-          <div className={styles.instructionsStep}>
+          <div className={`${styles.instructionsStep} ${isDeviceSectionCollapsed ? styles.collapsed : ''}`}>
             <div className={styles.stepNumber}>2</div>
             <div className={styles.stepContent}>
-              <h3>Connect Your Device</h3>
-              <div className={styles.deviceListContainer}>
-                <div className={styles.deviceListHeader}>
-                  <h4>Available USB Devices</h4>
-                  <div className={styles.deviceControls}>
-                    {selectedDevice && (
-                      <>
-                        <button 
-                          className={`${styles.proxyButton} ${proxyStatus.enabled ? styles.proxyEnabled : ''}`}
-                          onClick={proxyStatus.enabled ? clearDeviceProxy : setDeviceProxy}
-                          disabled={proxyStatus.loading}
-                        >
-                          {proxyStatus.loading ? 'Working...' : proxyStatus.enabled ? 'Disable Proxy' : 'Enable Proxy'}
-                        </button>
-                      </>
-                    )}
-                    <button 
-                      className={styles.refreshButton}
-                      onClick={fetchConnectedDevices}
-                      disabled={isLoadingDevices}
-                    >
-                      {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
-                    </button>
-                  </div>
-                </div>
-                
-                {connectionError && (
-                  <div className={styles.errorMessage}>{connectionError}</div>
-                )}
-                
-                {connectedDevices.length > 0 ? (
-                  <div className={styles.deviceItems}>
-                    {connectedDevices.map(device => (
-                      <div 
-                        key={device.id}
-                        className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
-                        onClick={() => {
-                          setSelectedDevice(device.id);
-                          fetchInstalledApps();
-                        }}
-                      >
-                        <div className={styles.deviceIcon}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                            <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h1c0.55,0 1,-0.45 1,-1V8H6v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zm17,0c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zm-4.97,-5.84l1.3,-1.3c0.2,-0.2 0.2,-0.51 0,-0.71c-0.2,-0.2 -0.51,-0.2 -0.71,0l-1.48,1.48C13.85,1.23 12.95,1 12,1c-0.96,0 -1.86,0.23 -2.66,0.63L7.85,0.15c-0.2,-0.2 -0.51,-0.2 -0.71,0c-0.2,0.2 -0.2,0.51 0,0.71l1.31,1.31C6.97,3.26 6,5.01 6,7h12c0,-1.99 -0.97,-3.75 -2.47,-4.84zM10,5H9V4h1v1zm5,0h-1V4h1v1z"/>
-                          </svg>
-                        </div>
-                        <div className={styles.deviceInfo}>
-                          <div className={styles.deviceName}>
-                            {device.name || device.id}
-                          </div>
-                          <div className={styles.deviceStatus}>
-                            {device.status === 'device' ? 'Connected' : device.status}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.noDevices}>
-                    {isLoadingDevices ? 
-                      'Searching for devices...' : 
-                      'No devices found. Make sure USB debugging is enabled and your device is connected.'}
-                  </div>
-                )}
-
-                <div className={styles.wirelessPairingSection}>
-                  <div className={styles.divider}>
-                    <span>or</span>
-                  </div>
+              <div className={styles.stepHeader} onClick={() => !selectedDevice && setIsDeviceSectionCollapsed(!isDeviceSectionCollapsed)}>
+                <h3>Connect Your Device</h3>
+                {selectedDevice && (
                   <button 
-                    className={styles.pairNewDeviceButton}
-                    onClick={() => {
-                      setAndroidConnectionMethod('wireless');
-                      generateQrCode();
-                    }}
-                    disabled={pairingInProgress}
+                    className={styles.expandButton}
+                    onClick={() => setIsDeviceSectionCollapsed(!isDeviceSectionCollapsed)}
                   >
-                    <div className={styles.methodIcon}>
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                        <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
-                      </svg>
-                    </div>
-                    <span>{pairingInProgress ? 'Preparing QR Code...' : 'Pair New Device Wirelessly'}</span>
+                    {isDeviceSectionCollapsed ? 'Show Details' : 'Hide Details'}
                   </button>
-                  
-                  {/* QR Code Display */}
-                  {qrCodeData && (
-                    <div className={styles.qrCodeSection}>
-                      {qrCodeData.qrCodePath && (
-                        <div className={styles.qrCodeContainer}>
-                          <img 
-                            src={qrCodeData.qrCodePath} 
-                            alt="QR Code for wireless debugging"
-                            className={styles.qrCode}
-                          />
-                        </div>
+                )}
+              </div>
+              <div className={styles.stepBody}>
+                <div className={styles.deviceListContainer}>
+                  <div className={styles.deviceListHeader}>
+                    <h4>Available USB Devices</h4>
+                    <div className={styles.deviceControls}>
+                      {selectedDevice && (
+                        <>
+                          <button 
+                            className={`${styles.proxyButton} ${proxyStatus.enabled ? styles.proxyEnabled : ''}`}
+                            onClick={proxyStatus.enabled ? clearDeviceProxy : setDeviceProxy}
+                            disabled={proxyStatus.loading}
+                          >
+                            {proxyStatus.loading ? 'Working...' : proxyStatus.enabled ? 'Disable Proxy' : 'Enable Proxy'}
+                          </button>
+                        </>
                       )}
-                      <div className={styles.qrCodeInfo}>
-                        <p className={styles.qrCodeMessage}>{qrCodeData.message}</p>
-                        {discoveryStatus && (
-                          <div className={`${styles.discoveryStatus} ${styles[discoveryStatus.status]}`}>
-                            {discoveryStatus.message}
+                      <button 
+                        className={styles.refreshButton}
+                        onClick={fetchConnectedDevices}
+                        disabled={isLoadingDevices}
+                      >
+                        {isLoadingDevices ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {connectionError && (
+                    <div className={styles.errorMessage}>{connectionError}</div>
+                  )}
+                  
+                  {connectedDevices.length > 0 ? (
+                    <div className={styles.deviceItems}>
+                      {connectedDevices.map(device => (
+                        <div 
+                          key={device.id}
+                          className={`${styles.deviceItem} ${selectedDevice === device.id ? styles.selectedDevice : ''}`}
+                          onClick={() => handleDeviceSelect(device.id)}
+                        >
+                          <div className={styles.deviceIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                              <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5V19h1c0.55,0 1,-0.45 1,-1V8H6v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zm17,0c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zm-4.97,-5.84l1.3,-1.3c0.2,-0.2 0.2,-0.51 0,-0.71c-0.2,-0.2 -0.51,-0.2 -0.71,0l-1.48,1.48C13.85,1.23 12.95,1 12,1c-0.96,0 -1.86,0.23 -2.66,0.63L7.85,0.15c-0.2,-0.2 -0.51,-0.2 -0.71,0c-0.2,0.2 -0.2,0.51 0,0.71l1.31,1.31C6.97,3.26 6,5.01 6,7h12c0,-1.99 -0.97,-3.75 -2.47,-4.84zM10,5H9V4h1v1zm5,0h-1V4h1v1z"/>
+                            </svg>
                           </div>
-                        )}
-                        {connectionError && (
-                          <div className={styles.errorMessage}>{connectionError}</div>
-                        )}
-                      </div>
+                          <div className={styles.deviceInfo}>
+                            <div className={styles.deviceName}>
+                              {device.name || device.id}
+                            </div>
+                            <div className={styles.deviceStatus}>
+                              {device.status === 'device' ? 'Connected' : device.status}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.noDevices}>
+                      {isLoadingDevices ? 
+                        'Searching for devices...' : 
+                        'No devices found. Make sure USB debugging is enabled and your device is connected.'}
                     </div>
                   )}
                 </div>
@@ -780,7 +760,9 @@ export default function DeviceSetup() {
                                 </svg>
                               </div>
                               <div className={styles.appInfo}>
-                                <p className={styles.packageName}>{app.packageName}</p>
+                                <p className={styles.packageName}>
+                                  {app.displayName || app.packageName}
+                                </p>
                               </div>
                             </div>
                           ))

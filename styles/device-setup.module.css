@@ -204,6 +204,51 @@
     display: flex;
     margin-bottom: 2rem;
     position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .instructionsStep.collapsed {
+    margin-bottom: 1rem;
+  }
+  
+  .instructionsStep.collapsed .stepBody {
+    display: none;
+  }
+  
+  .stepHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    cursor: pointer;
+  }
+  
+  .stepHeader h3 {
+    margin: 0;
+    font-family: 'Travelia Medium', sans-serif;
+    font-size: 1.2rem;
+    color: #e0e0e0;
+  }
+  
+  .expandButton {
+    background: transparent;
+    border: 1px solid #9C54AD;
+    color: #9C54AD;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    font-family: 'Azeret Mono Regular', monospace;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .expandButton:hover {
+    background-color: rgba(156, 84, 173, 0.1);
+  }
+  
+  .stepBody {
+    margin-top: 1rem;
+    transition: all 0.3s ease;
   }
   
   .instructionsStep:not(:last-of-type)::after {
@@ -1391,17 +1436,22 @@
   
   .searchInput {
     flex: 1;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-primary);
-    font-size: 0.9rem;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: #2a2a2c;  /* Dark grey background */
+    color: #ffffff;  /* White text */
+    border: 1px solid #E9EDF3;  /* Light grey border from brand guidelines */
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
   }
   
   .searchInput:focus {
-    outline: none;
-    border-color: var(--accent-color);
+    border-color: #9C54AD;  /* Purple from brand guidelines for focus state */
+  }
+  
+  .searchInput::placeholder {
+    color: #808080;  /* Grey color for placeholder text */
   }
   
   .appsGridContainer {

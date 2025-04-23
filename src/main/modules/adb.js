@@ -766,27 +766,11 @@ function parseLogcatForAnalytics(output) {
     }
     
     // Look for "event {" which starts a detailed event definition
-    if (line.includes('event {')) {
-      eventBuffer = line;
-      eventStarted = true;
-      continue;
-    }
-    
-    // If we're in the middle of an event, accumulate lines
-    if (eventStarted) {
-      eventBuffer += '\n' + line;
-      // Check if we've reached the end of an event
-      if (line.includes('} // End-of-batch') || line.includes('} // End-of-batch')) {
-        // Parse the complete event
-        const parsedEvent = parseFirebaseEvent(eventBuffer);
-        if (parsedEvent) {
-          analyticsLogs.push(parsedEvent);
-        }
-        
-        // Reset event tracking
-        eventBuffer = '';
-        eventStarted = false;
-      }
+    if(line.includes("Setting user proeprty:")) {
+      const userProperty = line.split("Setting user proeprty:")[1].split(" ")[0];
+      const userPropertyValue = line.split("Setting user proeprty:")[1].split(" ")[1];
+      console.log("Recieved update to user property: " + userProperty + " with value: " + userPropertyValue);
+      currentBatchData.sharedPayload[userProperty] = userPropertyValue;
       continue;
     }
     

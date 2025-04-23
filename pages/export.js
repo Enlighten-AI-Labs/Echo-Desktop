@@ -121,6 +121,12 @@ export default function ExportPage() {
 
       const items = extractItems(params);
 
+      // Get journey names for this event
+      const journeyNames = journeys
+        .filter(journey => exportConfig.selectedJourneys.includes(journey.id))
+        .filter(journey => event.journeys?.some(ej => ej.id === journey.id))
+        .map(journey => journey.name);
+
       const baseEvent = {
         id: uuidv4().toUpperCase(),
         timestamp: event.timestamp,
@@ -134,6 +140,7 @@ export default function ExportPage() {
           screen_class: params?.ga_screen_class || params?.screen_class || 'Unknown',
           ...params
         },
+        journeys: journeyNames,
         screenshot_url: event.screenshot?.dataUrl || null
       };
 

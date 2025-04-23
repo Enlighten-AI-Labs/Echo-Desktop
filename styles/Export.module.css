@@ -396,6 +396,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  font-family: var(--font-azeret-mono-regular);
 }
 
 .journeyButton:hover {
@@ -425,6 +426,38 @@
   color: #e0e0e0;
 }
 
+.journeyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.journeyName {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journeyEventCount {
+  font-size: 12px;
+  color: #bbb;
+}
+
+.noJourneys {
+  grid-column: 1 / -1;
+  padding: 24px;
+  text-align: center;
+  color: #bbb;
+  background-color: #262628;
+  border: 1px dashed #3a3a3c;
+  border-radius: 6px;
+  font-family: var(--font-azeret-mono-light);
+  font-style: italic;
+}
+
 /* Form actions */
 .formActions {
   display: flex;
@@ -451,4 +484,44 @@
   opacity: 0.5;
   cursor: not-allowed;
   background-color: #4caf50;
+}
+
+.previewContainer {
+  margin-top: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--background-color-secondary);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.preview {
+  margin: 0;
+  padding: 1rem;
+  font-family: 'Azeret Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-color);
+}
+
+/* Add scrollbar styling */
+.previewContainer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.previewContainer::-webkit-scrollbar-track {
+  background: var(--background-color);
+  border-radius: 4px;
+}
+
+.previewContainer::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.previewContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color-secondary);
 } 

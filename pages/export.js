@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { supabase } from '@/lib/supabase';
 import styles from '@/styles/Export.module.css';
+import { v4 as uuidv4 } from 'uuid';
+import { parseLogcatParameters, extractItems } from '@/lib/analytics-utils';
 
 export default function ExportPage() {
   const router = useRouter();
@@ -11,6 +13,7 @@ export default function ExportPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [newVersion, setNewVersion] = useState('');
+  const [journeys, setJourneys] = useState([]);
   const [exportConfig, setExportConfig] = useState({
     targetApp: '',
     targetVersion: '',
@@ -18,6 +21,33 @@ export default function ExportPage() {
     deviceName: '',
     selectedJourneys: []
   });
+  const [previewData, setPreviewData] = useState(null);
+  const [events, setEvents] = useState([]);
+
+  // Load journeys and events from localStorage
+  useEffect(() => {
+    const savedJourneys = localStorage.getItem('analyticsJourneys');
+    const savedEvents = localStorage.getItem('analyticsEvents');
+    if (savedJourneys) {
+      setJourneys(JSON.parse(savedJourneys));
+    }
+    if (savedEvents) {
+      setEvents(JSON.parse(savedEvents));
+    }
+
+    // Add event listener for storage changes
+    const handleStorageChange = (e) => {
+      if (e.key === 'analyticsEvents') {
+        setEvents(JSON.parse(e.newValue));
+      }
+      if (e.key === 'analyticsJourneys') {
+        setJourneys(JSON.parse(e.newValue));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Handle query parameters
   useEffect(() => {
@@ -45,6 +75,87 @@ export default function ExportPage() {
       setVersions([]);
     }
   }, [exportConfig.targetApp]);
+
+  // Update preview data when events or selected journeys change
+  useEffect(() => {
+    if (exportConfig.selectedJourneys.length > 0 && events.length > 0) {
+      generatePreviewData();
+    } else {
+      setPreviewData(null);
+    }
+  }, [exportConfig.selectedJourneys, events]);
+
+  const generatePreviewData = () => {
+    // Get all events from selected journeys
+    const selectedEvents = events.filter(event => 
+      event.journeys?.some(journey => exportConfig.selectedJourneys.includes(journey.id))
+    );
+
+    // Transform events to match the sample format
+    const transformedEvents = selectedEvents.map(event => {
+      const params = event.source === 'logcat' 
+        ? parseLogcatParameters(event.message) 
+        : event.parameters;
+
+      const items = extractItems(params);
+
+      const baseEvent = {
+        id: uuidv4().toUpperCase(),
+        timestamp: event.timestamp,
+        event_name: event.eventName || event.type || 'Unknown Event',
+        parameters: {
+          screen: params?.ga_screen || params?.screen_name || params?.pageName || 'Unknown Screen',
+          beacon_id: event.beaconId,
+          page_type: params?.page_type || 'Unknown',
+          screen_id: params?.screen_id || uuidv4(),
+          event_origin: 'app',
+          screen_class: params?.ga_screen_class || params?.screen_class || 'Unknown',
+          ...params
+        },
+        screenshot_url: event.screenshot?.dataUrl || null
+      };
+
+      // Add ecommerce items if they exist
+      if (items.length > 0) {
+        baseEvent.ecommerce_items = items.map(item => ({
+          name: item.item_name || item.product_name,
+          brand: item.brand || 'UNKNOWN',
+          index: item.index || 0,
+          price: parseFloat(item.price || item.product_price) || 0,
+          item_id: item.item_id || item.product_id,
+          list_id: item.list_id || '0',
+          variant: item.variant || 'default',
+          category: item.category || 'Unknown',
+          currency: item.currency || 'USD',
+          quantity: parseInt(item.quantity) || 1
+        }));
+      }
+
+      // Add custom dimensions if they exist
+      const customDimensions = Object.entries(params || {})
+        .filter(([key]) => !key.startsWith('ga_') && !key.startsWith('firebase_'))
+        .map(([key, value]) => ({
+          key,
+          value: String(value)
+        }));
+
+      if (customDimensions.length > 0) {
+        baseEvent.custom_dimensions = customDimensions;
+      }
+
+      // Add bundle properties if they exist
+      if (params?.bundle_properties) {
+        baseEvent.bundle_properties = params.bundle_properties.map(prop => ({
+          key: prop.key,
+          value: String(prop.value)
+        }));
+      }
+
+      return baseEvent;
+    });
+
+    setPreviewData(transformedEvents);
+  };
 
   const fetchApps = async () => {
     try {
@@ -85,10 +196,47 @@ export default function ExportPage() {
 
   const handleExport = async () => {
     try {
-      // TODO: Implement export logic
-      console.log('Exporting with config:', exportConfig);
+      if (!previewData) {
+        alert('Please select at least one journey to export');
+        return;
+      }
+
+      // Create a new crawl in Supabase
+      const { data: crawl, error: crawlError } = await supabase
+        .from('Crawls')
+        .insert([{
+          app_id: exportConfig.targetApp,
+          version_id: exportConfig.targetVersion,
+          expected_json: previewData,
+          actual_json: previewData,
+          device_os_version: exportConfig.platform === 'ios' ? 'iOS' : 'Android',
+          device_model: exportConfig.deviceName,
+        }])
+        .select()
+        .single();
+
+      if (crawlError) {
+        throw new Error(`Failed to create crawl: ${crawlError.message}`);
+      }
+
+      // Create a Blob with the JSON data
+      const blob = new Blob([JSON.stringify(previewData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `analytics_export_${new Date().toISOString()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Show success message
+      alert('Export successful! Crawl created.');
     } catch (error) {
       console.error('Error exporting:', error);
+      alert('Error exporting data: ' + error.message);
     }
   };
 
@@ -281,40 +429,46 @@ export default function ExportPage() {
                 <div className={styles.formGroup}>
                   <label>Select Journeys to Export</label>
                   <div className={styles.journeyGrid}>
-                    <button
-                      className={`${styles.journeyButton} ${exportConfig.selectedJourneys.includes('signup') ? styles.selected : ''}`}
-                      onClick={() => {
-                        const journeys = exportConfig.selectedJourneys.includes('signup')
-                          ? exportConfig.selectedJourneys.filter(j => j !== 'signup')
-                          : [...exportConfig.selectedJourneys, 'signup'];
-                        setExportConfig({...exportConfig, selectedJourneys: journeys});
-                      }}
-                    >
-                      <div className={styles.journeyIcon}>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                          <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4c.22-.72 3.31-2 6-2 2.7 0 5.8 1.29 6 2H9zm-3-3v-3h3v-2H6V7H4v3H1v2h3v3z"/>
-                        </svg>
+                    {journeys.map(journey => (
+                      <button
+                        key={journey.id}
+                        className={`${styles.journeyButton} ${exportConfig.selectedJourneys.includes(journey.id) ? styles.selected : ''}`}
+                        onClick={() => {
+                          const updatedJourneys = exportConfig.selectedJourneys.includes(journey.id)
+                            ? exportConfig.selectedJourneys.filter(j => j !== journey.id)
+                            : [...exportConfig.selectedJourneys, journey.id];
+                          setExportConfig({...exportConfig, selectedJourneys: updatedJourneys});
+                        }}
+                      >
+                        <div className={styles.journeyIcon}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                          </svg>
+                        </div>
+                        <div className={styles.journeyInfo}>
+                          <span className={styles.journeyName}>{journey.name}</span>
+                          <span className={styles.journeyEventCount}>{journey.events.length} events</span>
+                        </div>
+                      </button>
+                    ))}
+                    {journeys.length === 0 && (
+                      <div className={styles.noJourneys}>
+                        No journeys available. Create journeys in the Analytics Debugger.
                       </div>
-                      <span>Sign Up Journey</span>
-                    </button>
-                    <button
-                      className={`${styles.journeyButton} ${exportConfig.selectedJourneys.includes('checkout') ? styles.selected : ''}`}
-                      onClick={() => {
-                        const journeys = exportConfig.selectedJourneys.includes('checkout')
-                          ? exportConfig.selectedJourneys.filter(j => j !== 'checkout')
-                          : [...exportConfig.selectedJourneys, 'checkout'];
-                        setExportConfig({...exportConfig, selectedJourneys: journeys});
-                      }}
-                    >
-                      <div className={styles.journeyIcon}>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                          <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
-                      </div>
-                      <span>Checkout Journey</span>
-                    </button>
+                    )}
                   </div>
                 </div>
+
+                {previewData && (
+                  <div className={styles.formGroup}>
+                    <label>Preview</label>
+                    <div className={styles.previewContainer}>
+                      <pre className={styles.preview}>
+                        {JSON.stringify(previewData, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className={styles.formActions}>

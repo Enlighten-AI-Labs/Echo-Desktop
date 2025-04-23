@@ -876,8 +876,13 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             });
             
             // Convert map back to array and sort
-            return Array.from(existingEventsMap.values())
+            const updatedEvents = Array.from(existingEventsMap.values())
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            // Save to localStorage
+            localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+            
+            return updatedEvents;
           });
         }
 
@@ -907,6 +912,22 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }
     };
   }, [autoRefresh]);
+
+  // Effect to update localStorage when screenshots change
+  useEffect(() => {
+    // Update events with screenshot data
+    setEvents(currentEvents => {
+      const updatedEvents = currentEvents.map(event => ({
+        ...event,
+        screenshot: screenshots[event.id]
+      }));
+      
+      // Save to localStorage
+      localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+      
+      return updatedEvents;
+    });
+  }, [screenshots]);
 
   // Effect to handle screenshot updates when selected event changes
   useEffect(() => {

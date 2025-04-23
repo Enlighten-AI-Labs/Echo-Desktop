@@ -1109,14 +1109,12 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
   }, [journeys]);
 
-  // Update the event card rendering to use the new eCommerce tab instead of the icon
+  // Update the event card rendering to use the new three-row layout
   const renderEventCard = (event, index) => {
-    // Filter event journeys to only include those that still exist in the journeys list
     const validJourneys = (event.journeys || []).filter(eventJourney => 
       journeys.some(j => j.id === eventJourney.id)
     );
     
-    // Check if the event has eCommerce data
     const hasEcommerceData = (() => {
       if (event.source === 'logcat') {
         const params = parseLogcatParameters(event.message) || {};
@@ -1128,7 +1126,6 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }
     })();
 
-    // Determine analytics type and event type
     const analyticsType = (() => {
       if (event.analyticsType) return event.analyticsType;
       if (event.source === 'logcat' && (event.message?.includes('/b/ss/') || event.message?.includes('s.t') || event.message?.includes('s.tl'))) return 'Adobe';
@@ -1167,25 +1164,28 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           </div>
         )}
 
-        <div className={styles.eventName}>
+        {/* Row 1: Event name */}
+        <div className={styles.eventNameRow}>
           {event.source === 'logcat'
             ? (event.message?.includes('Logging event:') 
                 ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
                 : 'Analytics Event')
             : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
-          <span className={styles.separator}>|</span>
-          <span className={styles.eventPage}>
-            {event.source === 'logcat' 
-              ? (event.message?.includes('/b/ss/') 
-                  ? event.pageName || 'Unknown Page'
-                  : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
-              : (event.analyticsType === 'adobe' 
-                  ? event.pageName || 'Unknown Page'
-                  : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
-          </span>
         </div>
 
-        <div className={styles.eventHeader}>
+        {/* Row 2: Screen/Page name */}
+        <div className={styles.eventPageRow}>
+          {event.source === 'logcat' 
+            ? (event.message?.includes('/b/ss/') 
+                ? event.pageName || 'Unknown Page'
+                : (parseLogcatParameters(event.message)?.ga_screen || 'Unknown Page'))
+            : (event.analyticsType === 'adobe' 
+                ? event.pageName || 'Unknown Page'
+                : event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page')}
+        </div>
+
+        {/* Row 3: Metadata */}
+        <div className={styles.eventMetadataRow}>
           <span className={styles.beaconId}>{event.beaconId}</span>
           <span className={styles.eventTime}>
             {new Date(event.timestamp).toLocaleTimeString([], { 

@@ -65,7 +65,6 @@ export default function DebuggerPage() {
   const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
-  const [activeTab, setActiveTab] = useState('unified'); // 'network' or 'logcat' or 'unified'
   const [splitRatio, setSplitRatio] = useState(0); // Start with 0 since left panel is collapsed
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -119,10 +118,9 @@ export default function DebuggerPage() {
   useEffect(() => {
     // Get query parameters when the page loads
     if (router.isReady) {
-      const { deviceId, packageName, tab } = router.query;
+      const { deviceId, packageName } = router.query;
       if (deviceId) setDeviceId(deviceId);
       if (packageName) setPackageName(packageName);
-      if (tab === 'logcat' || tab === 'network' || tab === 'unified') setActiveTab(tab);
     }
   }, [router.isReady, router.query]);
 
@@ -211,22 +209,11 @@ export default function DebuggerPage() {
     const query = {};
     if (deviceId) query.deviceId = deviceId;
     if (packageName) query.packageName = packageName;
-    query.tab = activeTab;
+    query.tab = 'unified';
     router.push({
       pathname: '/device-setup',
       query
     });
-  };
-
-  const changeTab = (tab) => {
-    setActiveTab(tab);
-    
-    // Update the URL to include the active tab
-    const query = { ...router.query, tab };
-    router.push({
-      pathname: router.pathname,
-      query
-    }, undefined, { shallow: true });
   };
 
   // App Crawler Functions
@@ -1079,64 +1066,13 @@ export default function DebuggerPage() {
               opacity: rightPanelCollapsed ? 0 : 1,
               marginLeft: leftPanelCollapsed ? '20px' : '0px'
             }}>
-            <div className={styles.panelHeader}>
-              <div className={styles.headerLogo}>
-                <img src="/transparent_logo.png" alt="Logo" height="24" />
-              </div>
-              <div className={styles.headerControls}>
-                <div className={styles.tabs}>
-                  <button 
-                    className={`${styles.tabButton} ${activeTab === 'unified' ? styles.activeTab : ''}`}
-                    onClick={() => changeTab('unified')}
-                  >
-                    Unified Debugger
-                  </button>
-                  <button 
-                    className={`${styles.tabButton} ${activeTab === 'network' ? styles.activeTab : ''}`}
-                    onClick={() => changeTab('network')}
-                  >
-                    Network Capture
-                  </button>
-                  <button 
-                    className={`${styles.tabButton} ${activeTab === 'logcat' ? styles.activeTab : ''}`}
-                    onClick={() => changeTab('logcat')}
-                  >
-                    Logcat Capture
-                  </button>
-                  
-                </div>
-                <button
-                  className={styles.collapseButton}
-                  onClick={toggleRightPanel}
-                  title={rightPanelCollapsed ? "Expand panel" : "Collapse panel"}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d={rightPanelCollapsed ? "M5 5l7 7-7 7M13 5l7 7-7 7" : "M19 5l-7 7 7 7M11 5l-7 7 7 7"} />
-                  </svg>
-                </button>
-              </div>
-            </div>
             
             <div className={styles.analyticsDebuggerContent}>
-              {activeTab === 'network' ? (
-                <AnalyticsDebugger
-                  deviceId={deviceId}
-                  packageName={packageName}
-                  show={true}
-                />
-              ) : activeTab === 'logcat' ? (
-                <LogcatAnalyticsDebugger
-                  deviceId={deviceId}
-                  packageName={packageName}
-                  show={true}
-                />
-              ) : (
                 <UnifiedAnalyticsDebugger
                   deviceId={deviceId}
                   packageName={packageName}
                   show={true}
                 />
-              )}
             </div>
           </div>
           

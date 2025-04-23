@@ -1130,7 +1130,33 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
   }, [journeys]);
 
-  // Update the event card rendering to use the new three-row layout
+  // Add this new function to handle removing a journey from an event
+  const handleRemoveJourneyFromEvent = (eventId, journeyId, e) => {
+    e.stopPropagation(); // Prevent event selection when removing journey
+    
+    // Update the journey's events
+    setJourneys(prevJourneys => 
+      prevJourneys.map(journey => 
+        journey.id === journeyId
+          ? { ...journey, events: journey.events.filter(id => id !== eventId) }
+          : journey
+      )
+    );
+    
+    // Update the event's journey references
+    setEvents(prevEvents => 
+      prevEvents.map(event => 
+        event.id === eventId
+          ? {
+              ...event,
+              journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+            }
+          : event
+      )
+    );
+  };
+
+  // Update the renderEventCard function
   const renderEventCard = (event, index) => {
     const validJourneys = (event.journeys || []).filter(eventJourney => 
       journeys.some(j => j.id === eventJourney.id)
@@ -1174,6 +1200,13 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 style={{ backgroundColor: getJourneyColor(journey.name) }}
               >
                 {journey.name}
+                <div 
+                  className={styles.journeyTagClose}
+                  onClick={(e) => handleRemoveJourneyFromEvent(event.id, journey.id, e)}
+                  title="Remove from journey"
+                >
+                  ×
+                </div>
               </div>
             ))}
           </div>

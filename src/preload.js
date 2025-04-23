@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld(
       generateAdbWifiQRCode: () => ipcRenderer.invoke('adb:generateAdbWifiQRCode'),
       startPairing: () => ipcRenderer.invoke('adb:startPairing'),
       getLocalIp: () => ipcRenderer.invoke('adb:getLocalIp'),
+      stopDeviceDiscovery: () => ipcRenderer.invoke('adb:stopDeviceDiscovery'),
       getInstalledApps: (deviceId) => ipcRenderer.invoke('adb:getInstalledApps', deviceId),
       launchApp: (deviceId, packageName) => ipcRenderer.invoke('adb:launchApp', deviceId, packageName),
       executeCommand: (deviceId, command) => ipcRenderer.invoke('adb:executeCommand', deviceId, command),

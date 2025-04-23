@@ -41,6 +41,7 @@ export default function DeviceSetup() {
   });
 
   const [isDeviceSectionCollapsed, setIsDeviceSectionCollapsed] = useState(false);
+  const [isDiscoveryActive, setIsDiscoveryActive] = useState(false);
 
   // Helper function to get local IP address if needed during timeout
   const getLocalIpAddress = async () => {
@@ -136,6 +137,20 @@ export default function DeviceSetup() {
 
   // Generate QR code for wireless debugging
   const generateQrCode = async () => {
+    // If discovery is already active, stop it first
+    if (isDiscoveryActive) {
+      try {
+        await window.api.adb.stopDeviceDiscovery?.();
+        setIsDiscoveryActive(false);
+        setPairingInProgress(false);
+        setQrCodeData(null);
+        setDiscoveryStatus(null);
+        return;
+      } catch (error) {
+        console.error('Failed to stop device discovery:', error);
+      }
+    }
+
     setPairingInProgress(true);
     setConnectionError('');
     setDiscoveryStatus({
@@ -153,6 +168,9 @@ export default function DeviceSetup() {
       const result = await window.api.adb.generateAdbWifiQRCode();
       
       console.log('QR code generation successful, received result:', result);
+      
+      // Set discovery as active
+      setIsDiscoveryActive(true);
       
       // Set the discovery status to "waiting"
       setDiscoveryStatus({
@@ -185,6 +203,8 @@ export default function DeviceSetup() {
         status: 'error',
         message: 'Failed to start device discovery. Please try again.'
       });
+      
+      setIsDiscoveryActive(false);
     } finally {
       setPairingInProgress(false);
     }
@@ -607,7 +627,38 @@ export default function DeviceSetup() {
   const handleDeviceSelect = (deviceId) => {
     setSelectedDevice(deviceId);
     setIsDeviceSectionCollapsed(true);
+    // Cleanup wireless pairing when device is selected
+    if (isDiscoveryActive) {
+      window.api.adb.stopDeviceDiscovery?.()
+        .catch(console.error);
+      setIsDiscoveryActive(false);
+      setPairingInProgress(false);
+      setQrCodeData(null);
+      setDiscoveryStatus(null);
+    }
     fetchInstalledApps();
+  };
+
+  // Add cleanup function for wireless pairing
+  useEffect(() => {
+    return () => {
+      // Cleanup wireless pairing when component unmounts
+      if (isDiscoveryActive) {
+        window.api.adb.stopDeviceDiscovery?.()
+          .catch(console.error);
+        setIsDiscoveryActive(false);
+        setPairingInProgress(false);
+        setQrCodeData(null);
+        setDiscoveryStatus(null);
+      }
+    };
+  }, [isDiscoveryActive]);
+
+  // Update the button text based on discovery state
+  const getPairButtonText = () => {
+    if (pairingInProgress) return 'Preparing QR Code...';
+    if (isDiscoveryActive) return 'Stop Wireless Pairing';
+    return 'Pair New Device Wirelessly';
   };
 
   var content = (
@@ -718,7 +769,7 @@ export default function DeviceSetup() {
                         <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
                       </svg>
                     </div>
-                    <span>{pairingInProgress ? 'Preparing QR Code...' : 'Pair New Device Wirelessly'}</span>
+                    <span>{getPairButtonText()}</span>
                   </button>
                   
                   {/* QR Code Display */}

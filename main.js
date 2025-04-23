@@ -581,6 +581,17 @@ ipcMain.handle('adb:getDevices', async () => {
   }
 });
 
+// Add handler for stopping device discovery
+ipcMain.handle('adb:stopDeviceDiscovery', async () => {
+  try {
+    stopDeviceDiscovery();
+    return { success: true, message: 'Device discovery stopped' };
+  } catch (error) {
+    console.error('Error stopping device discovery:', error);
+    return { success: false, message: error.message };
+  }
+});
+
 // Generate QR code for wireless debugging
 ipcMain.handle('adb:generateQRCode', async () => {
   try {
@@ -737,12 +748,6 @@ function startDeviceDiscovery(pairingCode) {
   
   discoveryInProgress = true;
   console.log('Starting device discovery...');
-  
-  // Set a timeout to stop discovery after 60 seconds
-  deviceDiscoveryTimeout = setTimeout(() => {
-    console.log('Device discovery timeout after 60 seconds');
-    stopDeviceDiscovery();
-  }, 60000);
   
   // Start the discovery process
   discoverAndConnectDevice(pairingCode);

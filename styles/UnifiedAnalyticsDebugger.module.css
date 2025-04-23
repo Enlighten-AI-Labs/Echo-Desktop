@@ -226,6 +226,9 @@
   font-size: 1.25rem;
   color: #4e4d4d;
   width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* Row 2: Screen/Page name */
@@ -246,7 +249,7 @@
 /* Row 3: Metadata */
 .eventMetadataRow {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   width: 100%;
   margin-top: auto;
@@ -262,6 +265,7 @@
   padding: 0.25rem 0.5rem;
   border-radius: 12px;
   white-space: nowrap;
+  background-color: rgba(60, 118, 169, 0.1);
 }
 
 .eventTime {
@@ -2138,4 +2142,61 @@ border-top-right-radius: 6px;
   border-radius: 3px;
   color: white;
   font-size: 0.75rem;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.goToTopButton {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  padding: 10px 20px;
+  background-color: #9C54AD;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goToTopButton::before {
+  content: '↑';
+  font-size: 16px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.goToTopButton:hover {
+  background-color: #8A3D9C;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.goToTopButton:hover::before {
+  transform: translateY(-2px);
+}
+
+.goToTopButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.goToTopButton:active::before {
+  transform: translateY(0);
 }

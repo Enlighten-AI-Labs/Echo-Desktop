@@ -421,6 +421,8 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [userSelectedEvent, setUserSelectedEvent] = useState(false);
+  const [userInteracting, setUserInteracting] = useState(false);
   const [filter, setFilter] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'logcat', 'proxy'
@@ -465,6 +467,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const [isResizing, setIsResizing] = useState(null); // null, 'left', or 'right'
   const containerRef = useRef(null);
   
+  const eventsListRef = useRef(null);
+  const detailsPanelRef = useRef(null);
+  const screenshotPanelRef = useRef(null);
+
   // Start resize
   const startResize = (divider) => (e) => {
     e.preventDefault();
@@ -1235,7 +1241,90 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
   };
 
-  // Update the renderEventCard function
+  // Function to scroll to most recent event
+  const scrollToMostRecent = useCallback(() => {
+    if (eventsListRef.current) {
+      eventsListRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
+
+  // Effect to auto-select most recent event if no user selection
+  useEffect(() => {
+    if (filteredEvents.length > 0 && !userSelectedEvent && !userInteracting) {
+      setSelectedEvent(filteredEvents[0]);
+    }
+  }, [filteredEvents, userSelectedEvent, userInteracting]);
+
+  // Modified event selection handler
+  const handleEventSelection = (event) => {
+    setSelectedEvent(event);
+    setUserSelectedEvent(true);
+  };
+
+  // Function to return to most recent event
+  const handleGoToTop = () => {
+    if (filteredEvents.length > 0) {
+      setSelectedEvent(filteredEvents[0]);
+      setUserSelectedEvent(false);
+      setUserInteracting(false);
+      scrollToMostRecent();
+    }
+  };
+
+  // Handle user interaction with panels
+  const handlePanelInteraction = useCallback(() => {
+    setUserInteracting(true);
+  }, []);
+
+  // Add scroll event listener to events list
+  useEffect(() => {
+    const eventsList = eventsListRef.current;
+    if (!eventsList) return;
+
+    const handleScroll = () => {
+      // If we're very close to the top (within 10px), allow auto-selection
+      if (eventsList.scrollTop <= 10) {
+        setUserInteracting(false);
+      } else {
+        setUserInteracting(true);
+      }
+    };
+
+    eventsList.addEventListener('scroll', handleScroll);
+    return () => eventsList.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Add interaction listeners to panels
+  useEffect(() => {
+    const detailsPanel = detailsPanelRef.current;
+    const screenshotPanel = screenshotPanelRef.current;
+
+    if (detailsPanel) {
+      detailsPanel.addEventListener('mouseenter', handlePanelInteraction);
+      detailsPanel.addEventListener('touchstart', handlePanelInteraction);
+    }
+
+    if (screenshotPanel) {
+      screenshotPanel.addEventListener('mouseenter', handlePanelInteraction);
+      screenshotPanel.addEventListener('touchstart', handlePanelInteraction);
+    }
+
+    return () => {
+      if (detailsPanel) {
+        detailsPanel.removeEventListener('mouseenter', handlePanelInteraction);
+        detailsPanel.removeEventListener('touchstart', handlePanelInteraction);
+      }
+      if (screenshotPanel) {
+        screenshotPanel.removeEventListener('mouseenter', handlePanelInteraction);
+        screenshotPanel.removeEventListener('touchstart', handlePanelInteraction);
+      }
+    };
+  }, [handlePanelInteraction]);
+
+  // Add the renderEventCard function back
   const renderEventCard = (event, index) => {
     const validJourneys = (event.journeys || []).filter(eventJourney => 
       journeys.some(j => j.id === eventJourney.id)
@@ -1265,7 +1354,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       <div
         key={event.id}
         className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.selected : ''}`}
-        onClick={() => setSelectedEvent(event)}
+        onClick={() => handleEventSelection(event)}
         data-event-number={filteredEvents.length - index}
         data-analytics-type={analyticsType}
         data-adobe-tracking={isAdobeTrackingEvent}
@@ -1304,6 +1393,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
                 : 'Analytics Event')
             : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
+          <span className={styles.beaconId}>{event.beaconId}</span>
         </div>
 
         {/* Row 2: Screen/Page name */}
@@ -1319,7 +1409,6 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
         {/* Row 3: Metadata */}
         <div className={styles.eventMetadataRow}>
-          <span className={styles.beaconId}>{event.beaconId}</span>
           <span className={styles.eventTime}>
             {new Date(event.timestamp).toLocaleTimeString([], { 
               hour: '2-digit',
@@ -1333,6 +1422,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
   };
 
+  // Also add back the journey-related functions that were removed
   const handleDeleteJourney = (journeyId, e) => {
     e.stopPropagation(); // Prevent journey selection when deleting
     
@@ -1469,7 +1559,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       </div>
 
       <div ref={containerRef} className={styles.content}>
-        <div className={styles.eventsList} style={{ flex: `0 0 ${leftPanelWidth}px` }}>
+        <div ref={eventsListRef} className={styles.eventsList} style={{ flex: `0 0 ${leftPanelWidth}px` }}>
           {filteredEvents.map((event, index) => renderEventCard(event, index))}
         </div>
 
@@ -1477,7 +1567,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           <div className={styles.dividerHandle} />
         </div>
 
-        <div className={styles.eventDetails}>
+        <div ref={detailsPanelRef} className={styles.eventDetails}>
           {selectedEvent ? (
             <>
               <div className={styles.eventDetailsHeader}>
@@ -1712,7 +1802,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           <div className={styles.dividerHandle} />
         </div>
 
-        <div className={styles.screenshotPanel} style={{ flex: `0 0 ${rightPanelWidth}px` }}>
+        <div ref={screenshotPanelRef} className={styles.screenshotPanel} style={{ flex: `0 0 ${rightPanelWidth}px` }}>
           <div className={styles.screenshotControls}>
             <button 
               className={styles.retakeButton}
@@ -1754,6 +1844,17 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             )}
           </div>
         </div>
+
+        {/* Only show Latest Event button if we're not at the top and user has selected a different event */}
+        {userSelectedEvent && userInteracting && filteredEvents.length > 0 && selectedEvent?.id !== filteredEvents[0].id && (
+          <button
+            className={styles.goToTopButton}
+            onClick={handleGoToTop}
+            title="Go to most recent event"
+          >
+            Latest Event
+          </button>
+        )}
       </div>
 
       {/* Journey Modal */}

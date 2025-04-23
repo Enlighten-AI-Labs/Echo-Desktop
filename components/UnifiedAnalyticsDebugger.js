@@ -404,16 +404,54 @@ function getScreenName(event) {
   return event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page';
 }
 
-// Add this helper function to group events by screen
+// Add this helper function to group consecutive events by screen
 function groupEventsByScreen(events) {
   const groups = {};
+  let currentScreenName = null;
+  let currentGroupId = 0;
+  const screenGroupCounts = new Map();
+  
+  // First pass: count total groups per screen
   events.forEach(event => {
     const screenName = getScreenName(event);
-    if (!groups[screenName]) {
-      groups[screenName] = [];
+    if (screenName !== currentScreenName) {
+      currentGroupId++;
+      currentScreenName = screenName;
+      screenGroupCounts.set(screenName, (screenGroupCounts.get(screenName) || 0) + 1);
     }
-    groups[screenName].push(event);
   });
+  
+  // Reset for second pass
+  currentScreenName = null;
+  currentGroupId = 0;
+  
+  // Second pass: create groups with reversed numbers
+  events.forEach(event => {
+    const screenName = getScreenName(event);
+    
+    // If this is a new screen or first event, create a new group
+    if (screenName !== currentScreenName) {
+      currentGroupId++;
+      currentScreenName = screenName;
+    }
+    
+    const totalGroups = screenGroupCounts.get(screenName);
+    const reversedGroupId = totalGroups - currentGroupId + 1;
+    
+    // Create a unique group key that includes both screen name and group ID
+    const groupKey = `${screenName}-group${currentGroupId}`;
+    
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+    groups[groupKey].push({
+      ...event,
+      groupId: reversedGroupId,
+      totalGroups,
+      screenName // Add screen name to each event for easier access
+    });
+  });
+  
   return groups;
 }
 
@@ -1913,15 +1951,16 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                   disabled={selectedJourneyId !== null}
                 />
                 <div className={styles.eventCheckList}>
-                  {Object.entries(groupEventsByScreen(events)).map(([screenName, screenEvents], screenIndex) => {
-                    const screenId = `screen-${screenIndex}`;
+                  {Object.entries(groupEventsByScreen(events)).map(([groupKey, groupEvents], groupIndex) => {
+                    const screenId = `screen-${groupIndex}`;
                     const isCollapsed = collapsedScreens[screenId];
-                    const allScreenEventsSelected = screenEvents.every(event => 
+                    const screenName = groupEvents[0].screenName;
+                    const allScreenEventsSelected = groupEvents.every(event => 
                       selectedJourneyId 
                         ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
                         : selectedEvents.includes(event.id)
                     );
-                    const someScreenEventsSelected = screenEvents.some(event => 
+                    const someScreenEventsSelected = groupEvents.some(event => 
                       selectedJourneyId 
                         ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
                         : selectedEvents.includes(event.id)
@@ -1949,7 +1988,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                                 onChange={(e) => {
                                   e.stopPropagation(); // Prevent header click from triggering
                                   const newSelectedEvents = [...selectedEvents];
-                                  screenEvents.forEach(event => {
+                                  groupEvents.forEach(event => {
                                     const eventIndex = newSelectedEvents.indexOf(event.id);
                                     if (allScreenEventsSelected) {
                                       // Remove all screen events
@@ -1969,17 +2008,22 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                               />
                             )}
                             <label htmlFor={screenId} className={styles.screenName} onClick={e => e.stopPropagation()}>
-                              {screenName} ({screenEvents.length} events)
+                              {screenName} ({groupEvents.length} events)
                             </label>
                           </div>
                           <div className={styles.screenHeaderRight}>
+                            {groupEvents[0]?.groupId && (
+                              <div className={styles.groupCounter}>
+                                Group {groupEvents[0].groupId}/{groupEvents[0].totalGroups}
+                              </div>
+                            )}
                             <div className={styles.collapseIcon}>
                               {isCollapsed ? '▸' : '▾'}
                             </div>
                           </div>
                         </div>
                         <div className={`${styles.screenEvents} ${isCollapsed ? styles.collapsed : ''}`}>
-                          {screenEvents.map((event, eventIndex) => {
+                          {groupEvents.map((event, eventIndex) => {
                             const currentJourneys = getEventJourneys(event.id);
                             const isInSelectedJourney = selectedJourneyId && currentJourneys.some(j => j.id === selectedJourneyId);
 

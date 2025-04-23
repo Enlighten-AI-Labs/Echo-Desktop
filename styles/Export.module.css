@@ -1,0 +1,454 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #262628;
+  color: #e0e0e0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #262628;
+  border-bottom: 1px solid #3a3a3c;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.backButton:hover {
+  opacity: 0.8;
+}
+
+.backButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pageTitle {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #bbb;
+  font-style: italic;
+}
+
+.exportForm {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.formSection {
+  background-color: #1e1e20;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.formSection h2 {
+  margin: 0 0 24px 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.formGroup {
+  margin-bottom: 24px;
+}
+
+.formGroup:last-child {
+  margin-bottom: 0;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 12px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* App grid styles */
+.appGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.appButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.appButton:hover {
+  background-color: #2d2d2f;
+  border-color: #4a4a4c;
+}
+
+.appButton.selected {
+  background-color: #3C76A9;
+  border-color: #4C86B9;
+}
+
+.appIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.appIcon svg {
+  width: 24px;
+  height: 24px;
+  color: #e0e0e0;
+}
+
+.appInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.appName {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appPackage {
+  font-size: 12px;
+  color: #bbb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Version styles */
+.versionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.createVersionButton {
+  padding: 6px 12px;
+  background-color: #3C76A9;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.createVersionButton:hover {
+  background-color: #2C5D8B;
+}
+
+.createVersionForm {
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.versionInput {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #1a1a1c;
+  border: 1px solid #3a3a3c;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.versionInput:focus {
+  outline: none;
+  border-color: #3C76A9;
+}
+
+.createVersionActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelButton {
+  padding: 6px 12px;
+  background: none;
+  border: 1px solid #3a3a3c;
+  border-radius: 4px;
+  color: #bbb;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+}
+
+.saveButton {
+  padding: 6px 12px;
+  background-color: #3C76A9;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background-color: #2C5D8B;
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.versionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.versionButton {
+  padding: 12px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.versionButton:hover {
+  background-color: #2d2d2f;
+  border-color: #4a4a4c;
+}
+
+.versionButton.selected {
+  background-color: #3C76A9;
+  border-color: #4C86B9;
+}
+
+.versionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.versionNumber {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.versionDate {
+  font-size: 12px;
+  color: #bbb;
+}
+
+/* Platform styles */
+.platformGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.platformButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: var(--font-azeret-mono-regular);
+}
+
+.platformButton:hover {
+  background-color: #2d2d2f;
+  border-color: #4a4a4c;
+}
+
+.platformButton.selected {
+  background-color: #3C76A9;
+  border-color: #4C86B9;
+}
+
+.platformIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.platformIcon svg {
+  width: 22px;
+  height: 22px;
+  color: #e0e0e0;
+}
+
+.platformInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.platformName {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Device input styles */
+.deviceInput {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.deviceInput:focus {
+  outline: none;
+  border-color: #3C76A9;
+}
+
+/* Journey grid styles */
+.journeyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.journeyButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 6px;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.journeyButton:hover {
+  background-color: #2d2d2f;
+  border-color: #4a4a4c;
+}
+
+.journeyButton.selected {
+  background-color: #3C76A9;
+  border-color: #4C86B9;
+}
+
+.journeyIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.journeyIcon svg {
+  width: 20px;
+  height: 20px;
+  color: #e0e0e0;
+}
+
+/* Form actions */
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exportButton {
+  padding: 10px 24px;
+  background-color: #4caf50;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exportButton:hover {
+  background-color: #3e8e41;
+}
+
+.exportButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #4caf50;
+} 

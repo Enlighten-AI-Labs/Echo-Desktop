@@ -715,6 +715,15 @@ export default function DebuggerPage() {
           <div className={styles.headerButtons}>
             <button 
               className={styles.viewLogsButton}
+              onClick={() => router.push({
+                pathname: '/export',
+                query: { deviceId, packageName }
+              })}
+            >
+              Export Data
+            </button>
+            <button 
+              className={styles.viewLogsButton}
               onClick={handleSetupDevice}
             >
               Setup Device

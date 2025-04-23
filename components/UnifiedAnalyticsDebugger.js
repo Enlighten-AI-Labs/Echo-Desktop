@@ -387,6 +387,36 @@ const ShoppingCartIcon = () => (
   </svg>
 );
 
+// Add this helper function before the UnifiedAnalyticsDebugger component
+function getScreenName(event) {
+  if (event.source === 'logcat') {
+    if (event.message?.includes('/b/ss/')) {
+      return event.pageName || 'Unknown Page';
+    }
+    const params = parseLogcatParameters(event.message);
+    return params?.ga_screen || 'Unknown Page';
+  }
+  
+  if (event.analyticsType === 'adobe') {
+    return event.pageName || 'Unknown Page';
+  }
+  
+  return event.parameters?.ga_screen || event.parameters?.screen_name || 'Unknown Page';
+}
+
+// Add this helper function to group events by screen
+function groupEventsByScreen(events) {
+  const groups = {};
+  events.forEach(event => {
+    const screenName = getScreenName(event);
+    if (!groups[screenName]) {
+      groups[screenName] = [];
+    }
+    groups[screenName].push(event);
+  });
+  return groups;
+}
+
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
@@ -425,6 +455,9 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
+
+  // Add this state near your other state declarations in UnifiedAnalyticsDebugger
+  const [collapsedScreens, setCollapsedScreens] = useState({});
 
   // Function to generate a consistent color based on journey name
   const getJourneyColor = useCallback((journeyName) => {
@@ -1724,59 +1757,125 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                   onChange={e => setJourneyName(e.target.value)}
                   disabled={selectedJourneyId !== null}
                 />
-                <div className={styles.eventSelection}>
-                  <h3 className={styles.sectionTitle}>
-                    {selectedJourneyId ? 'Journey Events' : 'Select Events'}
-                  </h3>
-                  <div className={styles.eventCheckList}>
-                    {events.map((event, index) => {
-                      const currentJourneys = getEventJourneys(event.id);
-                      const isInSelectedJourney = selectedJourneyId && currentJourneys.some(j => j.id === selectedJourneyId);
+                <div className={styles.eventCheckList}>
+                  {Object.entries(groupEventsByScreen(events)).map(([screenName, screenEvents], screenIndex) => {
+                    const screenId = `screen-${screenIndex}`;
+                    const isCollapsed = collapsedScreens[screenId];
+                    const allScreenEventsSelected = screenEvents.every(event => 
+                      selectedJourneyId 
+                        ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
+                        : selectedEvents.includes(event.id)
+                    );
+                    const someScreenEventsSelected = screenEvents.some(event => 
+                      selectedJourneyId 
+                        ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
+                        : selectedEvents.includes(event.id)
+                    );
 
-                      return (
-                        <div
-                          key={index}
-                          className={`${styles.eventCheckItem} ${isInSelectedJourney ? styles.inJourney : ''}`}
+                    return (
+                      <div key={screenId} className={styles.screenGroup}>
+                        <div 
+                          className={`${styles.screenHeader} ${isCollapsed ? styles.collapsed : ''}`}
+                          onClick={() => setCollapsedScreens(prev => ({
+                            ...prev,
+                            [screenId]: !prev[screenId]
+                          }))}
                         >
-                          {!selectedJourneyId && (
-                            <input
-                              type="checkbox"
-                              checked={selectedEvents.includes(event.id)}
-                              onChange={() => toggleEventSelection(event.id)}
-                              id={`event-${event.id}`}
-                            />
-                          )}
-                          <div className={styles.eventInfo}>
-                            <span className={styles.eventName}>
-                              {event.eventName || event.type || 'Unknown Event'}
-                            </span>
-                            {currentJourneys.length > 0 && !selectedJourneyId && (
-                              <div className={styles.currentJourneys}>
-                                In journeys: {currentJourneys.map(j => (
-                                  <span 
-                                    key={j.id} 
-                                    className={styles.journeyTag}
-                                    style={{ backgroundColor: getJourneyColor(j.name) }}
-                                  >
-                                    {j.name}
-                                  </span>
-                                ))}
-                              </div>
+                          <div className={styles.screenHeaderLeft}>
+                            {!selectedJourneyId && (
+                              <input
+                                type="checkbox"
+                                checked={allScreenEventsSelected}
+                                ref={input => {
+                                  if (input) {
+                                    input.indeterminate = someScreenEventsSelected && !allScreenEventsSelected;
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  e.stopPropagation(); // Prevent header click from triggering
+                                  const newSelectedEvents = [...selectedEvents];
+                                  screenEvents.forEach(event => {
+                                    const eventIndex = newSelectedEvents.indexOf(event.id);
+                                    if (allScreenEventsSelected) {
+                                      // Remove all screen events
+                                      if (eventIndex > -1) {
+                                        newSelectedEvents.splice(eventIndex, 1);
+                                      }
+                                    } else {
+                                      // Add all screen events
+                                      if (eventIndex === -1) {
+                                        newSelectedEvents.push(event.id);
+                                      }
+                                    }
+                                  });
+                                  setSelectedEvents(newSelectedEvents);
+                                }}
+                                id={screenId}
+                              />
                             )}
+                            <label htmlFor={screenId} className={styles.screenName} onClick={e => e.stopPropagation()}>
+                              {screenName} ({screenEvents.length} events)
+                            </label>
                           </div>
-                          {isInSelectedJourney && (
-                            <button
-                              className={styles.removeEventButton}
-                              onClick={(e) => handleRemoveEventFromJourney(selectedJourneyId, event.id, e)}
-                              title="Remove from journey"
-                            >
-                              <TrashIcon />
-                            </button>
-                          )}
+                          <div className={styles.screenHeaderRight}>
+                            <div className={styles.collapseIcon}>
+                              {isCollapsed ? '▸' : '▾'}
+                            </div>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className={`${styles.screenEvents} ${isCollapsed ? styles.collapsed : ''}`}>
+                          {screenEvents.map((event, eventIndex) => {
+                            const currentJourneys = getEventJourneys(event.id);
+                            const isInSelectedJourney = selectedJourneyId && currentJourneys.some(j => j.id === selectedJourneyId);
+
+                            return (
+                              <div
+                                key={`${screenId}-event-${eventIndex}`}
+                                className={`${styles.eventCheckItem} ${isInSelectedJourney ? styles.inJourney : ''}`}
+                              >
+                                {!selectedJourneyId && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedEvents.includes(event.id)}
+                                    onChange={() => toggleEventSelection(event.id)}
+                                    id={`event-${event.id}`}
+                                  />
+                                )}
+                                <div className={styles.eventInfo}>
+                                  <span className={styles.eventName}>
+                                    {event.eventName || event.type || 'Unknown Event'} 
+                                    <span className={styles.beaconId}>{event.beaconId}</span>
+                                  </span>
+                                  {currentJourneys.length > 0 && !selectedJourneyId && (
+                                    <div className={styles.currentJourneys}>
+                                      In journeys: {currentJourneys.map(j => (
+                                        <span 
+                                          key={j.id} 
+                                          className={styles.journeyTag}
+                                          style={{ backgroundColor: getJourneyColor(j.name) }}
+                                        >
+                                          {j.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                {isInSelectedJourney && (
+                                  <button
+                                    className={styles.removeEventButton}
+                                    onClick={(e) => handleRemoveEventFromJourney(selectedJourneyId, event.id, e)}
+                                    title="Remove from journey"
+                                  >
+                                    <TrashIcon />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

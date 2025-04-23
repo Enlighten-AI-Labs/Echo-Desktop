@@ -23,6 +23,7 @@ export default function ExportPage() {
   });
   const [previewData, setPreviewData] = useState(null);
   const [events, setEvents] = useState([]);
+  const [screenshots, setScreenshots] = useState({});
 
   // Load journeys and events from localStorage
   useEffect(() => {
@@ -258,6 +259,35 @@ export default function ExportPage() {
         throw new Error(`Failed to create crawl: ${crawlError.message}`);
       }
 
+      // Upload screenshots for each event that has one
+      const screenshotUploads = previewData.map(async (event) => {
+        if (event.screenshot_url && screenshots[event.id]?.dataUrl) {
+          try {
+            // Convert base64 data URL to blob
+            const response = await fetch(screenshots[event.id].dataUrl);
+            const blob = await response.blob();
+
+            // Upload to Supabase storage
+            const { error: uploadError } = await supabase.storage
+              .from('crawl-data')
+              .upload(`${crawl.id}/${event.id}.png`, blob, {
+                contentType: 'image/png',
+                cacheControl: '3600',
+                upsert: true
+              });
+
+            if (uploadError) {
+              console.error(`Error uploading screenshot for event ${event.id}:`, uploadError);
+            }
+          } catch (error) {
+            console.error(`Error processing screenshot for event ${event.id}:`, error);
+          }
+        }
+      });
+
+      // Wait for all screenshot uploads to complete
+      await Promise.all(screenshotUploads);
+
       // Create a Blob with the JSON data
       const blob = new Blob([JSON.stringify(previewData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -272,7 +302,7 @@ export default function ExportPage() {
       URL.revokeObjectURL(url);
 
       // Show success message
-      alert('Export successful! Crawl created.');
+      alert('Export successful! Crawl created and screenshots uploaded.');
     } catch (error) {
       console.error('Error exporting:', error);
       alert('Error exporting data: ' + error.message);

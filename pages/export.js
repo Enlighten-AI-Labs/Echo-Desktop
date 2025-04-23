@@ -85,6 +85,27 @@ export default function ExportPage() {
     }
   }, [exportConfig.selectedJourneys, events]);
 
+  // Add this effect to handle platform changes
+  useEffect(() => {
+    if (exportConfig.platform && exportConfig.targetVersion) {
+      // Find the current version group
+      const currentVersion = versions.find(v => v.ids.includes(exportConfig.targetVersion));
+      if (currentVersion) {
+        // Find the version ID for the selected platform
+        const platformIndex = currentVersion.platforms.findIndex(p => 
+          p.toLowerCase() === exportConfig.platform.toLowerCase()
+        );
+        if (platformIndex !== -1) {
+          // Update to the correct version ID for this platform
+          setExportConfig(prev => ({
+            ...prev,
+            targetVersion: currentVersion.ids[platformIndex]
+          }));
+        }
+      }
+    }
+  }, [exportConfig.platform]);
+
   const generatePreviewData = () => {
     // Get all events from selected journeys
     const selectedEvents = events.filter(event => 
@@ -285,6 +306,74 @@ export default function ExportPage() {
     }
   };
 
+  // Update the platform button click handler
+  const handlePlatformSelect = async (platform) => {
+    // Find the current version group if one is selected
+    const currentVersion = exportConfig.targetVersion ? 
+      versions.find(v => v.ids.includes(exportConfig.targetVersion)) : null;
+
+    if (currentVersion) {
+      // Find the version ID for the selected platform
+      const platformIndex = currentVersion.platforms.findIndex(p => 
+        p.toLowerCase() === platform.toLowerCase()
+      );
+      
+      if (platformIndex !== -1) {
+        // Platform exists for this version, use its ID
+        setExportConfig(prev => ({
+          ...prev,
+          platform,
+          targetVersion: currentVersion.ids[platformIndex]
+        }));
+      } else {
+        // Platform doesn't exist for this version, create it
+        try {
+          const { data, error } = await supabase
+            .from('Versions')
+            .insert([{
+              app_id: exportConfig.targetApp,
+              app_version: currentVersion.app_version,
+              platform: platform
+            }])
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          // Refresh versions list
+          await fetchVersions(exportConfig.targetApp);
+
+          // Update export config with new version
+          setExportConfig(prev => ({
+            ...prev,
+            platform,
+            targetVersion: data.id
+          }));
+        } catch (error) {
+          console.error('Error creating version:', error);
+          alert('Failed to create version for platform: ' + error.message);
+        }
+      }
+    } else {
+      // No version selected, just update platform
+      setExportConfig(prev => ({
+        ...prev,
+        platform
+      }));
+    }
+  };
+
+  // Update the version button click handler
+  const handleVersionSelect = (version) => {
+    const platformIndex = exportConfig.platform ? 
+      version.platforms.findIndex(p => p.toLowerCase() === exportConfig.platform.toLowerCase()) : 0;
+    
+    setExportConfig(prev => ({
+      ...prev,
+      targetVersion: version.ids[platformIndex !== -1 ? platformIndex : 0]
+    }));
+  };
+
   return (
     <>
       <Head>
@@ -386,19 +475,20 @@ export default function ExportPage() {
                         <button
                           key={version.app_version}
                           className={`${styles.versionButton} ${version.ids.includes(exportConfig.targetVersion) ? styles.selected : ''}`}
-                          onClick={() => {
-                            // If platform is selected, select the version for that platform
-                            const versionId = exportConfig.platform 
-                              ? version.ids[version.platforms.indexOf(exportConfig.platform)] || version.ids[0]
-                              : version.ids[0];
-                            setExportConfig({...exportConfig, targetVersion: versionId});
-                          }}
+                          onClick={() => handleVersionSelect(version)}
+                          disabled={exportConfig.platform && !version.platforms.some(p => 
+                            p.toLowerCase() === exportConfig.platform.toLowerCase()
+                          )}
                         >
                           <div className={styles.versionInfo}>
                             <span className={styles.versionNumber}>{version.app_version}</span>
                             <div className={styles.versionPlatforms}>
                               {version.platforms.map((platform, index) => (
-                                <div key={index} className={styles.platformIcon} title={platform}>
+                                <div 
+                                  key={index} 
+                                  className={`${styles.platformIcon} ${exportConfig.platform && platform.toLowerCase() === exportConfig.platform.toLowerCase() ? styles.activePlatform : ''}`} 
+                                  title={platform}
+                                >
                                   {platform.toLowerCase() === 'android' ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                       <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
@@ -435,7 +525,7 @@ export default function ExportPage() {
                     <div className={styles.platformGrid}>
                       <button
                         className={`${styles.platformButton} ${exportConfig.platform === 'android' ? styles.selected : ''}`}
-                        onClick={() => setExportConfig({...exportConfig, platform: 'android'})}
+                        onClick={() => handlePlatformSelect('android')}
                       >
                         <div className={styles.platformIcon}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
@@ -448,7 +538,7 @@ export default function ExportPage() {
                       </button>
                       <button
                         className={`${styles.platformButton} ${exportConfig.platform === 'ios' ? styles.selected : ''}`}
-                        onClick={() => setExportConfig({...exportConfig, platform: 'ios'})}
+                        onClick={() => handlePlatformSelect('iOS')}
                       >
                         <div className={styles.platformIcon}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
@@ -457,6 +547,19 @@ export default function ExportPage() {
                         </div>
                         <div className={styles.platformInfo}>
                           <span className={styles.platformName}>iOS</span>
+                        </div>
+                      </button>
+                      <button
+                        className={`${styles.platformButton} ${exportConfig.platform === 'web' ? styles.selected : ''}`}
+                        onClick={() => handlePlatformSelect('web')}
+                      >
+                        <div className={styles.platformIcon}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <path d="M16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2 0-.68.06-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8 8M5.08 16H8c.35 1.25.81 2.45 1.41 3.56-1.84-.63-3.37-1.9-4.33-3.56M4.26 14c-.16-.64-.26-1.31-.26-2s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56M12 2C6.47 2 2 6.5 2 12s4.47 10 10 10 10-4.5 10-10S17.53 2 12 2"></path>
+                          </svg>
+                        </div>
+                        <div className={styles.platformInfo}>
+                          <span className={styles.platformName}>Web</span>
                         </div>
                       </button>
                     </div>

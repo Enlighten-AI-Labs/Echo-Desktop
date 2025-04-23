@@ -133,20 +133,20 @@
 /* Event card */
 .eventCard {
   position: relative;
-  padding: 1rem 1.5rem;
+  padding: 0.5rem 1.5rem;
   border-radius: 8px;
   background-color: #ffffff;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   margin-left: 1.5rem;
   margin-top: 32px;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #E9EDF3;
-  min-height: 80px;
+  min-height: 90px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  gap: 0.25rem;
   width: calc(100% - 1.5rem);
 }
 
@@ -154,25 +154,80 @@
   margin-top: 32px;
 }
 
-/* Timeline node */
+/* Event counter circle */
 .eventCard::before {
   content: attr(data-event-number);
   position: absolute;
-  left: -2.5rem;
+  left: -3rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   background-color: #FF9800;
+  color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   font-family: 'Azeret Mono Regular', monospace;
-  font-size: 16px;
-  font-weight: bold;
-  z-index: 2;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Row 1: Event name */
+.eventNameRow {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 1.25rem;
+  color: #4e4d4d;
+  width: 100%;
+}
+
+/* Row 2: Screen/Page name */
+.eventPageRow {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 0.875rem;
+  color: #6c757d;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 0;
+  margin: 2px 0;
+  min-height: 20px;
+  display: block;
+}
+
+/* Row 3: Metadata */
+.eventMetadataRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 4px;
+  padding-bottom: 10px;
+  min-height: 24px;
+}
+
+.beaconId {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.75rem;
+  color: #3C76A9;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.eventTime {
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 0.75rem;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+/* Remove old structures */
+.eventHeader, .separator {
+  display: none;
 }
 
 /* Adobe Analytics node color */

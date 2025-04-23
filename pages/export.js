@@ -184,7 +184,25 @@ export default function ExportPage() {
 
       if (error) throw error;
 
-      setVersions(data || []);
+      // Group versions by app_version
+      const groupedVersions = data.reduce((acc, version) => {
+        const existingVersion = acc.find(v => v.app_version === version.app_version);
+        if (existingVersion) {
+          existingVersion.platforms = existingVersion.platforms || [];
+          existingVersion.platforms.push(version.platform || 'unknown');
+          existingVersion.ids = existingVersion.ids || [existingVersion.id];
+          existingVersion.ids.push(version.id);
+        } else {
+          acc.push({
+            ...version,
+            platforms: [version.platform || 'unknown'],
+            ids: [version.id]
+          });
+        }
+        return acc;
+      }, []);
+
+      setVersions(groupedVersions || []);
     } catch (error) {
       console.error('Error fetching versions:', error);
     }
@@ -248,7 +266,8 @@ export default function ExportPage() {
         .from('Versions')
         .insert([{
           app_id: exportConfig.targetApp,
-          app_version: newVersion.trim()
+          app_version: newVersion.trim(),
+          platform: exportConfig.platform
         }])
         .select()
         .single();
@@ -256,7 +275,7 @@ export default function ExportPage() {
       if (error) throw error;
 
       // Add the new version to the list and select it
-      setVersions(prev => [data, ...prev]);
+      await fetchVersions(exportConfig.targetApp);
       setExportConfig(prev => ({ ...prev, targetVersion: data.id }));
       setShowCreateVersion(false);
       setNewVersion('');
@@ -365,12 +384,41 @@ export default function ExportPage() {
                     <div className={styles.versionGrid}>
                       {versions.map(version => (
                         <button
-                          key={version.id}
-                          className={`${styles.versionButton} ${exportConfig.targetVersion === version.id ? styles.selected : ''}`}
-                          onClick={() => setExportConfig({...exportConfig, targetVersion: version.id})}
+                          key={version.app_version}
+                          className={`${styles.versionButton} ${version.ids.includes(exportConfig.targetVersion) ? styles.selected : ''}`}
+                          onClick={() => {
+                            // If platform is selected, select the version for that platform
+                            const versionId = exportConfig.platform 
+                              ? version.ids[version.platforms.indexOf(exportConfig.platform)] || version.ids[0]
+                              : version.ids[0];
+                            setExportConfig({...exportConfig, targetVersion: versionId});
+                          }}
                         >
                           <div className={styles.versionInfo}>
                             <span className={styles.versionNumber}>{version.app_version}</span>
+                            <div className={styles.versionPlatforms}>
+                              {version.platforms.map((platform, index) => (
+                                <div key={index} className={styles.platformIcon} title={platform}>
+                                  {platform.toLowerCase() === 'android' ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                      <path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/>
+                                    </svg>
+                                  ) : platform.toLowerCase() === 'ios' ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                      <path d="M17.0748 11.9146c-.0018-1.613.7424-3.0892 1.9365-4.0345-1.0096-1.3956-2.6084-2.2066-4.2984-2.1532-1.7339-.1703-3.3888 1.0347-4.2637 1.0347-.8969 0-2.2458-1.016-3.7053-1.0003-1.8851.03-3.6412 1.1065-4.5986 2.8124-1.9855 3.4368-.5065 8.4962 1.4022 11.2669.9533 1.3576 2.0753 2.8693 3.5406 2.8167 1.437-.0593 1.9685-.9106 3.7052-.9106 1.7172 0 2.2268.9106 3.7225.8793 1.5414-.0243 2.5157-1.3771 3.4445-2.7413.6681-.9626 1.1759-2.0425 1.4976-3.1814-1.6936-.7015-2.7889-2.3726-2.7831-4.2175zM14.4365 5.7815c.8303-1.0452 1.1553-2.3956.9-3.7226-1.2436.0895-2.3858.6866-3.1897 1.6663-.7854.9668-1.1657 2.1961-1.0554 3.4445 1.2791.016 2.4945-.6108 3.3451-1.3882z"></path>
+                                    </svg>
+                                  ) : platform.toLowerCase() === 'web' ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                      <path d="M16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2 0-.68.06-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8 8M5.08 16H8c.35 1.25.81 2.45 1.41 3.56-1.84-.63-3.37-1.9-4.33-3.56M4.26 14c-.16-.64-.26-1.31-.26-2s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56M12 2C6.47 2 2 6.5 2 12s4.47 10 10 10 10-4.5 10-10S17.53 2 12 2"></path>
+                                    </svg>
+                                  ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                                    </svg>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                             <span className={styles.versionDate}>
                               {new Date(version.created_at).toLocaleDateString()}
                             </span>

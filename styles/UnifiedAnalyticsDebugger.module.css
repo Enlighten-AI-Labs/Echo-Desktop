@@ -102,25 +102,15 @@
 }
 
 .content {
-  display: grid;
-  grid-template-columns: 375px 1fr 300px;
-  gap: 1rem;
-  padding: 1rem;
+  display: flex;
   height: calc(100vh - 80px);
   overflow: hidden;
+  padding: 1rem;
+  position: relative;
 }
 
-/* Remove old filter box styles since we moved them to toolbar */
-.filterBox {
-  display: none;
-}
-
-.filterInputContainer {
-  display: none;
-}
-
-/* Timeline container */
 .eventsList {
+  flex: 0 0 375px;
   background-color: #f8f9fa;
   overflow-y: auto;
   padding: 1rem 1rem 2rem 4rem;
@@ -128,6 +118,62 @@
   flex-direction: column;
   height: 100%;
   position: relative;
+}
+
+.eventDetails {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 8px;
+  margin: 0 1rem;
+}
+
+.screenshotPanel {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Divider styles */
+.divider {
+  width: 1px;
+  background-color: #e9ecef;
+  position: relative;
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+}
+
+.divider:hover {
+  background-color: #3C76A9;
+}
+
+.divider::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  width: 9px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.dividerHandle {
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 50px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.divider:hover .dividerHandle {
+  background-color: #3C76A9;
 }
 
 /* Event card */
@@ -349,18 +395,6 @@
 .eventType[data-type="Logcat"] {
   background-color: #6f42c1;
   color: white;
-}
-
-.eventDetails {
-  background-color: #F0F2F5;
-  border-radius: 0;
-  box-shadow: none;
-  overflow-y: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  font-family: 'Azeret Mono Regular', monospace;
 }
 
 .eventDetailsHeader {
@@ -1242,7 +1276,6 @@ border-top-right-radius: 6px;
   border-radius: 8px;
   background-color: white;
 }
-
 
 .loading {
   display: flex;

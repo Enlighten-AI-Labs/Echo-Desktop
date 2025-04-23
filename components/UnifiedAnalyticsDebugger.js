@@ -459,6 +459,52 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   // Add this state near your other state declarations in UnifiedAnalyticsDebugger
   const [collapsedScreens, setCollapsedScreens] = useState({});
 
+  // Add state for panel resizing
+  const [leftPanelWidth, setLeftPanelWidth] = useState(375); // Default width for events list
+  const [rightPanelWidth, setRightPanelWidth] = useState(300); // Default width for screenshot panel
+  const [isResizing, setIsResizing] = useState(null); // null, 'left', or 'right'
+  const containerRef = useRef(null);
+  
+  // Start resize
+  const startResize = (divider) => (e) => {
+    e.preventDefault();
+    setIsResizing(divider);
+  };
+
+  // Handle resize
+  const handleResize = useCallback((e) => {
+    if (!isResizing || !containerRef.current) return;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const mouseX = e.clientX - containerRect.left;
+
+    if (isResizing === 'left') {
+      const newWidth = Math.max(250, Math.min(mouseX, containerWidth - rightPanelWidth - 100));
+      setLeftPanelWidth(newWidth);
+    } else if (isResizing === 'right') {
+      const newWidth = Math.max(200, Math.min(containerWidth - mouseX, containerWidth - leftPanelWidth - 100));
+      setRightPanelWidth(newWidth);
+    }
+  }, [isResizing, rightPanelWidth, leftPanelWidth]);
+
+  // Stop resize
+  const stopResize = useCallback(() => {
+    setIsResizing(null);
+  }, []);
+
+  // Add resize event listeners
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', handleResize);
+      window.addEventListener('mouseup', stopResize);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleResize);
+      window.removeEventListener('mouseup', stopResize);
+    };
+  }, [isResizing, handleResize, stopResize]);
+
   // Function to generate a consistent color based on journey name
   const getJourneyColor = useCallback((journeyName) => {
     const colors = [
@@ -1422,9 +1468,13 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         </div>
       </div>
 
-      <div className={styles.content}>
-        <div className={styles.eventsList}>
+      <div ref={containerRef} className={styles.content}>
+        <div className={styles.eventsList} style={{ flex: `0 0 ${leftPanelWidth}px` }}>
           {filteredEvents.map((event, index) => renderEventCard(event, index))}
+        </div>
+
+        <div className={styles.divider} onMouseDown={startResize('left')}>
+          <div className={styles.dividerHandle} />
         </div>
 
         <div className={styles.eventDetails}>
@@ -1658,7 +1708,11 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           )}
         </div>
 
-        <div className={styles.screenshotPanel}>
+        <div className={styles.divider} onMouseDown={startResize('right')}>
+          <div className={styles.dividerHandle} />
+        </div>
+
+        <div className={styles.screenshotPanel} style={{ flex: `0 0 ${rightPanelWidth}px` }}>
           <div className={styles.screenshotControls}>
             <button 
               className={styles.retakeButton}

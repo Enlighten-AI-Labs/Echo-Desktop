@@ -238,16 +238,15 @@ async function generateAdbWifiQRCode() {
     // Get local IP address
     const hostIp = getLocalIpAddress();
     
-    // Use a random name and password for pairing
-    const debugName = "echo_debug_" + nanoid(6);
-    const pairingCode = nanoid(8); // Random string for pairing code
+    // Use a simpler pairing code format (6 digits)
+    const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
     
     // Create a pairing port (between 30000-40000, consistent with Android expectations)
     const pairingPort = Math.floor(Math.random() * 10000) + 30000;
     
     // Generate a QR code with the correct Android format
-    // Format: WIFI:T:ADB;S:{name};P:{password};;
-    const qrCodeContent = `WIFI:T:ADB;S:${debugName};P:${pairingCode};;`;
+    // Format: WIFI:T:ADB;S:{ip}:{port};P:{code};;
+    const qrCodeContent = `WIFI:T:ADB;S:${hostIp}:${pairingPort};P:${pairingCode};;`;
     
     console.log('Creating QR code with content:', qrCodeContent);
     
@@ -407,43 +406,70 @@ async function pairWithDevice(address, port, pairingCode) {
   try {
     console.log(`Attempting to pair with device at ${address}:${port} using code: ${pairingCode}`);
     
+    // First ensure ADB server is running
+    await execAdbCommand('start-server');
+    
+    // Kill any existing ADB server to ensure clean state
+    await execAdbCommand('kill-server');
+    await execAdbCommand('start-server');
+    
+    // Wait a moment for ADB to restart
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Pair with the device using ADB
-    const pairOutput = await execAdbCommand(`pair ${address}:${port} ${pairingCode}`);
+    const pairOutput = await execAdbCommand(`pair "${address}:${port}" "${pairingCode}"`);
     console.log('Pairing output:', pairOutput);
-    let guid = pairOutput.match(/\[guid=([^\]]+)\]/)?.[1];
     
     if (pairOutput.includes('Successfully paired')) {
-      console.log('Pairing successful, now connecting...');
+      console.log('Pairing successful, attempting to connect...');
       
-      // After successful pairing, always use port 5555 for the connection
-      const connectPort = 5555;
+      // Extract the GUID if available
+      const guid = pairOutput.match(/\[guid=([^\]]+)\]/)?.[1];
+      console.log('Device GUID:', guid);
       
-      // Try to connect using port 5555
-      console.log(`Trying to connect using standard ADB port: ${address}:${connectPort}`);
-      let connectOutput = await execAdbCommand(`connect ${address}:${connectPort}`);
-      console.log('Connect output:', connectOutput);
+      // First try connecting using the original pairing port
+      console.log(`Trying to connect using pairing port first: ${address}:${port}`);
+      let connectOutput = await execAdbCommand(`connect ${address}:${port}`);
+      console.log('Initial connect output:', connectOutput);
       
-      if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
-        return true;
-      }
-      
-      // If the first attempt fails, wait a moment and try again
-      if (!connectOutput.includes('connected to')) {
-        console.log('First connection attempt failed, waiting 2 seconds and trying again...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      // If that works, great! If not, try port 5555
+      if (!connectOutput.includes('connected to') && !connectOutput.includes('already connected')) {
+        console.log('Initial connection failed, trying standard port 5555...');
         
-        connectOutput = await execAdbCommand(`connect ${address}:${connectPort}`);
-        console.log('Second connect attempt output:', connectOutput);
-        
-        if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
-          return true;
+        // Multiple connection attempts with delays
+        for (let i = 0; i < 3; i++) {
+          try {
+            // Try to enable wireless debugging via shell command if possible
+            try {
+              await execAdbCommand(`shell setprop service.adb.tcp.port 5555`);
+              await execAdbCommand(`shell stop adbd`);
+              await execAdbCommand(`shell start adbd`);
+            } catch (error) {
+              console.log('Could not enable TCP port via shell, continuing anyway:', error);
+            }
+            
+            connectOutput = await execAdbCommand(`connect ${address}:5555`);
+            console.log(`Connection attempt ${i + 1} output:`, connectOutput);
+            
+            if (connectOutput.includes('connected to') || connectOutput.includes('already connected')) {
+              // Verify connection with devices command
+              const devicesOutput = await execAdbCommand('devices');
+              if (devicesOutput.includes(address)) {
+                console.log('Device successfully connected and verified');
+                return true;
+              }
+            }
+            
+            // If not successful, wait before next attempt
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } catch (connectError) {
+            console.error(`Connection attempt ${i + 1} failed:`, connectError);
+            // Wait longer before retry
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
         }
-      }
-      
-      // Check if the device appears in the devices list
-      let getDevicesOutput = await execAdbCommand(`devices -l`);
-      console.log('Devices output:', getDevicesOutput);
-      if (getDevicesOutput.includes(guid) || getDevicesOutput.includes(`${address}:${connectPort}`)) {
+      } else {
+        // Initial connection with pairing port was successful
         return true;
       }
       

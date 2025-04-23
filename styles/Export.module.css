@@ -530,11 +530,12 @@
 
 .previewContainer {
   margin-top: 1rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid #3a3a3c;
   border-radius: 8px;
-  background-color: var(--background-color-secondary);
-  max-height: 400px;
+  background-color: #1e1e20;
+  max-height: 500px;
   overflow-y: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .preview {
@@ -548,22 +549,130 @@
   color: var(--text-color);
 }
 
-/* Add scrollbar styling */
+/* Scrollbar styling */
 .previewContainer::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .previewContainer::-webkit-scrollbar-track {
-  background: var(--background-color);
+  background: #262628;
   border-radius: 4px;
 }
 
 .previewContainer::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: #3a3a3c;
   border-radius: 4px;
 }
 
 .previewContainer::-webkit-scrollbar-thumb:hover {
-  background: var(--text-color-secondary);
+  background: #4a4a4c;
+}
+
+/* JSON Viewer Styles - Dark Theme */
+.jsonViewer {
+  font-family: 'Azeret Mono Light', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px;
+  color: #e0e0e0;
+}
+
+.jsonObjectContainer,
+.jsonArrayContainer {
+  margin-left: 20px;
+}
+
+.jsonLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.jsonToggle {
+  cursor: pointer;
+  user-select: none;
+  color: #9C54AD;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  margin-left: -24px;
+  padding: 2px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.jsonToggle:hover {
+  background-color: rgba(156, 84, 173, 0.2);
+}
+
+.jsonTogglePlaceholder {
+  width: 16px;
+  margin-left: -24px;
+}
+
+.jsonBracket {
+  color: #bbb;
+}
+
+.jsonCollapsed {
+  color: #666;
+  font-style: italic;
+  font-size: 12px;
+  margin: 0 4px;
+}
+
+.jsonObjectProperties,
+.jsonArrayItems {
+  margin-left: 20px;
+  border-left: 1px dashed #3a3a3c;
+  padding-left: 12px;
+}
+
+.jsonProperty,
+.jsonArrayItem {
+  padding: 2px 0;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.jsonKey {
+  color: #3C76A9;
+  font-weight: 500;
+}
+
+.jsonColon {
+  color: #bbb;
+  margin: 0 4px;
+}
+
+.jsonString {
+  color: #6DC19C;
+}
+
+.jsonNumber {
+  color: #3C76A9;
+}
+
+.jsonBoolean {
+  color: #EB2726;
+}
+
+.jsonNull {
+  color: #F69757;
+  font-style: italic;
+}
+
+.jsonComma {
+  color: #bbb;
+  margin-right: 4px;
+}
+
+.jsonArray {
+  color: #666;
 } 

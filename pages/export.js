@@ -6,6 +6,131 @@ import styles from '@/styles/Export.module.css';
 import { v4 as uuidv4 } from 'uuid';
 import { parseLogcatParameters, extractItems } from '@/lib/analytics-utils';
 
+const JsonPreview = ({ data }) => {
+  const initializeExpandedSections = (obj, path = 'root') => {
+    let sections = { [path]: true };
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        if (typeof item === 'object' && item !== null) {
+          sections = { ...sections, ...initializeExpandedSections(item, `${path}.${index}`) };
+        }
+      });
+    } else if (typeof obj === 'object' && obj !== null) {
+      Object.entries(obj).forEach(([key, value]) => {
+        if (typeof value === 'object' && value !== null) {
+          sections = { ...sections, ...initializeExpandedSections(value, `${path}.${key}`) };
+        }
+      });
+    }
+    return sections;
+  };
+
+  const [expandedSections, setExpandedSections] = useState(() => initializeExpandedSections(data));
+
+  const renderValue = (value, key, path = '', isLast = false) => {
+    const renderComma = !isLast && <span className={styles.jsonComma}>,</span>;
+
+    if (value === null) return <>{<span className={styles.jsonNull}>null</span>}{renderComma}</>;
+    if (typeof value === 'boolean') return <>{<span className={styles.jsonBoolean}>{value.toString()}</span>}{renderComma}</>;
+    if (typeof value === 'number') return <>{<span className={styles.jsonNumber}>{value}</span>}{renderComma}</>;
+    if (typeof value === 'string') return <>{<span className={styles.jsonString}>"{value}"</span>}{renderComma}</>;
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <>{<span className={styles.jsonArray}>[]</span>}{renderComma}</>;
+      const currentPath = `${path}.${key}`;
+      const isExpanded = expandedSections[currentPath];
+      
+      return (
+        <div className={styles.jsonArrayContainer}>
+          <div className={styles.jsonLine}>
+            <span 
+              className={styles.jsonToggle}
+              onClick={() => setExpandedSections(prev => ({...prev, [currentPath]: !prev[currentPath]}))}
+            >
+              {isExpanded ? '▼' : '▶'}
+            </span>
+            <span className={styles.jsonBracket}>[</span>
+            {!isExpanded && (
+              <>
+                <span className={styles.jsonCollapsed}>{value.length} items</span>
+                <span className={styles.jsonBracket}>]</span>
+                {renderComma}
+              </>
+            )}
+          </div>
+          {isExpanded && (
+            <>
+              <div className={styles.jsonArrayItems}>
+                {value.map((item, index) => (
+                  <div key={index} className={styles.jsonArrayItem}>
+                    {renderValue(item, index, currentPath, index === value.length - 1)}
+                  </div>
+                ))}
+              </div>
+              <div className={styles.jsonLine}>
+                <span className={styles.jsonBracket}>]</span>{renderComma}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      const currentPath = `${path}.${key}`;
+      const isExpanded = expandedSections[currentPath];
+      const entries = Object.entries(value);
+      
+      return (
+        <div className={styles.jsonObjectContainer}>
+          <div className={styles.jsonLine}>
+            <span 
+              className={styles.jsonToggle}
+              onClick={() => setExpandedSections(prev => ({...prev, [currentPath]: !prev[currentPath]}))}
+            >
+              {isExpanded ? '▼' : '▶'}
+            </span>
+            <span className={styles.jsonBracket}>{'{'}</span>
+            {!isExpanded && (
+              <>
+                <span className={styles.jsonCollapsed}>
+                  {entries.length} properties
+                </span>
+                <span className={styles.jsonBracket}>{'}'}</span>
+                {renderComma}
+              </>
+            )}
+          </div>
+          {isExpanded && (
+            <>
+              <div className={styles.jsonObjectProperties}>
+                {entries.map(([k, v], index) => (
+                  <div key={k} className={styles.jsonProperty}>
+                    <span className={styles.jsonKey}>{k}</span>
+                    <span className={styles.jsonColon}>:</span>
+                    {renderValue(v, k, currentPath, index === entries.length - 1)}
+                  </div>
+                ))}
+              </div>
+              <div className={styles.jsonLine}>
+                <span className={styles.jsonBracket}>{'}'}</span>{renderComma}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+    
+    return String(value);
+  };
+
+  return (
+    <div className={styles.jsonViewer}>
+      {renderValue(data, 'root')}
+    </div>
+  );
+};
+
 export default function ExportPage() {
   const router = useRouter();
   const [apps, setApps] = useState([]);
@@ -651,9 +776,7 @@ export default function ExportPage() {
                   <div className={styles.formGroup}>
                     <label>Preview</label>
                     <div className={styles.previewContainer}>
-                      <pre className={styles.preview}>
-                        {JSON.stringify(previewData, null, 2)}
-                      </pre>
+                      <JsonPreview data={previewData} />
                     </div>
                   </div>
                 )}

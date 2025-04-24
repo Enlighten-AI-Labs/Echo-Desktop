@@ -1,6 +1,7 @@
 import styles from '@/styles/UnifiedAnalyticsDebugger.module.css';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
+import { useReact19 } from '@/contexts/React19Provider';
 
 function parseGA4Beacon(url, queryParams) {
   try {
@@ -456,6 +457,8 @@ function groupEventsByScreen(events) {
 }
 
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
+  const { startTransition, isPending } = useReact19();
+  
   // State for analytics events from all sources
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -509,13 +512,16 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const detailsPanelRef = useRef(null);
   const screenshotPanelRef = useRef(null);
 
+  // Use deferred value for events to prevent UI blocking
+  const deferredEvents = useDeferredValue(events);
+
   // Start resize
   const startResize = (divider) => (e) => {
     e.preventDefault();
     setIsResizing(divider);
   };
 
-  // Handle resize
+  // Update the handleResize callback to use startTransition
   const handleResize = useCallback((e) => {
     if (!isResizing || !containerRef.current) return;
 
@@ -523,14 +529,16 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     const containerWidth = containerRect.width;
     const mouseX = e.clientX - containerRect.left;
 
-    if (isResizing === 'left') {
-      const newWidth = Math.max(250, Math.min(mouseX, containerWidth - rightPanelWidth - 100));
-      setLeftPanelWidth(newWidth);
-    } else if (isResizing === 'right') {
-      const newWidth = Math.max(200, Math.min(containerWidth - mouseX, containerWidth - leftPanelWidth - 100));
-      setRightPanelWidth(newWidth);
-    }
-  }, [isResizing, rightPanelWidth, leftPanelWidth]);
+    startTransition(() => {
+      if (isResizing === 'left') {
+        const newWidth = Math.max(250, Math.min(mouseX, containerWidth - rightPanelWidth - 100));
+        setLeftPanelWidth(newWidth);
+      } else if (isResizing === 'right') {
+        const newWidth = Math.max(200, Math.min(containerWidth - mouseX, containerWidth - leftPanelWidth - 100));
+        setRightPanelWidth(newWidth);
+      }
+    });
+  }, [isResizing, rightPanelWidth, leftPanelWidth, startTransition]);
 
   // Stop resize
   const stopResize = useCallback(() => {
@@ -1601,287 +1609,287 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           {filteredEvents.map((event, index) => renderEventCard(event, index))}
         </div>
 
-        <div className={styles.divider} onMouseDown={startResize('left')}>
-          <div className={styles.dividerHandle} />
-        </div>
+      <div className={styles.divider} onMouseDown={startResize('left')}>
+        <div className={styles.dividerHandle} />
+      </div>
 
-        <div ref={detailsPanelRef} className={styles.eventDetails}>
-          {selectedEvent ? (
-            <>
-              <div className={styles.eventDetailsHeader}>
-                <div className={styles.eventDetailsTitle}>
-                  {selectedEvent.eventName}
-                </div>
-                <button
-                  className={styles.deleteEventButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteEvent(selectedEvent, e);
-                  }}
-                  title="Delete event"
-                >
-                  <TrashIcon />
-                </button>
+      <div ref={detailsPanelRef} className={styles.eventDetails}>
+        {selectedEvent ? (
+          <>
+            <div className={styles.eventDetailsHeader}>
+              <div className={styles.eventDetailsTitle}>
+                {selectedEvent.eventName}
               </div>
+              <button
+                className={styles.deleteEventButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteEvent(selectedEvent, e);
+                }}
+                title="Delete event"
+              >
+                <TrashIcon />
+              </button>
+            </div>
 
-              <div className={styles.section}>
-                <div 
-                  className={styles.sectionHeader}
-                  onClick={() => setExpandedSections(prev => ({
-                    ...prev,
-                    basicInfo: !prev.basicInfo
-                  }))}
-                >
-                  <h3>Basic Information</h3>
-                  <span>{expandedSections.basicInfo ? '−' : '+'}</span>
-                </div>
-                {expandedSections.basicInfo && (
-                  <div className={styles.sectionContent}>
-                    <div className={styles.parametersTable}>
-                      <div className={styles.parametersHeader}>
-                        <div className={styles.paramNumber}>#</div>
-                        <div className={styles.paramName}>FIELD</div>
-                        <div className={styles.paramValue}>VALUE</div>
-                      </div>
-                      <div className={styles.parameterRow}>
-                        <div className={styles.paramNumber}>#1</div>
-                        <div className={styles.paramName}>Source</div>
-                        <div className={styles.paramValue}>{selectedEvent.source}</div>
-                      </div>
-                      <div className={styles.parameterRow}>
-                        <div className={styles.paramNumber}>#2</div>
-                        <div className={styles.paramName}>Type</div>
-                        <div className={styles.paramValue}>{selectedEvent.analyticsType || 'GA4'}</div>
-                      </div>
-                      <div className={styles.parameterRow}>
-                        <div className={styles.paramNumber}>#3</div>
-                        <div className={styles.paramName}>Beacon ID</div>
-                        <div className={styles.paramValue}>{selectedEvent.beaconId}</div>
-                      </div>
-                      <div className={styles.parameterRow}>
-                        <div className={styles.paramNumber}>#4</div>
-                        <div className={styles.paramName}>Timestamp</div>
-                        <div className={styles.paramValue}>{selectedEvent.timestamp}</div>
-                      </div>
+            <div className={styles.section}>
+              <div 
+                className={styles.sectionHeader}
+                onClick={() => setExpandedSections(prev => ({
+                  ...prev,
+                  basicInfo: !prev.basicInfo
+                }))}
+              >
+                <h3>Basic Information</h3>
+                <span>{expandedSections.basicInfo ? '−' : '+'}</span>
+              </div>
+              {expandedSections.basicInfo && (
+                <div className={styles.sectionContent}>
+                  <div className={styles.parametersTable}>
+                    <div className={styles.parametersHeader}>
+                      <div className={styles.paramNumber}>#</div>
+                      <div className={styles.paramName}>FIELD</div>
+                      <div className={styles.paramValue}>VALUE</div>
+                    </div>
+                    <div className={styles.parameterRow}>
+                      <div className={styles.paramNumber}>#1</div>
+                      <div className={styles.paramName}>Source</div>
+                      <div className={styles.paramValue}>{selectedEvent.source}</div>
+                    </div>
+                    <div className={styles.parameterRow}>
+                      <div className={styles.paramNumber}>#2</div>
+                      <div className={styles.paramName}>Type</div>
+                      <div className={styles.paramValue}>{selectedEvent.analyticsType || 'GA4'}</div>
+                    </div>
+                    <div className={styles.parameterRow}>
+                      <div className={styles.paramNumber}>#3</div>
+                      <div className={styles.paramName}>Beacon ID</div>
+                      <div className={styles.paramValue}>{selectedEvent.beaconId}</div>
+                    </div>
+                    <div className={styles.parameterRow}>
+                      <div className={styles.paramNumber}>#4</div>
+                      <div className={styles.paramName}>Timestamp</div>
+                      <div className={styles.paramValue}>{selectedEvent.timestamp}</div>
                     </div>
                   </div>
-                )}
-              </div>
-
-              <div className={styles.section}>
-                <div 
-                  className={styles.sectionHeader}
-                  onClick={() => setExpandedSections(prev => ({
-                    ...prev,
-                    parameters: !prev.parameters
-                  }))}
-                >
-                  <h3>Parameters</h3>
-                  <span>{expandedSections.parameters ? '−' : '+'}</span>
                 </div>
-                {expandedSections.parameters && (
-                  <div className={styles.sectionContent}>
-                    {(() => {
-                      const { general } = separateParameters(selectedEvent.parameters || {});
+              )}
+            </div>
+
+            <div className={styles.section}>
+              <div 
+                className={styles.sectionHeader}
+                onClick={() => setExpandedSections(prev => ({
+                  ...prev,
+                  parameters: !prev.parameters
+                }))}
+              >
+                <h3>Parameters</h3>
+                <span>{expandedSections.parameters ? '−' : '+'}</span>
+              </div>
+              {expandedSections.parameters && (
+                <div className={styles.sectionContent}>
+                  {(() => {
+                    const { general } = separateParameters(selectedEvent.parameters || {});
+                    
+                    if (Object.keys(general).length === 0) {
+                      return <div className={styles.noData}>No general parameters available</div>;
+                    }
+                    
+                    return (
+                      <div className={styles.parametersTable}>
+                        <div className={styles.parametersHeader}>
+                          <div className={styles.paramNumber}>#</div>
+                          <div className={styles.paramName}>PARAMETER NAME</div>
+                          <div className={styles.paramValue}>VALUE</div>
+                        </div>
+                        {Object.entries(general).map(([key, value], index) => (
+                          <div key={index} className={styles.parameterRow}>
+                            <div className={styles.paramNumber}>#{index + 1}</div>
+                            <div className={styles.paramName}>{key}</div>
+                            <div className={styles.paramValue}>
+                              {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.section}>
+              <div 
+                className={styles.sectionHeader}
+                onClick={() => setExpandedSections(prev => ({
+                  ...prev,
+                  eCommerce: !prev.eCommerce
+                }))}
+              >
+                <h3>eCommerce</h3>
+                <span>{expandedSections.eCommerce ? '−' : '+'}</span>
+              </div>
+              {expandedSections.eCommerce && (
+                <div className={styles.sectionContent}>
+                  {selectedEvent.source === 'logcat' ? (
+                    (() => {
+                      const params = parseLogcatParameters(selectedEvent.message) || {};
+                      const items = extractItems(params);
                       
-                      if (Object.keys(general).length === 0) {
-                        return <div className={styles.noData}>No general parameters available</div>;
+                      if (items.length === 0) {
+                        return <div className={styles.noData}>No eCommerce data available</div>;
                       }
                       
                       return (
-                        <div className={styles.parametersTable}>
-                          <div className={styles.parametersHeader}>
-                            <div className={styles.paramNumber}>#</div>
-                            <div className={styles.paramName}>PARAMETER NAME</div>
-                            <div className={styles.paramValue}>VALUE</div>
+                        <div className={styles.itemsTable}>
+                          <div className={styles.itemsHeader}>
+                            <div className={styles.itemNumber}>#</div>
+                            <div className={styles.productName}>PRODUCT NAME</div>
+                            <div className={styles.itemId}>ITEM ID</div>
+                            <div className={styles.quantity}>QTY</div>
+                            <div className={styles.price}>PRICE</div>
                           </div>
-                          {Object.entries(general).map(([key, value], index) => (
-                            <div key={index} className={styles.parameterRow}>
-                              <div className={styles.paramNumber}>#{index + 1}</div>
-                              <div className={styles.paramName}>{key}</div>
-                              <div className={styles.paramValue}>
-                                {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                              </div>
+                          {items.map((item, index) => (
+                            <div key={index} className={styles.itemRow}>
+                              <div className={styles.itemNumber}>#{index + 1}</div>
+                              <div className={styles.productName}>{item.item_name || item.product_name}</div>
+                              <div className={styles.itemId}>{item.item_id || item.product_id}</div>
+                              <div className={styles.quantity}>{item.quantity || 1}</div>
+                              <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
                             </div>
                           ))}
                         </div>
                       );
-                    })()}
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.section}>
-                <div 
-                  className={styles.sectionHeader}
-                  onClick={() => setExpandedSections(prev => ({
-                    ...prev,
-                    eCommerce: !prev.eCommerce
-                  }))}
-                >
-                  <h3>eCommerce</h3>
-                  <span>{expandedSections.eCommerce ? '−' : '+'}</span>
-                </div>
-                {expandedSections.eCommerce && (
-                  <div className={styles.sectionContent}>
-                    {selectedEvent.source === 'logcat' ? (
-                      (() => {
-                        const params = parseLogcatParameters(selectedEvent.message) || {};
-                        const items = extractItems(params);
-                        
-                        if (items.length === 0) {
-                          return <div className={styles.noData}>No eCommerce data available</div>;
-                        }
-                        
-                        return (
-                          <div className={styles.itemsTable}>
-                            <div className={styles.itemsHeader}>
-                              <div className={styles.itemNumber}>#</div>
-                              <div className={styles.productName}>PRODUCT NAME</div>
-                              <div className={styles.itemId}>ITEM ID</div>
-                              <div className={styles.quantity}>QTY</div>
-                              <div className={styles.price}>PRICE</div>
-                            </div>
-                            {items.map((item, index) => (
-                              <div key={index} className={styles.itemRow}>
-                                <div className={styles.itemNumber}>#{index + 1}</div>
-                                <div className={styles.productName}>{item.item_name || item.product_name}</div>
-                                <div className={styles.itemId}>{item.item_id || item.product_id}</div>
-                                <div className={styles.quantity}>{item.quantity || 1}</div>
-                                <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
-                              </div>
-                            ))}
+                    })()
+                  ) : (
+                    (() => {
+                      const items = extractItems(selectedEvent.parameters || {});
+                      
+                      if (items.length === 0) {
+                        return <div className={styles.noData}>No eCommerce data available</div>;
+                      }
+                      
+                      return (
+                        <div className={styles.itemsTable}>
+                          <div className={styles.itemsHeader}>
+                            <div className={styles.itemNumber}>#</div>
+                            <div className={styles.productName}>PRODUCT NAME</div>
+                            <div className={styles.itemId}>ITEM ID</div>
+                            <div className={styles.quantity}>QTY</div>
+                            <div className={styles.price}>PRICE</div>
                           </div>
-                        );
-                      })()
-                    ) : (
-                      (() => {
-                        const items = extractItems(selectedEvent.parameters || {});
-                        
-                        if (items.length === 0) {
-                          return <div className={styles.noData}>No eCommerce data available</div>;
-                        }
-                        
-                        return (
-                          <div className={styles.itemsTable}>
-                            <div className={styles.itemsHeader}>
-                              <div className={styles.itemNumber}>#</div>
-                              <div className={styles.productName}>PRODUCT NAME</div>
-                              <div className={styles.itemId}>ITEM ID</div>
-                              <div className={styles.quantity}>QTY</div>
-                              <div className={styles.price}>PRICE</div>
+                          {items.map((item, index) => (
+                            <div key={index} className={styles.itemRow}>
+                              <div className={styles.itemNumber}>#{index + 1}</div>
+                              <div className={styles.productName}>{item.item_name || item.product_name}</div>
+                              <div className={styles.itemId}>{item.item_id || item.product_id}</div>
+                              <div className={styles.quantity}>{item.quantity || 1}</div>
+                              <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
                             </div>
-                            {items.map((item, index) => (
-                              <div key={index} className={styles.itemRow}>
-                                <div className={styles.itemNumber}>#{index + 1}</div>
-                                <div className={styles.productName}>{item.item_name || item.product_name}</div>
-                                <div className={styles.itemId}>{item.item_id || item.product_id}</div>
-                                <div className={styles.quantity}>{item.quantity || 1}</div>
-                                <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.section}>
-                <div 
-                  className={styles.sectionHeader}
-                  onClick={() => setExpandedSections(prev => ({
-                    ...prev,
-                    rawData: !prev.rawData
-                  }))}
-                >
-                  <h3>Raw Data</h3>
-                  <span>{expandedSections.rawData ? '−' : '+'}</span>
+                          ))}
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
-                {expandedSections.rawData && (
-                  <div className={styles.sectionContent}>
-                    <div className={styles.rawDataContainer}>
-                      <div className={styles.rawDataHeader}>
-                        <span>Raw network request</span>
-                        <button 
-                          className={styles.copyButton}
-                          onClick={() => {
-                            const rawData = selectedEvent.source === 'logcat' 
-                              ? selectedEvent.message 
-                              : JSON.stringify(selectedEvent, null, 2);
-                            navigator.clipboard.writeText(rawData);
-                          }}
-                        >
-                          Copy
-                        </button>
-                      </div>
-                      <div className={styles.rawData}>
-                        <pre>
-                          {selectedEvent.source === 'logcat' 
+              )}
+            </div>
+
+            <div className={styles.section}>
+              <div 
+                className={styles.sectionHeader}
+                onClick={() => setExpandedSections(prev => ({
+                  ...prev,
+                  rawData: !prev.rawData
+                }))}
+              >
+                <h3>Raw Data</h3>
+                <span>{expandedSections.rawData ? '−' : '+'}</span>
+              </div>
+              {expandedSections.rawData && (
+                <div className={styles.sectionContent}>
+                  <div className={styles.rawDataContainer}>
+                    <div className={styles.rawDataHeader}>
+                      <span>Raw network request</span>
+                      <button 
+                        className={styles.copyButton}
+                        onClick={() => {
+                          const rawData = selectedEvent.source === 'logcat' 
                             ? selectedEvent.message 
-                            : JSON.stringify(selectedEvent, null, 2)}
-                        </pre>
-                      </div>
+                            : JSON.stringify(selectedEvent, null, 2);
+                          navigator.clipboard.writeText(rawData);
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <div className={styles.rawData}>
+                      <pre>
+                        {selectedEvent.source === 'logcat' 
+                          ? selectedEvent.message 
+                          : JSON.stringify(selectedEvent, null, 2)}
+                      </pre>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className={styles.noEventSelected}>
+            <p>No event selected</p>
+            <p>Select an event from the list to view details</p>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.divider} onMouseDown={startResize('right')}>
+        <div className={styles.dividerHandle} />
+      </div>
+
+      <div ref={screenshotPanelRef} className={styles.screenshotPanel} style={{ flex: `0 0 ${rightPanelWidth}px` }}>
+        <div className={styles.screenshotControls}>
+          <button 
+            className={styles.retakeButton}
+            onClick={handleRetakeScreenshot}
+            disabled={!selectedEvent || screenshotStatus === 'capturing'}
+          >
+            {screenshotStatus === 'capturing' ? 'Capturing...' : 'Retake Screenshot'}
+          </button>
+          <button 
+            className={styles.deleteButton}
+            onClick={handleDeleteScreenshot}
+            disabled={!selectedEvent || !selectedScreenshot}
+          >
+            Delete Screenshot
+          </button>
+        </div>
+        
+        <div className={styles.screenshotContainer}>
+          {selectedScreenshot ? (
+            <>
+              {selectedScreenshot.dataUrl ? (
+                <div className={styles.screenshotWrapper}>
+                  <div className={styles.statusBarIcons}></div>
+                  <img 
+                    src={selectedScreenshot.dataUrl} 
+                    alt="Event Screenshot"
+                    className={styles.screenshot}
+                  />
+                </div>
+              ) : (
+                <div className={styles.loading}>Loading screenshot...</div>
+              )}
             </>
           ) : (
-            <div className={styles.noEventSelected}>
-              <p>No event selected</p>
-              <p>Select an event from the list to view details</p>
+            <div className={styles.noScreenshot}>
+              <p>No screenshot available</p>
+              <p>Select an event to view or capture a screenshot</p>
             </div>
           )}
         </div>
-
-        <div className={styles.divider} onMouseDown={startResize('right')}>
-          <div className={styles.dividerHandle} />
-        </div>
-
-        <div ref={screenshotPanelRef} className={styles.screenshotPanel} style={{ flex: `0 0 ${rightPanelWidth}px` }}>
-          <div className={styles.screenshotControls}>
-            <button 
-              className={styles.retakeButton}
-              onClick={handleRetakeScreenshot}
-              disabled={!selectedEvent || screenshotStatus === 'capturing'}
-            >
-              {screenshotStatus === 'capturing' ? 'Capturing...' : 'Retake Screenshot'}
-            </button>
-            <button 
-              className={styles.deleteButton}
-              onClick={handleDeleteScreenshot}
-              disabled={!selectedEvent || !selectedScreenshot}
-            >
-              Delete Screenshot
-            </button>
-          </div>
-          
-          <div className={styles.screenshotContainer}>
-            {selectedScreenshot ? (
-              <>
-                {selectedScreenshot.dataUrl ? (
-                  <div className={styles.screenshotWrapper}>
-                    <div className={styles.statusBarIcons}></div>
-                    <img 
-                      src={selectedScreenshot.dataUrl} 
-                      alt="Event Screenshot"
-                      className={styles.screenshot}
-                    />
-                  </div>
-                ) : (
-                  <div className={styles.loading}>Loading screenshot...</div>
-                )}
-              </>
-            ) : (
-              <div className={styles.noScreenshot}>
-                <p>No screenshot available</p>
-                <p>Select an event to view or capture a screenshot</p>
-              </div>
-            )}
-          </div>
-        </div>
+      </div>
 
         {/* Only show Latest Event button if we're not at the top and user has selected a different event */}
         {userSelectedEvent && userInteracting && filteredEvents.length > 0 && selectedEvent?.id !== filteredEvents[0].id && (

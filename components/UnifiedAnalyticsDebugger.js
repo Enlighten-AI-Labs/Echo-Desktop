@@ -1,4 +1,5 @@
 import styles from '@/styles/UnifiedAnalyticsDebugger.module.css';
+import journeyStyles from '@/styles/JourneyModal.module.css';
 import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';
@@ -455,6 +456,13 @@ const ShoppingCartIcon = () => (
   </svg>
 );
 
+// Add the EditIcon component
+const EditIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M11.333 2a1.886 1.886 0 012.667 2.667L5.333 13.333 2 14l.667-3.333L11.333 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 // Add this helper function before the UnifiedAnalyticsDebugger component
 function getScreenName(event) {
   if (event.source === 'logcat') {
@@ -558,10 +566,15 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [journeys, setJourneys] = useState(() => {
     // Initialize journeys from localStorage
-    const savedJourneys = localStorage.getItem('analyticsJourneys');
+    const savedJourneys = storage.getItem('analyticsJourneys');
     return savedJourneys ? JSON.parse(savedJourneys) : [];
   });
   const [selectedJourneyId, setSelectedJourneyId] = useState(null);
+  // Add these state variables near your other state declarations
+  const [selectedJourneyIds, setSelectedJourneyIds] = useState(new Set());
+  const [isBulkEditMode, setIsBulkEditMode] = useState(false);
+  // Add these state variables for bulk event management
+  const [selectedEventIds, setSelectedEventIds] = useState(new Set());
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
@@ -1100,7 +1113,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             // Save to localStorage
-            localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+            storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
             
             return updatedEvents;
           });
@@ -1143,7 +1156,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }));
       
       // Save to localStorage
-      localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+      storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
       
       return updatedEvents;
     });
@@ -1247,7 +1260,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
   // Save journeys to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('analyticsJourneys', JSON.stringify(journeys));
+    storage.setItem('analyticsJourneys', JSON.stringify(journeys));
   }, [journeys]);
 
   // Journey related functions
@@ -1258,11 +1271,90 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     setSelectedJourneyId(null);
   };
 
+  // Add these helper functions for bulk event management
+  const handleBulkAssignEvents = () => {
+    if (selectedEventIds.size === 0 || selectedJourneyIds.size === 0) return;
+
+    const selectedJourney = journeys.find(j => selectedJourneyIds.has(j.id));
+    if (!selectedJourney) return;
+
+    // Update events with the selected journey
+    setEvents(prevEvents => 
+      prevEvents.map(event => {
+        if (selectedEventIds.has(event.id)) {
+          const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
+          if (!existingJourneys.some(j => j.id === selectedJourney.id)) {
+            return {
+              ...event,
+              journeys: [...existingJourneys, {
+                id: selectedJourney.id,
+                name: selectedJourney.name
+              }]
+            };
+          }
+        }
+        return event;
+      })
+    );
+
+    // Update journey with new events
+    setJourneys(prevJourneys =>
+      prevJourneys.map(journey => {
+        if (journey.id === selectedJourney.id) {
+          return {
+            ...journey,
+            events: Array.from(new Set([...journey.events, ...Array.from(selectedEventIds)])),
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return journey;
+      })
+    );
+
+    // Clear selections
+    setSelectedEventIds(new Set());
+  };
+
+  const handleBulkClearJourneys = () => {
+    if (selectedEventIds.size === 0) return;
+
+    if (window.confirm(`Are you sure you want to remove all journey assignments from ${selectedEventIds.size} selected events?`)) {
+      // Remove journey assignments from selected events
+      setEvents(prevEvents =>
+        prevEvents.map(event => {
+          if (selectedEventIds.has(event.id)) {
+            return {
+              ...event,
+              journeys: []
+            };
+          }
+          return event;
+        })
+      );
+
+      // Remove events from all journeys
+      setJourneys(prevJourneys =>
+        prevJourneys.map(journey => ({
+          ...journey,
+          events: journey.events.filter(eventId => !selectedEventIds.has(eventId)),
+          updatedAt: new Date().toISOString()
+        }))
+      );
+
+      // Clear event selection
+      setSelectedEventIds(new Set());
+    }
+  };
+
+  // Update the handleCloseModal function
   const handleCloseModal = () => {
     setShowJourneyModal(false);
     setJourneyName('');
     setSelectedEvents([]);
     setSelectedJourneyId(null);
+    setSelectedJourneyIds(new Set());
+    setSelectedEventIds(new Set());
+    setIsBulkEditMode(false);
   };
 
   const handleSelectExistingJourney = (journeyId) => {
@@ -1274,26 +1366,39 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     }
   };
 
+  // Add this new function before the handleSaveJourney function
+  const handleCreateNewJourney = () => {
+    setSelectedJourneyId(null);
+    setJourneyName('');
+    setSelectedEvents([]);
+    // Clear any existing journey selection
+    const existingJourneyCards = document.querySelectorAll(`.${journeyStyles.selected}`);
+    existingJourneyCards.forEach(card => card.classList.remove(journeyStyles.selected));
+  };
+
+  // Update the handleSaveJourney function
   const handleSaveJourney = () => {
     if (!journeyName.trim()) {
       alert('Please enter a journey name');
       return;
     }
 
-    if (selectedEvents.length === 0) {
+    if (!selectedJourneyId && selectedEvents.length === 0) {
       alert('Please select at least one event');
       return;
     }
 
-    let journeyToAdd;
-    
     if (selectedJourneyId) {
       // Update existing journey
       setJourneys(prevJourneys => 
         prevJourneys.map(journey => {
           if (journey.id === selectedJourneyId) {
-            journeyToAdd = journey;
-            return { ...journey, events: Array.from(new Set([...journey.events, ...selectedEvents])) };
+            return {
+              ...journey,
+              name: journeyName.trim(),
+              events: Array.from(new Set([...journey.events, ...selectedEvents])),
+              updatedAt: new Date().toISOString()
+            };
           }
           return journey;
         })
@@ -1304,9 +1409,9 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         id: Date.now(),
         name: journeyName.trim(),
         events: selectedEvents,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
-      journeyToAdd = newJourney;
 
       setJourneys(prevJourneys => [...prevJourneys, newJourney]);
     }
@@ -1316,14 +1421,23 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       prevEvents.map(event => {
         if (selectedEvents.includes(event.id)) {
           const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
-          const journeyExists = existingJourneys.some(j => j.id === journeyToAdd.id);
-          
-          if (!journeyExists) {
+          if (selectedJourneyId) {
+            // For existing journey, update the name if it changed
+            return {
+              ...event,
+              journeys: existingJourneys.map(j => 
+                j.id === selectedJourneyId 
+                  ? { ...j, name: journeyName.trim() }
+                  : j
+              )
+            };
+          } else {
+            // For new journey, add it to the event's journeys
             return {
               ...event,
               journeys: [...existingJourneys, {
-                id: journeyToAdd.id,
-                name: journeyToAdd.name
+                id: Date.now(),
+                name: journeyName.trim()
               }]
             };
           }
@@ -1610,6 +1724,49 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     // If this event was selected in the modal, remove it from selection
     if (selectedEvents.includes(eventId)) {
       setSelectedEvents(prev => prev.filter(id => id !== eventId));
+    }
+  };
+
+  // Add these helper functions before the journey modal JSX
+  const handleToggleJourneySelection = (journeyId, e) => {
+    e.stopPropagation(); // Prevent journey selection for editing
+    setSelectedJourneyIds(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(journeyId)) {
+        newSelection.delete(journeyId);
+      } else {
+        newSelection.add(journeyId);
+      }
+      return newSelection;
+    });
+  };
+
+  const handleSelectAllJourneys = () => {
+    setSelectedJourneyIds(new Set(journeys.map(j => j.id)));
+  };
+
+  const handleUnselectAllJourneys = () => {
+    setSelectedJourneyIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedJourneyIds.size === 0) return;
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedJourneyIds.size} selected journeys?`)) {
+      // Remove the journeys
+      setJourneys(prevJourneys => prevJourneys.filter(j => !selectedJourneyIds.has(j.id)));
+      
+      // Remove journey references from events
+      setEvents(prevEvents => 
+        prevEvents.map(event => ({
+          ...event,
+          journeys: event.journeys?.filter(j => !selectedJourneyIds.has(j.id)) || []
+        }))
+      );
+      
+      // Clear selection
+      setSelectedJourneyIds(new Set());
+      setIsBulkEditMode(false);
     }
   };
 
@@ -2000,86 +2157,169 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
       {/* Journey Modal */}
       {showJourneyModal && (
-        <div className={styles.modalOverlay} onClick={handleCloseModal}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>
-                {selectedJourneyId ? 'Add to Journey' : 'Create New Journey'}
-              </h2>
-              <button className={styles.modalClose} onClick={handleCloseModal}>×</button>
+        <div className={journeyStyles.modalOverlay} onClick={handleCloseModal}>
+          <div className={journeyStyles.modal} onClick={e => e.stopPropagation()}>
+            <div className={journeyStyles.modalHeader}>
+              <h2 className={journeyStyles.modalTitle}>Journey Management</h2>
+              <div className={journeyStyles.modalActions}>
+                <button 
+                  className={`${journeyStyles.button} ${journeyStyles.secondaryButton} ${journeyStyles.smallButton}`}
+                  onClick={() => setIsBulkEditMode(!isBulkEditMode)}
+                >
+                  {isBulkEditMode ? 'Exit Bulk Edit' : 'Bulk Edit'}
+                </button>
+                <button className={journeyStyles.modalClose} onClick={handleCloseModal}>×</button>
+              </div>
             </div>
-            <div className={styles.modalContent}>
-              {journeys.length > 0 && (
-                <div className={styles.existingJourneys}>
-                  <h3 className={styles.sectionTitle}>Existing Journeys</h3>
-                  <div className={styles.journeyList}>
-                    {journeys.map((journey, index) => (
-                      <div key={index} className={styles.journeyActions}>
-                        <button
-                          className={`${styles.journeyButton} ${selectedJourneyId === journey.id ? styles.selected : ''}`}
-                          onClick={() => handleSelectExistingJourney(journey.id)}
-                          style={{ 
-                            borderColor: getJourneyColor(journey.name),
-                            color: selectedJourneyId === journey.id ? getJourneyColor(journey.name) : 'inherit'
+            <div className={journeyStyles.modalContent}>
+              {/* Left side - Journey List */}
+              <div className={journeyStyles.journeysList}>
+                <div className={journeyStyles.journeyListHeader}>
+                  {isBulkEditMode ? (
+                    <div className={journeyStyles.bulkActions}>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.secondaryButton} ${journeyStyles.smallButton}`}
+                        onClick={handleSelectAllJourneys}
+                      >
+                        Select All Journeys
+                      </button>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.secondaryButton} ${journeyStyles.smallButton}`}
+                        onClick={handleUnselectAllJourneys}
+                      >
+                        Unselect All Journeys
+                      </button>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.dangerButton} ${journeyStyles.smallButton}`}
+                        onClick={handleBulkDelete}
+                        disabled={selectedJourneyIds.size === 0}
+                      >
+                        Delete Selected ({selectedJourneyIds.size})
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      className={journeyStyles.addJourneyButton} 
+                      onClick={handleCreateNewJourney}
+                    >
+                      + Create New Journey
+                    </button>
+                  )}
+                </div>
+
+                {journeys.map((journey) => (
+                  <div 
+                    key={journey.id}
+                    className={`${journeyStyles.journeyCard} ${selectedJourneyId === journey.id ? journeyStyles.selected : ''} ${selectedJourneyIds.has(journey.id) ? journeyStyles.bulkSelected : ''}`}
+                    onClick={(e) => isBulkEditMode ? handleToggleJourneySelection(journey.id, e) : handleSelectExistingJourney(journey.id)}
+                  >
+                    <h3 className={journeyStyles.journeyName}>{journey.name}</h3>
+                    <div className={journeyStyles.journeyMeta}>
+                      {journey.events.length} events • {journey.updatedAt 
+                        ? `Updated ${new Date(journey.updatedAt).toLocaleDateString()}`
+                        : `Created ${new Date(journey.createdAt).toLocaleDateString()}`
+                      }
+                    </div>
+                    {!isBulkEditMode && (
+                      <div className={journeyStyles.journeyActions}>
+                        <button 
+                          className={journeyStyles.actionButton} 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectExistingJourney(journey.id);
                           }}
+                          title="Edit journey"
                         >
-                          {journey.name}
+                          <EditIcon />
                         </button>
-                        <button
-                          className={styles.deleteJourneyButton}
+                        <button 
+                          className={journeyStyles.actionButton}
                           onClick={(e) => handleDeleteJourney(journey.id, e)}
                           title="Delete journey"
                         >
                           <TrashIcon />
                         </button>
                       </div>
-                    ))}
+                    )}
                   </div>
-                  <div className={styles.divider}>
-                    <span>OR</span>
-                  </div>
-                </div>
-              )}
+                ))}
+              </div>
 
-              <div className={styles.newJourney}>
-                <h3 className={styles.sectionTitle}>
-                  {selectedJourneyId ? 'Selected Journey' : 'New Journey'}
-                </h3>
-                <input
-                  type="text"
-                  className={styles.journeyNameInput}
-                  placeholder="Enter journey name..."
-                  value={journeyName}
-                  onChange={e => setJourneyName(e.target.value)}
-                  disabled={selectedJourneyId !== null}
-                />
-                <div className={styles.eventCheckList}>
+              {/* Right side - Journey Form and Events */}
+              <div className={journeyStyles.journeyContent}>
+                {isBulkEditMode ? (
+                  <div className={journeyStyles.bulkActions}>
+                    <div className={journeyStyles.bulkActionRow}>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.secondaryButton} ${journeyStyles.smallButton}`}
+                        onClick={() => setSelectedEventIds(new Set(events.map(e => e.id)))}
+                      >
+                        Select All Events
+                      </button>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.secondaryButton} ${journeyStyles.smallButton}`}
+                        onClick={() => setSelectedEventIds(new Set())}
+                      >
+                        Unselect All Events
+                      </button>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.primaryButton} ${journeyStyles.smallButton}`}
+                        onClick={handleBulkAssignEvents}
+                        disabled={selectedEventIds.size === 0 || selectedJourneyIds.size === 0}
+                      >
+                        Assign to Selected Journey ({selectedEventIds.size} events)
+                      </button>
+                      <button 
+                        className={`${journeyStyles.button} ${journeyStyles.dangerButton} ${journeyStyles.smallButton}`}
+                        onClick={handleBulkClearJourneys}
+                        disabled={selectedEventIds.size === 0}
+                      >
+                        Clear All Journeys ({selectedEventIds.size} events)
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={journeyStyles.journeyForm}>
+                    <input
+                      type="text"
+                      className={journeyStyles.journeyNameInput}
+                      placeholder={selectedJourneyId ? "Edit journey name..." : "Enter new journey name..."}
+                      value={journeyName}
+                      onChange={e => setJourneyName(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className={journeyStyles.eventsList}>
                   {Object.entries(groupEventsByScreen(events)).map(([groupKey, groupEvents], groupIndex) => {
                     const screenId = `screen-${groupIndex}`;
                     const isCollapsed = collapsedScreens[screenId];
                     const screenName = groupEvents[0].screenName;
                     const allScreenEventsSelected = groupEvents.every(event => 
-                      selectedJourneyId 
-                        ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
+                      isBulkEditMode
+                        ? selectedEventIds.has(event.id)
                         : selectedEvents.includes(event.id)
                     );
                     const someScreenEventsSelected = groupEvents.some(event => 
-                      selectedJourneyId 
-                        ? getEventJourneys(event.id).some(j => j.id === selectedJourneyId)
+                      isBulkEditMode
+                        ? selectedEventIds.has(event.id)
                         : selectedEvents.includes(event.id)
                     );
 
                     return (
-                      <div key={screenId} className={styles.screenGroup}>
+                      <div key={screenId} className={journeyStyles.screenGroup}>
                         <div 
-                          className={`${styles.screenHeader} ${isCollapsed ? styles.collapsed : ''}`}
+                          className={journeyStyles.screenHeader}
                           onClick={() => setCollapsedScreens(prev => ({
                             ...prev,
                             [screenId]: !prev[screenId]
                           }))}
                         >
-                          <div className={styles.screenHeaderLeft}>
-                            {!selectedJourneyId && (
+                          <div className={journeyStyles.screenName}>
+                            <div 
+                              className={journeyStyles.screenCheckbox}
+                              onClick={e => e.stopPropagation()}
+                            >
                               <input
                                 type="checkbox"
                                 checked={allScreenEventsSelected}
@@ -2089,112 +2329,120 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                                   }
                                 }}
                                 onChange={(e) => {
-                                  e.stopPropagation(); // Prevent header click from triggering
-                                  const newSelectedEvents = [...selectedEvents];
-                                  groupEvents.forEach(event => {
-                                    const eventIndex = newSelectedEvents.indexOf(event.id);
-                                    if (allScreenEventsSelected) {
-                                      // Remove all screen events
-                                      if (eventIndex > -1) {
-                                        newSelectedEvents.splice(eventIndex, 1);
+                                  if (isBulkEditMode) {
+                                    const newSelection = new Set(selectedEventIds);
+                                    groupEvents.forEach(event => {
+                                      if (allScreenEventsSelected) {
+                                        newSelection.delete(event.id);
+                                      } else {
+                                        newSelection.add(event.id);
                                       }
-                                    } else {
-                                      // Add all screen events
-                                      if (eventIndex === -1) {
-                                        newSelectedEvents.push(event.id);
+                                    });
+                                    setSelectedEventIds(newSelection);
+                                  } else {
+                                    const newSelectedEvents = [...selectedEvents];
+                                    groupEvents.forEach(event => {
+                                      const eventIndex = newSelectedEvents.indexOf(event.id);
+                                      if (allScreenEventsSelected) {
+                                        if (eventIndex > -1) {
+                                          newSelectedEvents.splice(eventIndex, 1);
+                                        }
+                                      } else {
+                                        if (eventIndex === -1) {
+                                          newSelectedEvents.push(event.id);
+                                        }
                                       }
-                                    }
-                                  });
-                                  setSelectedEvents(newSelectedEvents);
+                                    });
+                                    setSelectedEvents(newSelectedEvents);
+                                  }
                                 }}
-                                id={screenId}
                               />
-                            )}
-                            <label htmlFor={screenId} className={styles.screenName} onClick={e => e.stopPropagation()}>
-                              {screenName} ({groupEvents.length} events)
-                            </label>
-                          </div>
-                          <div className={styles.screenHeaderRight}>
-                            {groupEvents[0]?.groupId && (
-                              <div className={styles.groupCounter}>
-                                Group {groupEvents[0].groupId}/{groupEvents[0].totalGroups}
-                              </div>
-                            )}
-                            <div className={styles.collapseIcon}>
-                              {isCollapsed ? '▸' : '▾'}
                             </div>
+                            <span className={journeyStyles.screenNameText}>
+                              {screenName} ({groupEvents.length} events)
+                            </span>
                           </div>
+                          <div className={journeyStyles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</div>
                         </div>
-                        <div className={`${styles.screenEvents} ${isCollapsed ? styles.collapsed : ''}`}>
-                          {groupEvents.map((event, eventIndex) => {
-                            const currentJourneys = getEventJourneys(event.id);
-                            const isInSelectedJourney = selectedJourneyId && currentJourneys.some(j => j.id === selectedJourneyId);
 
-                            return (
-                              <div
-                                key={`${screenId}-event-${eventIndex}`}
-                                className={`${styles.eventCheckItem} ${isInSelectedJourney ? styles.inJourney : ''}`}
-                              >
-                                {!selectedJourneyId && (
+                        {!isCollapsed && (
+                          <div className={journeyStyles.screenEvents}>
+                            {groupEvents.map((event) => {
+                              const isSelected = isBulkEditMode
+                                ? selectedEventIds.has(event.id)
+                                : selectedEvents.includes(event.id);
+
+                              return (
+                                <div key={event.id} className={journeyStyles.eventItem}>
                                   <input
                                     type="checkbox"
-                                    checked={selectedEvents.includes(event.id)}
-                                    onChange={() => toggleEventSelection(event.id)}
-                                    id={`event-${event.id}`}
+                                    className={journeyStyles.eventCheckbox}
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      if (isBulkEditMode) {
+                                        setSelectedEventIds(prev => {
+                                          const newSelection = new Set(prev);
+                                          if (isSelected) {
+                                            newSelection.delete(event.id);
+                                          } else {
+                                            newSelection.add(event.id);
+                                          }
+                                          return newSelection;
+                                        });
+                                      } else {
+                                        toggleEventSelection(event.id);
+                                      }
+                                    }}
                                   />
-                                )}
-                                <div className={styles.eventInfo}>
-                                  <span className={styles.eventName}>
-                                    {event.eventName || event.type || 'Unknown Event'} 
-                                    <span className={styles.beaconId}>{event.beaconId}</span>
-                                  </span>
-                                  {currentJourneys.length > 0 && !selectedJourneyId && (
-                                    <div className={styles.currentJourneys}>
-                                      In journeys: {currentJourneys.map(j => (
-                                        <span 
-                                          key={j.id} 
-                                          className={styles.journeyTag}
-                                          style={{ backgroundColor: getJourneyColor(j.name) }}
-                                        >
-                                          {j.name}
-                                        </span>
-                                      ))}
+                                  <div className={journeyStyles.eventInfo}>
+                                    <div className={journeyStyles.eventNameRow}>
+                                      <div className={journeyStyles.eventNameAndId}>
+                                        {event.eventName || event.type || 'Unknown Event'}
+                                        <span className={journeyStyles.beaconId}>{event.beaconId}</span>
+                                      </div>
+                                      {event.journeys?.length > 0 && (
+                                        <div className={journeyStyles.eventJourneys}>
+                                          {event.journeys.map(j => (
+                                            <span 
+                                              key={j.id}
+                                              className={journeyStyles.journeyTag}
+                                              style={{ backgroundColor: getJourneyColor(j.name) }}
+                                            >
+                                              {j.name}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
-                                {isInSelectedJourney && (
-                                  <button
-                                    className={styles.removeEventButton}
-                                    onClick={(e) => handleRemoveEventFromJourney(selectedJourneyId, event.id, e)}
-                                    title="Remove from journey"
-                                  >
-                                    <TrashIcon />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               </div>
             </div>
-            <div className={styles.modalFooter}>
+
+            <div className={journeyStyles.modalFooter}>
               <button 
-                className={`${styles.modalButton} ${styles.cancelButton}`} 
+                className={`${journeyStyles.button} ${journeyStyles.secondaryButton}`}
                 onClick={handleCloseModal}
               >
                 Cancel
               </button>
-              <button 
-                className={`${styles.modalButton} ${styles.saveButton}`} 
-                onClick={handleSaveJourney}
-                disabled={!journeyName.trim() || selectedEvents.length === 0}
-              >
-                {selectedJourneyId ? 'Add to Journey' : 'Create Journey'}
-              </button>
+              {!isBulkEditMode && (
+                <button 
+                  className={`${journeyStyles.button} ${journeyStyles.primaryButton}`}
+                  onClick={handleSaveJourney}
+                  disabled={!journeyName.trim() || (!selectedJourneyId && selectedEvents.length === 0)}
+                >
+                  {selectedJourneyId ? 'Update Journey' : 'Create Journey'}
+                </button>
+              )}
             </div>
           </div>
         </div>

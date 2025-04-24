@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import styles from '@/styles/Export.module.css';
 import { v4 as uuidv4 } from 'uuid';
 import { parseLogcatParameters, extractItems } from '@/lib/analytics-utils';
+import storage from '../lib/storage';
 
 const JsonPreview = ({ data }) => {
   const initializeExpandedSections = (obj, path = 'root') => {
@@ -150,10 +151,11 @@ export default function ExportPage() {
   const [events, setEvents] = useState([]);
   const [screenshots, setScreenshots] = useState({});
 
-  // Load journeys and events from localStorage
   useEffect(() => {
-    const savedJourneys = localStorage.getItem('analyticsJourneys');
-    const savedEvents = localStorage.getItem('analyticsEvents');
+    // Load journeys and events from localStorage
+    const savedJourneys = storage.getItem('analyticsJourneys');
+    const savedEvents = storage.getItem('analyticsEvents');
+    
     if (savedJourneys) {
       setJourneys(JSON.parse(savedJourneys));
     }
@@ -171,8 +173,10 @@ export default function ExportPage() {
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
   }, []);
 
   // Handle query parameters

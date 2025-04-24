@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const url = require('url');
 const { ensureTmpDir } = require('./modules/utils');
@@ -15,7 +15,17 @@ const MAX_LOAD_ATTEMPTS = 10;
 // Ensure temp directory exists
 ensureTmpDir();
 
-function createWindow() {
+// Register custom protocol for fonts
+function registerFontProtocol() {
+  protocol.registerFileProtocol('font', (request, callback) => {
+    const filePath = request.url.replace('font://', '');
+    callback({
+      path: path.join(app.getAppPath(), 'public/fonts', filePath)
+    });
+  });
+}
+
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1920,
     height: 1080,
@@ -25,6 +35,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, '../preload.js'),
+      webSecurity: !isDev,
     },
     show: false,
     backgroundColor: '#262628',
@@ -33,24 +44,80 @@ function createWindow() {
   // Make mainWindow globally accessible
   global.mainWindow = mainWindow;
 
-  const startUrl = isDev
-    ? 'http://localhost:3000'
-    : url.format({
-      pathname: path.join(__dirname, '../../out/index.html'),
-      protocol: 'file:',
-      slashes: true
-    });
-  
-  // Load the URL with retry logic for development mode
-  if (isDev) {
-    loadWithRetry(startUrl);
-  } else {
-    mainWindow.loadURL(startUrl);
-  }
+  try {
+    if (isDev) {
+      // Development mode - load from dev server
+      await loadWithRetry('http://localhost:3000');
+    } else {
+      // Production mode - load static files
+      const indexPath = path.join(__dirname, '../../out/index.html');
+      console.log('Loading production build from:', indexPath);
+      
+      // Enable debugging in production temporarily
+      mainWindow.webContents.openDevTools();
+      
+      try {
+        await mainWindow.loadFile(indexPath);
+        console.log('Successfully loaded index.html');
+      } catch (loadError) {
+        console.error('Failed to load index.html:', loadError);
+        throw loadError;
+      }
+    }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+    mainWindow.once('ready-to-show', () => {
+      console.log('Window ready to show');
+      mainWindow.show();
+    });
+
+    // Add error handling for page loads
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('Page failed to load:', errorCode, errorDescription);
+    });
+
+  } catch (error) {
+    console.error('Error loading window:', error);
+    // Show error page
+    await mainWindow.loadURL(`data:text/html;charset=utf-8,
+      <html>
+        <head>
+          <title>Error</title>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              background: #262628;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              text-align: center;
+            }
+            .container {
+              max-width: 500px;
+              padding: 2rem;
+            }
+            h1 {
+              font-weight: bold;
+              margin-bottom: 1rem;
+            }
+            p {
+              line-height: 1.5;
+              margin-bottom: 1.5rem;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Error Loading Application</h1>
+            <p>There was an error loading the application: ${error.message}</p>
+            <p>Check the console for more details.</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -64,75 +131,84 @@ function createWindow() {
 }
 
 function loadWithRetry(url) {
-  mainWindow.loadURL(url).catch(err => {
-    loadAttempts++;
-    console.log(`Attempt ${loadAttempts} failed. Retrying in 1 second...`);
+  return new Promise((resolve, reject) => {
+    const tryLoad = () => {
+      mainWindow.loadURL(url).then(resolve).catch(err => {
+        loadAttempts++;
+        console.log(`Attempt ${loadAttempts} failed. Retrying in 1 second...`);
+        
+        if (loadAttempts < MAX_LOAD_ATTEMPTS) {
+          setTimeout(tryLoad, 1000);
+        } else {
+          console.error('Failed to load after maximum attempts. Please ensure Next.js is running.');
+          if (mainWindow) {
+            mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
+              <html>
+                <head>
+                  <title>Error</title>
+                  <style>
+                    body {
+                      font-family: system-ui, -apple-system, sans-serif;
+                      background: #262628;
+                      color: white;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      height: 100vh;
+                      margin: 0;
+                      text-align: center;
+                    }
+                    .container {
+                      max-width: 500px;
+                      padding: 2rem;
+                    }
+                    h1 {
+                      font-weight: bold;
+                      margin-bottom: 1rem;
+                    }
+                    p {
+                      line-height: 1.5;
+                      margin-bottom: 1.5rem;
+                    }
+                    button {
+                      background: #3C76A9;
+                      color: white;
+                      border: none;
+                      padding: 0.75rem 1.5rem;
+                      border-radius: 4px;
+                      font-weight: bold;
+                      cursor: pointer;
+                    }
+                    button:hover {
+                      opacity: 0.9;
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <h1>Connection Error</h1>
+                    <p>Unable to connect to the Next.js development server at http://localhost:3000.</p>
+                    <p>Please ensure the Next.js server is running by executing <code>npm run dev:next</code> in a terminal window.</p>
+                    <button onclick="window.location.reload()">Retry Connection</button>
+                  </div>
+                </body>
+              </html>
+            `).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Window was closed during load attempts'));
+          }
+        }
+      });
+    };
     
-    if (loadAttempts < MAX_LOAD_ATTEMPTS) {
-      setTimeout(() => {
-        loadWithRetry(url);
-      }, 1000);
-    } else {
-      console.error('Failed to load after maximum attempts. Please ensure Next.js is running.');
-      if (mainWindow) {
-        mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
-          <html>
-            <head>
-              <title>Error</title>
-              <style>
-                body {
-                  font-family: system-ui, -apple-system, sans-serif;
-                  background: #262628;
-                  color: white;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  height: 100vh;
-                  margin: 0;
-                  text-align: center;
-                }
-                .container {
-                  max-width: 500px;
-                  padding: 2rem;
-                }
-                h1 {
-                  font-weight: bold;
-                  margin-bottom: 1rem;
-                }
-                p {
-                  line-height: 1.5;
-                  margin-bottom: 1.5rem;
-                }
-                button {
-                  background: #3C76A9;
-                  color: white;
-                  border: none;
-                  padding: 0.75rem 1.5rem;
-                  border-radius: 4px;
-                  font-weight: bold;
-                  cursor: pointer;
-                }
-                button:hover {
-                  opacity: 0.9;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <h1>Connection Error</h1>
-                <p>Unable to connect to the Next.js development server at http://localhost:3000.</p>
-                <p>Please ensure the Next.js server is running by executing <code>npm run dev:next</code> in a terminal window.</p>
-                <button onclick="window.location.reload()">Retry Connection</button>
-              </div>
-            </body>
-          </html>
-        `);
-      }
-    }
+    tryLoad();
   });
 }
 
 app.whenReady().then(async () => {
+  // Register font protocol before creating window
+  registerFontProtocol();
+  
   try {
     // Ensure ADB is installed before creating the window
     await adb.ensureAdbExists();

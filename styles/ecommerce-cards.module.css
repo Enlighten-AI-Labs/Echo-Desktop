@@ -1,0 +1,319 @@
+/* eCommerce Card Layout - Scoped to eCommerce accordion only */
+@font-face {
+    font-family: 'Travelia';
+    src: url('/fonts/Travelia-Bold.woff2') format('woff2'),
+         url('/fonts/Travelia-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Travelia';
+    src: url('/fonts/Travelia-Medium.woff2') format('woff2'),
+         url('/fonts/Travelia-Medium.woff') format('woff');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Doto';
+    src: url('/fonts/Doto-SemiBold.woff2') format('woff2'),
+         url('/fonts/Doto-SemiBold.woff') format('woff');
+    font-weight: 600;
+    font-style: normal;
+}
+
+/* Container Styles - Scoped to eCommerce section */
+.ecommerceContainer {
+    padding: 20px;
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 300;
+    color: #262628;
+    background: white;
+    border-radius: 8px;
+    margin: 16px;
+}
+
+/* Header Styles */
+.ecommerceHeader {
+    background-color: #E9EDF3;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ecommerceHeader h2 {
+    color: #9C54AD;
+    margin: 0;
+    font-family: 'Travelia', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+}
+
+/* Summary Card Styles */
+.ecommerceSummary {
+    background-color: #E9EDF3;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.summarySection {
+    flex: 1;
+    min-width: 200px;
+}
+
+.summaryTitle {
+    font-family: 'Travelia', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    color: #3C76A9;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.summaryValue {
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+    font-size: 18px;
+    color: #262628;
+}
+
+.summaryHighlight {
+    color: #9C54AD;
+    font-weight: 700;
+}
+
+/* Card Grid Layout */
+.ecommerceGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+/* Product Card Styles */
+.productCard {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(38, 38, 40, 0.1);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #E9EDF3;
+}
+
+.productCard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(38, 38, 40, 0.15);
+}
+
+/* Card Header Styles */
+.cardHeader {
+    background-color: #E9EDF3;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #E9EDF3;
+}
+
+.productTitle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.index {
+    color: #262628;
+    font-family: 'Doto', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    background-color: white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.name {
+    color: #3C76A9;
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.priceQty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.qty {
+    color: #3C76A9;
+    font-family: 'Doto', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    background-color: white;
+    border: 1px solid #E9EDF3;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+.price {
+    color: #9C54AD;
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+    font-size: 18px;
+}
+
+/* Card Body Styles */
+.cardBody {
+    padding: 16px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.infoRow {
+    display: flex;
+    gap: 24px;
+}
+
+.infoColumn {
+    flex: 1;
+    min-width: 0;
+}
+
+.infoGroup {
+    margin-bottom: 16px;
+}
+
+.groupTitle {
+    color: #3C76A9;
+    font-family: 'Travelia', sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #E9EDF3;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.infoItem {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+    gap: 12px;
+}
+
+.infoLabel {
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+    color: #262628;
+    flex: 0 0 100px;
+}
+
+.infoValue {
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 300;
+    color: #262628;
+    word-break: break-word;
+    text-align: right;
+}
+
+.idValue {
+    color: #F69757;
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+}
+
+.trueValue {
+    color: #6DC19C;
+}
+
+.falseValue {
+    color: #EB2726;
+}
+
+/* Tags Styles */
+.tags {
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-top: 1px solid #E9EDF3;
+}
+
+.tag {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Azeret Mono', monospace;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.tagCategory {
+    background-color: #E9EDF3;
+    color: #3C76A9;
+}
+
+.tagBrand {
+    background-color: #FFCF4F;
+    color: #262628;
+}
+
+.tagCalories {
+    background-color: #F69757;
+    color: white;
+}
+
+.tagVariant {
+    background-color: #6DC19C;
+    color: white;
+}
+
+.tagCoupon {
+    background-color: #9C54AD;
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .ecommerceGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ecommerceSummary {
+        flex-direction: column;
+    }
+    
+    .infoRow {
+        flex-direction: column;
+    }
+    
+    .summarySection {
+        width: 100%;
+    }
+}
+
+/* Ensure proper spacing in accordion context */
+:global(.accordion-content) .ecommerceContainer {
+    margin-top: 0;
+} 

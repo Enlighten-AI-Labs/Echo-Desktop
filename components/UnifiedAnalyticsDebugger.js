@@ -2,6 +2,7 @@ import styles from '@/styles/UnifiedAnalyticsDebugger.module.css';
 import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';
+import EcommerceCard from './EcommerceCard';
 
 function parseGA4Beacon(url, queryParams) {
   try {
@@ -27,6 +28,68 @@ function parseGA4Beacon(url, queryParams) {
       console.error('Error parsing user properties:', e);
     }
 
+    // Parse items array if present
+    let items = [];
+    try {
+      if (eventParams.items) {
+        items = eventParams.items.map(item => ({
+          // Required Parameters
+          item_id: item.item_id || null,
+          item_name: item.item_name || null,
+
+          // Standard Item Parameters
+          price: parseFloat(item.price) || 0,
+          quantity: parseInt(item.quantity) || 1,
+          item_brand: item.item_brand || null,
+          item_variant: item.item_variant || null,
+          item_category: item.item_category || null,
+          item_category2: item.item_category2 || null,
+          item_category3: item.item_category3 || null,
+          item_category4: item.item_category4 || null,
+          item_category5: item.item_category5 || null,
+          item_list_id: item.item_list_id || null,
+          item_list_name: item.item_list_name || null,
+          affiliation: item.affiliation || null,
+          currency: item.currency || eventParams.currency || null,
+          discount: parseFloat(item.discount) || 0,
+          coupon: item.coupon || null,
+          item_location_id: item.item_location_id || null,
+          index: parseInt(item.index) || null,
+
+          // Additional Parameters
+          item_calories: item.item_calories || null,
+          item_discounted: typeof item.item_discounted === 'boolean' ? item.item_discounted : null,
+          item_customized: typeof item.item_customized === 'boolean' ? item.item_customized : null,
+          item_customization_amount: parseFloat(item.item_customization_amount) || 0,
+
+          // Custom Parameters
+          in_stock: typeof item.in_stock === 'boolean' ? item.in_stock : null,
+          size: item.size || null,
+          color: item.color || null,
+          material: item.material || null,
+          weight: item.weight || null,
+          shipping_class: item.shipping_class || null,
+
+          // Capture any other custom parameters
+          custom_attributes: Object.entries(item)
+            .filter(([key]) => ![ 
+              'item_id', 'item_name', 'price', 'quantity', 'item_brand', 'item_variant',
+              'item_category', 'item_category2', 'item_category3', 'item_category4', 'item_category5',
+              'item_list_id', 'item_list_name', 'affiliation', 'currency', 'discount', 'coupon',
+              'item_location_id', 'index', 'item_calories', 'item_discounted', 'item_customized',
+              'item_customization_amount', 'in_stock', 'size', 'color', 'material', 'weight',
+              'shipping_class'
+            ].includes(key))
+            .reduce((acc, [key, value]) => {
+              acc[key] = value;
+              return acc;
+            }, {})
+        }));
+      }
+    } catch (e) {
+      console.error('Error parsing items array:', e);
+    }
+
     return {
       type: 'GA4',
       timestamp: params.get('_t') || params.get('_ts') || new Date().toISOString(),
@@ -36,11 +99,15 @@ function parseGA4Beacon(url, queryParams) {
       measurementId: params.get('tid') || params.get('_tid') || '',
       parameters: {
         ...Object.fromEntries(params.entries()),
-        ...eventParams
+        ...eventParams,
+        items // Add parsed items array to parameters
       },
       events: [{
         name: params.get('en') || eventParams._en || 'page_view',
-        params: eventParams
+        params: {
+          ...eventParams,
+          items // Include parsed items in event params
+        }
       }],
       userProperties: userProps,
       pageLocation: params.get('dl') || eventParams.page_location,
@@ -758,80 +825,102 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     // Handle both direct parameters and nested params object
     const allParams = parameters.params ? { ...parameters, ...parameters.params } : parameters;
     
-    // For logcat items array
+    // For GA4 items array
     if (allParams.items) {
       // If items is already an array of objects
       if (Array.isArray(allParams.items)) {
         return allParams.items.map(item => ({
-          item_id: item.item_id || item.id || 'N/A',
-          item_name: item.item_name || item.name || 'Unknown Item',
+          // Required Parameters
+          item_id: item.item_id || 'N/A',
+          item_name: item.item_name || 'Unknown Item',
+
+          // Standard Item Parameters
+          price: parseFloat(item.price) || 0,
           quantity: parseInt(item.quantity) || 1,
-          price: parseFloat(item.price || item.value) || 0
+          item_brand: item.item_brand || null,
+          item_variant: item.item_variant || null,
+          item_category: item.item_category || null,
+          item_category2: item.item_category2 || null,
+          item_category3: item.item_category3 || null,
+          item_category4: item.item_category4 || null,
+          item_category5: item.item_category5 || null,
+          item_list_id: item.item_list_id || null,
+          item_list_name: item.item_list_name || null,
+          affiliation: item.affiliation || null,
+          currency: item.currency || parameters.currency || 'USD',
+          discount: parseFloat(item.discount) || 0,
+          coupon: item.coupon || null,
+          item_location_id: item.item_location_id || null,
+          index: parseInt(item.index) || null,
+
+          // Additional Parameters
+          item_calories: item.item_calories || null,
+          item_discounted: typeof item.item_discounted === 'boolean' ? item.item_discounted : null,
+          item_customized: typeof item.item_customized === 'boolean' ? item.item_customized : null,
+          item_customization_amount: parseFloat(item.item_customization_amount) || 0,
+
+          // Custom Parameters
+          in_stock: typeof item.in_stock === 'boolean' ? item.in_stock : null,
+          size: item.size || null,
+          color: item.color || null,
+          material: item.material || null,
+          weight: item.weight || null,
+          shipping_class: item.shipping_class || null,
+
+          // Any other custom parameters
+          custom_attributes: Object.entries(item)
+            .filter(([key]) => ![ 
+              'item_id', 'item_name', 'price', 'quantity', 'item_brand', 'item_variant',
+              'item_category', 'item_category2', 'item_category3', 'item_category4', 'item_category5',
+              'item_list_id', 'item_list_name', 'affiliation', 'currency', 'discount', 'coupon',
+              'item_location_id', 'index', 'item_calories', 'item_discounted', 'item_customized',
+              'item_customization_amount', 'in_stock', 'size', 'color', 'material', 'weight',
+              'shipping_class'
+            ].includes(key))
+            .reduce((acc, [key, value]) => {
+              acc[key] = value;
+              return acc;
+            }, {})
         }));
-      }
-      
-      // If items is a string that needs to be parsed
-      if (typeof allParams.items === 'string') {
-        try {
-          // Clean up the string and try to parse it
-          const cleanItemsStr = allParams.items.replace(/^\[|\]$/g, '');
-          const items = cleanItemsStr.split('}, {').map(itemStr => {
-            // Clean up each item string
-            const cleanStr = itemStr.replace(/[{}]/g, '');
-            const itemObj = {};
-            
-            // Split by comma and parse each key-value pair
-            cleanStr.split(',').forEach(pair => {
-              const [key, value] = pair.split('=').map(s => s.trim());
-              if (key && value) {
-                // Remove any analytics suffixes from keys
-                const cleanKey = key.replace(/\([^)]+\)/g, '');
-                itemObj[cleanKey] = value;
-              }
-            });
-            
-            return {
-              item_id: itemObj.item_id || itemObj.id || 'N/A',
-              item_name: itemObj.item_name || itemObj.name || 'Unknown Item',
-              quantity: parseInt(itemObj.quantity) || 1,
-              price: parseFloat(itemObj.price || itemObj.value) || 0
-            };
-          });
-          
-          return items;
-        } catch (e) {
-          console.error('Error parsing items string:', e);
-        }
       }
     }
     
-    // For individual item parameters
-    const itemData = {};
-    Object.entries(allParams).forEach(([key, value]) => {
-      const cleanKey = key.replace(/\([^)]+\)/g, '').trim();
-      
-      if (cleanKey.includes('item_name') || cleanKey.includes('product_name')) {
-        itemData.item_name = value;
-      }
-      if (cleanKey.includes('item_id') || cleanKey.includes('product_id')) {
-        itemData.item_id = String(value).replace(/[\[\]{}]/g, '').trim();
-      }
-      if (cleanKey.includes('quantity')) {
-        itemData.quantity = parseInt(value) || 1;
-      }
-      if (cleanKey.includes('price') || cleanKey.includes('value')) {
-        itemData.price = parseFloat(value) || 0;
-      }
-    });
+    // For individual item parameters (legacy or single-item events)
+    const itemData = {
+      item_id: allParams.item_id || allParams.product_id || 'N/A',
+      item_name: allParams.item_name || allParams.product_name || 'Unknown Item',
+      price: parseFloat(allParams.price || allParams.product_price) || 0,
+      quantity: parseInt(allParams.quantity || allParams.product_quantity) || 1,
+      item_brand: allParams.item_brand || allParams.product_brand || null,
+      item_variant: allParams.item_variant || allParams.product_variant || null,
+      item_category: allParams.item_category || allParams.product_category || null,
+      item_category2: allParams.item_category2 || null,
+      item_category3: allParams.item_category3 || null,
+      item_category4: allParams.item_category4 || null,
+      item_category5: allParams.item_category5 || null,
+      item_list_id: allParams.item_list_id || allParams.product_list_id || null,
+      item_list_name: allParams.item_list_name || allParams.product_list_name || null,
+      affiliation: allParams.affiliation || null,
+      currency: allParams.currency || 'USD',
+      discount: parseFloat(allParams.discount) || 0,
+      coupon: allParams.coupon || null,
+      item_location_id: allParams.item_location_id || null,
+      index: parseInt(allParams.index) || null,
+      item_calories: allParams.item_calories || null,
+      item_discounted: typeof allParams.item_discounted === 'boolean' ? allParams.item_discounted : null,
+      item_customized: typeof allParams.item_customized === 'boolean' ? allParams.item_customized : null,
+      item_customization_amount: parseFloat(allParams.item_customization_amount) || 0,
+      in_stock: typeof allParams.in_stock === 'boolean' ? allParams.in_stock : null,
+      size: allParams.size || null,
+      color: allParams.color || null,
+      material: allParams.material || null,
+      weight: allParams.weight || null,
+      shipping_class: allParams.shipping_class || null
+    };
 
     // If we have at least a name or ID, create an item
     if (itemData.item_name || itemData.item_id) {
-      return [{
-        item_id: itemData.item_id || 'N/A',
-        item_name: itemData.item_name || 'Unknown Item',
-        quantity: itemData.quantity || 1,
-        price: itemData.price || 0
-      }];
+      return [itemData];
     }
     
     return [];
@@ -1439,7 +1528,6 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                 ? cleanEventName(event.message.match(/name=([^,]+)/)?.[1]) || 'Unknown Event'
                 : 'Analytics Event')
             : cleanEventName(event.eventName || event.type) || 'Unknown Event'}
-          <span className={styles.beaconId}>{event.beaconId}</span>
         </div>
 
         {/* Row 2: Screen/Page name */}
@@ -1455,6 +1543,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
         {/* Row 3: Metadata */}
         <div className={styles.eventMetadataRow}>
+          <span className={styles.beaconId}>{event.beaconId}</span>
           <span className={styles.eventTime}>
             {new Date(event.timestamp).toLocaleTimeString([], { 
               hour: '2-digit',
@@ -1732,66 +1821,72 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               </div>
               {expandedSections.eCommerce && (
                 <div className={styles.sectionContent}>
-                  {selectedEvent.source === 'logcat' ? (
-                    (() => {
+                  {(() => {
+                    // For logcat events
+                    if (selectedEvent.source === 'logcat') {
                       const params = parseLogcatParameters(selectedEvent.message) || {};
                       const items = extractItems(params);
+                      const { ecommerce } = separateParameters(params);
                       
                       if (items.length === 0) {
                         return <div className={styles.noData}>No eCommerce data available</div>;
                       }
-                      
-                      return (
-                        <div className={styles.itemsTable}>
-                          <div className={styles.itemsHeader}>
-                            <div className={styles.itemNumber}>#</div>
-                            <div className={styles.productName}>PRODUCT NAME</div>
-                            <div className={styles.itemId}>ITEM ID</div>
-                            <div className={styles.quantity}>QTY</div>
-                            <div className={styles.price}>PRICE</div>
-                          </div>
-                          {items.map((item, index) => (
-                            <div key={index} className={styles.itemRow}>
-                              <div className={styles.itemNumber}>#{index + 1}</div>
-                              <div className={styles.productName}>{item.item_name || item.product_name}</div>
-                              <div className={styles.itemId}>{item.item_id || item.product_id}</div>
-                              <div className={styles.quantity}>{item.quantity || 1}</div>
-                              <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    (() => {
-                      const items = extractItems(selectedEvent.parameters || {});
-                      
-                      if (items.length === 0) {
-                        return <div className={styles.noData}>No eCommerce data available</div>;
-                      }
-                      
-                      return (
-                        <div className={styles.itemsTable}>
-                          <div className={styles.itemsHeader}>
-                            <div className={styles.itemNumber}>#</div>
-                            <div className={styles.productName}>PRODUCT NAME</div>
-                            <div className={styles.itemId}>ITEM ID</div>
-                            <div className={styles.quantity}>QTY</div>
-                            <div className={styles.price}>PRICE</div>
-                          </div>
-                          {items.map((item, index) => (
-                            <div key={index} className={styles.itemRow}>
-                              <div className={styles.itemNumber}>#{index + 1}</div>
-                              <div className={styles.productName}>{item.item_name || item.product_name}</div>
-                              <div className={styles.itemId}>{item.item_id || item.product_id}</div>
-                              <div className={styles.quantity}>{item.quantity || 1}</div>
-                              <div className={styles.price}>{formatPrice(item.price || item.product_price)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()
-                  )}
+
+                      const ecommerceData = {
+                        eventName: selectedEvent.message?.includes('Logging event:') 
+                          ? cleanEventName(selectedEvent.message.match(/name=([^,]+)/)?.[1]) 
+                          : 'Analytics Event',
+                        couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
+                        currency: ecommerce.currency || 'USD',
+                        uniqueProductsCount: items.length,
+                        totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
+                        orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
+                        items: items.map(item => ({
+                          ...item,
+                          item_customized: ecommerce.item_customized,
+                          item_discounted: ecommerce.item_discounted,
+                          item_customization_amount: ecommerce.item_customization_amount,
+                          discount: ecommerce.discount,
+                          in_stock: ecommerce.in_stock,
+                          custom_attributes: Object.entries(ecommerce)
+                            .filter(([key]) => !isEcommerceParameter(key))
+                            .map(([label, value]) => ({ label, value }))
+                        }))
+                      };
+
+                      return <EcommerceCard data={ecommerceData} />;
+                    }
+                    
+                    // For proxy/network events
+                    const items = extractItems(selectedEvent.parameters || {});
+                    const { ecommerce } = separateParameters(selectedEvent.parameters || {});
+                    
+                    if (items.length === 0) {
+                      return <div className={styles.noData}>No eCommerce data available</div>;
+                    }
+
+                    const ecommerceData = {
+                      eventName: selectedEvent.eventName || 'Analytics Event',
+                      couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
+                      currency: ecommerce.currency || 'USD',
+                      uniqueProductsCount: items.length,
+                      totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
+                      orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
+                      items: items.map(item => ({
+                        ...item,
+                        item_customized: ecommerce.item_customized,
+                        item_discounted: ecommerce.item_discounted,
+                        item_customization_amount: ecommerce.item_customization_amount,
+                        discount: ecommerce.discount,
+                        in_stock: ecommerce.in_stock,
+                        custom_attributes: Object.entries(ecommerce)
+                          .filter(([key]) => !isEcommerceParameter(key))
+                          .map(([label, value]) => ({ label, value }))
+                      }))
+                    };
+
+                    return <EcommerceCard data={ecommerceData} />;
+                  })()}
                 </div>
               )}
             </div>

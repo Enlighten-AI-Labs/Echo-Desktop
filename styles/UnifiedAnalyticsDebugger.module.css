@@ -179,7 +179,7 @@
 /* Event card */
 .eventCard {
   position: relative;
-  padding: 0.5rem 1.5rem;
+  padding: 10px 20px;
   border-radius: 8px;
   background-color: #ffffff;
   margin-bottom: 1rem;
@@ -189,10 +189,8 @@
   transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #E9EDF3;
-  min-height: 90px;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
   width: calc(100% - 1.5rem);
 }
 
@@ -229,6 +227,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
 }
 
 /* Row 2: Screen/Page name */
@@ -240,8 +239,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 2px 0;
-  margin: 2px 0;
+  margin-bottom: 8px;
   min-height: 20px;
   display: block;
 }
@@ -249,13 +247,10 @@
 /* Row 3: Metadata */
 .eventMetadataRow {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   width: 100%;
-  margin-top: auto;
-  padding-top: 4px;
-  padding-bottom: 10px;
-  min-height: 24px;
 }
 
 .beaconId {

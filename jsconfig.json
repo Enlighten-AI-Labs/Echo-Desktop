@@ -2,11 +2,14 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/components/*": ["components/*"],
-      "@/styles/*": ["styles/*"],
-      "@/assets/*": ["src/assets/*"],
-      "@/lib/*": ["lib/*"],
-      "@/contexts/*": ["contexts/*"]
-    }
-  }
+      "@/*": ["./*"]
+    },
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es2020",
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react"
+  },
+  "exclude": ["node_modules", "out", "dist"]
 } 

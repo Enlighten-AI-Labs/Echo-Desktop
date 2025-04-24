@@ -21,6 +21,7 @@
     "@emotion/styled": "^11.14.0",
     "@supabase/supabase-js": "^2.49.3",
     "@xyflow/react": "^12.5.6",
+    "electron-serve": "^2.1.1",
     "extract-zip": "^2.0.1",
     "flv.js": "^1.6.2",
     "framer-motion": "^12.7.4",
@@ -39,24 +40,64 @@
     "@types/node": "^20.11.25",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "buffer": "^6.0.3",
     "concurrently": "^8.2.2",
+    "crypto-browserify": "^3.12.0",
     "electron": "^35.1.1",
     "electron-builder": "^24.9.1",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
     "typescript": "^5.3.3",
+    "util": "^0.12.5",
     "wait-on": "^7.2.0"
   },
   "build": {
     "appId": "com.enlighten.echo-desktop",
+    "productName": "Echo Desktop",
     "files": [
       "**/*",
       "!.next/cache/*",
       ".next/**/*",
       "src/**/*",
       "public/**/*",
+      "out/**/*",
       "package.json"
     ],
     "directories": {
-      "buildResources": "resources"
+      "buildResources": "resources",
+      "output": "dist"
+    },
+    "extraMetadata": {
+      "main": "src/main/index.js"
+    },
+    "extraResources": [
+      {
+        "from": "public/fonts",
+        "to": "fonts",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.icns"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "public/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
     }
   }
 }

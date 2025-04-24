@@ -3,6 +3,7 @@ import journeyStyles from '@/styles/JourneyModal.module.css';
 import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';
+import storage from '../lib/storage';
 
 function parseGA4Beacon(url, queryParams) {
   try {
@@ -499,7 +500,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [journeys, setJourneys] = useState(() => {
     // Initialize journeys from localStorage
-    const savedJourneys = localStorage.getItem('analyticsJourneys');
+    const savedJourneys = storage.getItem('analyticsJourneys');
     return savedJourneys ? JSON.parse(savedJourneys) : [];
   });
   const [selectedJourneyId, setSelectedJourneyId] = useState(null);
@@ -1024,7 +1025,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             // Save to localStorage
-            localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+            storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
             
             return updatedEvents;
           });
@@ -1067,7 +1068,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }));
       
       // Save to localStorage
-      localStorage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+      storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
       
       return updatedEvents;
     });
@@ -1171,7 +1172,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
   // Save journeys to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('analyticsJourneys', JSON.stringify(journeys));
+    storage.setItem('analyticsJourneys', JSON.stringify(journeys));
   }, [journeys]);
 
   // Journey related functions

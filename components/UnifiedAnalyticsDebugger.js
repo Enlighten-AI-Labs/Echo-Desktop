@@ -1584,11 +1584,17 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     const hasEcommerceData = (() => {
       if (event.source === 'logcat') {
         const params = parseLogcatParameters(event.message) || {};
-        const items = extractItems(params);
-        return items.length > 0;
+        // Check both for items array and common eCommerce event names
+        return (
+          (params.items && Array.isArray(params.items) && params.items.length > 0) ||
+          params.value !== undefined ||
+          /add_to_cart|remove_from_cart|begin_checkout|purchase|view_item|select_item/.test(event.eventName || event.message || '')
+        );
       } else {
         const items = extractItems(event.parameters || {});
-        return items.length > 0;
+        return items.length > 0 || 
+          (event.parameters?.value !== undefined) ||
+          /add_to_cart|remove_from_cart|begin_checkout|purchase|view_item|select_item/.test(event.eventName || '');
       }
     })();
 
@@ -1967,88 +1973,105 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               )}
             </div>
 
-            <div className={styles.section}>
-              <div 
-                className={styles.sectionHeader}
-                onClick={() => setExpandedSections(prev => ({
-                  ...prev,
-                  eCommerce: !prev.eCommerce
-                }))}
-              >
-                <h3>eCommerce</h3>
-                <span>{expandedSections.eCommerce ? '−' : '+'}</span>
-              </div>
-              {expandedSections.eCommerce && (
-                <div className={styles.sectionContent}>
-                  {(() => {
-                    // For logcat events
-                    if (selectedEvent.source === 'logcat') {
-                      const params = parseLogcatParameters(selectedEvent.message) || {};
-                      const items = extractItems(params);
-                      const { ecommerce } = separateParameters(params);
-                      
-                      if (items.length === 0) {
-                        return <div className={styles.noData}>No eCommerce data available</div>;
-                      }
+            {(() => {
+              // Determine if there's eCommerce data to display
+              const hasEcommerceData = (() => {
+                if (selectedEvent.source === 'logcat') {
+                  const params = parseLogcatParameters(selectedEvent.message) || {};
+                  // Check both for items array and common eCommerce event names
+                  return (
+                    (params.items && Array.isArray(params.items) && params.items.length > 0) ||
+                    params.value !== undefined ||
+                    /add_to_cart|remove_from_cart|begin_checkout|purchase|view_item|select_item/.test(selectedEvent.eventName || selectedEvent.message || '')
+                  );
+                } else {
+                  const items = extractItems(selectedEvent.parameters || {});
+                  return items.length > 0 || 
+                    (selectedEvent.parameters?.value !== undefined) ||
+                    /add_to_cart|remove_from_cart|begin_checkout|purchase|view_item|select_item/.test(selectedEvent.eventName || '');
+                }
+              })();
 
-                      const ecommerceData = {
-                        eventName: selectedEvent.message?.includes('Logging event:') 
-                          ? cleanEventName(selectedEvent.message.match(/name=([^,]+)/)?.[1]) 
-                          : 'Analytics Event',
-                        couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
-                        currency: ecommerce.currency || 'USD',
-                        uniqueProductsCount: items.length,
-                        totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
-                        orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
-                        items: items.map(item => ({
-                          ...item,
-                          item_customized: ecommerce.item_customized,
-                          item_discounted: ecommerce.item_discounted,
-                          item_customization_amount: ecommerce.item_customization_amount,
-                          discount: ecommerce.discount,
-                          in_stock: ecommerce.in_stock,
-                          custom_attributes: Object.entries(ecommerce)
-                            .filter(([key]) => !isEcommerceParameter(key))
-                            .map(([label, value]) => ({ label, value }))
-                        }))
-                      };
+              // Only render the eCommerce section if there's data
+              if (!hasEcommerceData) return null;
 
-                      return <EcommerceCard data={ecommerceData} />;
-                    }
-                    
-                    // For proxy/network events
-                    const items = extractItems(selectedEvent.parameters || {});
-                    const { ecommerce } = separateParameters(selectedEvent.parameters || {});
-                    
-                    if (items.length === 0) {
-                      return <div className={styles.noData}>No eCommerce data available</div>;
-                    }
+              return (
+                <div className={styles.section}>
+                  <div 
+                    className={styles.sectionHeader}
+                    onClick={() => setExpandedSections(prev => ({
+                      ...prev,
+                      eCommerce: !prev.eCommerce
+                    }))}
+                  >
+                    <h3>eCommerce</h3>
+                    <span>{expandedSections.eCommerce ? '−' : '+'}</span>
+                  </div>
+                  {expandedSections.eCommerce && (
+                    <div className={styles.sectionContent}>
+                      {(() => {
+                        // For logcat events
+                        if (selectedEvent.source === 'logcat') {
+                          const params = parseLogcatParameters(selectedEvent.message) || {};
+                          const items = extractItems(params);
+                          const { ecommerce } = separateParameters(params);
 
-                    const ecommerceData = {
-                      eventName: selectedEvent.eventName || 'Analytics Event',
-                      couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
-                      currency: ecommerce.currency || 'USD',
-                      uniqueProductsCount: items.length,
-                      totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
-                      orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
-                      items: items.map(item => ({
-                        ...item,
-                        item_customized: ecommerce.item_customized,
-                        item_discounted: ecommerce.item_discounted,
-                        item_customization_amount: ecommerce.item_customization_amount,
-                        discount: ecommerce.discount,
-                        in_stock: ecommerce.in_stock,
-                        custom_attributes: Object.entries(ecommerce)
-                          .filter(([key]) => !isEcommerceParameter(key))
-                          .map(([label, value]) => ({ label, value }))
-                      }))
-                    };
+                          const ecommerceData = {
+                            eventName: selectedEvent.message?.includes('Logging event:') 
+                              ? cleanEventName(selectedEvent.message.match(/name=([^,]+)/)?.[1]) 
+                              : 'Analytics Event',
+                            couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
+                            currency: ecommerce.currency || 'USD',
+                            uniqueProductsCount: items.length,
+                            totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
+                            orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
+                            items: items.map(item => ({
+                              ...item,
+                              item_customized: ecommerce.item_customized,
+                              item_discounted: ecommerce.item_discounted,
+                              item_customization_amount: ecommerce.item_customization_amount,
+                              discount: ecommerce.discount,
+                              in_stock: ecommerce.in_stock,
+                              custom_attributes: Object.entries(ecommerce)
+                                .filter(([key]) => !isEcommerceParameter(key))
+                                .map(([label, value]) => ({ label, value }))
+                            }))
+                          };
 
-                    return <EcommerceCard data={ecommerceData} />;
-                  })()}
+                          return <EcommerceCard data={ecommerceData} />;
+                        }
+                        
+                        // For proxy/network events
+                        const items = extractItems(selectedEvent.parameters || {});
+                        const { ecommerce } = separateParameters(selectedEvent.parameters || {});
+
+                        const ecommerceData = {
+                          eventName: selectedEvent.eventName || 'Analytics Event',
+                          couponCode: ecommerce.coupon || ecommerce.promotion_code || 'N/A',
+                          currency: ecommerce.currency || 'USD',
+                          uniqueProductsCount: items.length,
+                          totalItemsCount: items.reduce((acc, item) => acc + (parseInt(item.quantity) || 1), 0),
+                          orderTotal: items.reduce((acc, item) => acc + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)), 0).toFixed(2),
+                          items: items.map(item => ({
+                            ...item,
+                            item_customized: ecommerce.item_customized,
+                            item_discounted: ecommerce.item_discounted,
+                            item_customization_amount: ecommerce.item_customization_amount,
+                            discount: ecommerce.discount,
+                            in_stock: ecommerce.in_stock,
+                            custom_attributes: Object.entries(ecommerce)
+                              .filter(([key]) => !isEcommerceParameter(key))
+                              .map(([label, value]) => ({ label, value }))
+                          }))
+                        };
+
+                        return <EcommerceCard data={ecommerceData} />;
+                      })()}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             <div className={styles.section}>
               <div 

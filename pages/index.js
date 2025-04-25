@@ -1,20 +1,20 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import styles from '@/styles/Home.module.css';
 import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigation } from './_app';
 
 export default function Home() {
   const { user, loading, signOut } = useAuth();
-  const router = useRouter();
+  const { navigateTo } = useNavigation();
 
   // Redirect to dashboard when authenticated
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      navigateTo('dashboard');
     }
-  }, [loading, user, router]);
+  }, [loading, user, navigateTo]);
 
   // Show loading screen while auth state is being determined
   if (loading) {

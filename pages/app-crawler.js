@@ -1,9 +1,9 @@
-import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/AppCrawler.module.css';
 import dynamic from 'next/dynamic';
 import LogEntry from '@/components/LogEntry';
+import { useNavigation } from './_app';
 
 // Dynamically import ReactFlow to avoid SSR issues
 const ReactFlow = dynamic(
@@ -55,8 +55,7 @@ function beautifyXml(xml) {
   return result.trim();
 }
 
-export default function AppCrawlerPage() {
-  const router = useRouter();
+export default function AppCrawlerView({ navigateTo, params }) {
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
   const [crawlStatus, setCrawlStatus] = useState('idle'); // idle, running, completed, error
@@ -81,24 +80,18 @@ export default function AppCrawlerPage() {
   });
   
   useEffect(() => {
-    // Get query parameters when the page loads
-    if (router.isReady) {
-      const { deviceId, packageName } = router.query;
+    // Get query parameters from props instead of router
+    if (params) {
+      const { deviceId, packageName } = params;
       if (deviceId) setDeviceId(deviceId);
       if (packageName) setPackageName(packageName);
     }
-  }, [router.isReady, router.query]);
+  }, [params]);
   
   useEffect(() => {
-    // Wait for router to be ready
-    if (router.isReady) {
-      // Redirect to the new debugger page with the same query parameters
-      router.replace({
-        pathname: '/debugger',
-        query: router.query
-      });
-    }
-  }, [router.isReady, router.query]);
+    // Navigate to the new debugger page with the same parameters
+    navigateTo('debugger', params);
+  }, [navigateTo, params]);
   
   // Scroll to bottom of logs when new logs are added
   useEffect(() => {
@@ -156,27 +149,21 @@ export default function AppCrawlerPage() {
   }, [screens]);
   
   const handleBack = () => {
-    router.push('/debugger');
+    navigateTo('debugger');
   };
   
   const handleDeviceSetup = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    router.push({
-      pathname: '/device-setup',
-      query
-    });
+    const setupParams = {};
+    if (deviceId) setupParams.deviceId = deviceId;
+    if (packageName) setupParams.packageName = packageName;
+    navigateTo('device-setup', setupParams);
   };
 
   const handleSplitScreenView = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    router.push({
-      pathname: '/debugger',
-      query
-    });
+    const viewParams = {};
+    if (deviceId) viewParams.deviceId = deviceId;
+    if (packageName) viewParams.packageName = packageName;
+    navigateTo('debugger', viewParams);
   };
 
   const handleSettingsChange = (setting, value) => {

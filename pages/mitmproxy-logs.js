@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/MitmproxyLogs.module.css';
@@ -24,8 +23,7 @@ function ServerIpDisplay() {
   return <span className={styles.ipAddress}>{ipAddress}</span>;
 }
 
-export default function MitmproxyLogsPage() {
-  const router = useRouter();
+export default function MitmproxyLogsView({ navigateTo, params }) {
   const [proxyStatus, setProxyStatus] = useState({ running: false });
   const [proxyUrl, setProxyUrl] = useState('');
   const [traffic, setTraffic] = useState([]);
@@ -160,7 +158,7 @@ export default function MitmproxyLogsPage() {
   }, [proxyStatus.running, autoRefresh, lastEntryId]);
   
   const handleBack = () => {
-    router.push('/debugger');
+    navigateTo('debugger');
   };
   
   const handleStartProxy = async () => {

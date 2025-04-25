@@ -10,7 +10,8 @@
     "electron-wait": "wait-on http://localhost:3000 && npm run dev:electron",
     "build": "next build && npm run build:electron",
     "start": "electron .",
-    "build:electron": "electron-builder"
+    "build:electron": "electron-builder",
+    "build:all": "npm run build && electron-builder -mwl"
   },
   "author": "Enlighten",
   "license": "ISC",

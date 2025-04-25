@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 import styles from '../styles/device-setup.module.css';
 
-export default function DeviceSetup() {
-  const router = useRouter();
-  const { deviceId, packageName } = router.query;
+export default function DeviceSetupView({ navigateTo, params }) {
+  const { deviceId, packageName } = params || {};
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [showAndroidInstructions, setShowAndroidInstructions] = useState(true);
@@ -352,13 +350,10 @@ export default function DeviceSetup() {
       setLaunchStatus({ step: '', message: '' });
       
       // Navigate to analytics debugger with the device ID and package name
-      router.push({
-        pathname: '/debugger',
-        query: {
-          deviceId: selectedDevice,
-          packageName: selectedApp,
-          tab: 'unified' // Default to network tab
-        }
+      navigateTo('debugger', {
+        deviceId: selectedDevice,
+        packageName: selectedApp,
+        tab: 'unified'
       });
     } catch (error) {
       console.error('Error in handleAppLaunch:', error);
@@ -396,10 +391,7 @@ export default function DeviceSetup() {
       fetchConnectedDevices();
     } else if (selectedPlatform === 'rtmp') {
       // Navigate to RTMP setup page
-      router.push({
-        pathname: '/rtmp-setup',
-        query: router.query // Preserve any existing query parameters
-      });
+      navigateTo('rtmp-setup', params); // Preserve any existing query parameters
     }
   };
 
@@ -415,15 +407,12 @@ export default function DeviceSetup() {
       setSelectedDevice(null);
     } else {
       // Otherwise, return to analytics debugger with preserved parameters
-      const query = {};
-      if (deviceId) query.deviceId = deviceId;
-      if (packageName) query.packageName = packageName;
+      const navigateParams = {};
+      if (deviceId) navigateParams.deviceId = deviceId;
+      if (packageName) navigateParams.packageName = packageName;
       // Preserve the tab parameter if it exists
-      if (router.query.tab) query.tab = router.query.tab;
-      router.push({
-        pathname: '/debugger',
-        query
-      });
+      if (params?.tab) navigateParams.tab = params.tab;
+      navigateTo('debugger', navigateParams);
     }
   };
 
@@ -433,17 +422,14 @@ export default function DeviceSetup() {
       .then(result => {
         if (result.success) {
           // Redirect to analytics debugger with preserved parameters
-          const query = {
+          const navigateParams = {
             mitmproxy: 'true'
           };
-          if (deviceId) query.deviceId = deviceId;
-          if (packageName) query.packageName = packageName;
+          if (deviceId) navigateParams.deviceId = deviceId;
+          if (packageName) navigateParams.packageName = packageName;
           // Preserve the tab parameter if it exists
-          if (router.query.tab) query.tab = router.query.tab;
-          router.push({
-            pathname: '/debugger',
-            query
-          });
+          if (params?.tab) navigateParams.tab = params.tab;
+          navigateTo('debugger', navigateParams);
         } else {
           alert('Failed to start MitmProxy: ' + result.message);
         }
@@ -467,11 +453,8 @@ export default function DeviceSetup() {
       await window.api.adb.executeCommand(selectedDevice, 'setprop log.tag.FA-SVC VERBOSE');
       
       // Redirect to app selection page with the selected device
-      router.push({
-        pathname: '/app-selection',
-        query: {
-          deviceId: selectedDevice
-        }
+      navigateTo('app-selection', {
+        deviceId: selectedDevice
       });
     } catch (error) {
       console.error('Error setting debug properties:', error);
@@ -621,7 +604,7 @@ export default function DeviceSetup() {
   };
 
   const handleRTMPClick = () => {
-    router.push('/rtmp-setup');
+    navigateTo('rtmp-setup');
   };
 
   const handleDeviceSelect = (deviceId) => {

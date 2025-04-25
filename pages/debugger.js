@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
@@ -61,8 +60,10 @@ function beautifyXml(xml) {
 // Create a utility function for auto-collapse thresholds
 const MIN_PANEL_WIDTH = 20; // Minimum percentage width for a panel before it should auto-collapse
 
-export default function DebuggerPage() {
-  const router = useRouter();
+// Rename to DebuggerView and accept navigateTo and params as props
+export default function DebuggerView({ navigateTo, params }) {
+  // Replace router with params
+  // const router = useRouter();
   const [deviceId, setDeviceId] = useState('');
   const [packageName, setPackageName] = useState('');
   const [splitRatio, setSplitRatio] = useState(0); // Start with 0 since left panel is collapsed
@@ -116,13 +117,14 @@ export default function DebuggerPage() {
   const [showAiPrompt, setShowAiPrompt] = useState(false);
 
   useEffect(() => {
-    // Get query parameters when the page loads
-    if (router.isReady) {
-      const { deviceId, packageName } = router.query;
+    // Get query parameters when the component loads
+    // Replace router.isReady and router.query with params
+    if (params) {
+      const { deviceId, packageName, tab } = params;
       if (deviceId) setDeviceId(deviceId);
       if (packageName) setPackageName(packageName);
     }
-  }, [router.isReady, router.query]);
+  }, [params]);
 
   // Handle resize functionality
   const startResize = (e) => {
@@ -198,22 +200,24 @@ export default function DebuggerPage() {
   }, [isResizing, resize, stopResize]);
 
   const handleBack = () => {
-    router.push('/dashboard');
+    // Replace router.push('/dashboard');
+    navigateTo('dashboard');
   };
   
   const handleViewLogs = () => {
-    router.push('/mitmproxy-logs');
+    // Replace router.push('/mitmproxy-logs');
+    navigateTo('mitmproxy-logs');
   };
   
   const handleSetupDevice = () => {
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    query.tab = 'unified';
-    router.push({
-      pathname: '/device-setup',
-      query
-    });
+    // Build params object for navigation
+    const deviceSetupParams = {};
+    if (deviceId) deviceSetupParams.deviceId = deviceId;
+    if (packageName) deviceSetupParams.packageName = packageName;
+    deviceSetupParams.tab = 'unified';
+    
+    // Replace router.push
+    navigateTo('device-setup', deviceSetupParams);
   };
 
   // App Crawler Functions
@@ -715,10 +719,7 @@ export default function DebuggerPage() {
           <div className={styles.headerButtons}>
             <button 
               className={styles.viewLogsButton}
-              onClick={() => router.push({
-                pathname: '/export',
-                query: { deviceId, packageName }
-              })}
+              onClick={() => navigateTo('export', { deviceId, packageName })}
             >
               Export Data
             </button>

@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSelector from '@/components/AppSelector';
@@ -9,9 +8,8 @@ import AndroidAppSelector from '@/components/AndroidAppSelector';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import styles from '@/styles/Dashboard.module.css';
 
-export default function Dashboard() {
+export default function DashboardView({ navigateTo }) {
   const { user, loading } = useAuth();
-  const router = useRouter();
   const [isAppSelectorOpen, setIsAppSelectorOpen] = useState(false);
   const [isPlatformSelectorOpen, setIsPlatformSelectorOpen] = useState(false);
   const [isAndroidDeviceSelectorOpen, setIsAndroidDeviceSelectorOpen] = useState(false);
@@ -22,13 +20,11 @@ export default function Dashboard() {
   const [selectedAndroidApp, setSelectedAndroidApp] = useState(null);
   const [debuggingActive, setDebuggingActive] = useState(false);
 
-  // Redirect if not logged in
   if (!loading && !user) {
-    router.push('/');
+    navigateTo('login');
     return null;
   }
 
-  // Show loading state while checking auth
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -39,8 +35,7 @@ export default function Dashboard() {
   }
 
   const handleStartDebugging = () => {
-    // Navigate directly to the debugger
-    router.push('/debugger?tab=unified');
+    navigateTo('debugger', { tab: 'unified' });
   };
 
   const handleCloseAppSelector = () => {
@@ -50,7 +45,7 @@ export default function Dashboard() {
   const handleSelectApp = (app) => {
     setSelectedApp(app);
     setIsAppSelectorOpen(false);
-    setIsPlatformSelectorOpen(true); // Open platform selector after app selection
+    setIsPlatformSelectorOpen(true);
   };
 
   const handleClosePlatformSelector = () => {
@@ -62,10 +57,8 @@ export default function Dashboard() {
     setIsPlatformSelectorOpen(false);
     
     if (platform === 'android') {
-      // For Android, open the device selector
       setIsAndroidDeviceSelectorOpen(true);
     } else {
-      // For iOS, skip the device selection (could add iOS device selection in the future)
       setDebuggingActive(true);
     }
   };
@@ -78,7 +71,6 @@ export default function Dashboard() {
     setSelectedDevice(device);
     setIsAndroidDeviceSelectorOpen(false);
     
-    // Open the Android app selector after device selection
     setIsAndroidAppSelectorOpen(true);
   };
   
@@ -90,7 +82,6 @@ export default function Dashboard() {
     try {
       setSelectedAndroidApp(app);
       
-      // Launch the selected app on the device using ADB
       const launchResult = await window.api.adb.launchApp(selectedDevice.id, app.packageName);
       
       if (launchResult.success) {
@@ -99,7 +90,6 @@ export default function Dashboard() {
         console.error('Failed to launch app:', launchResult.message);
       }
       
-      // Close the app selector, start debugging, and show analytics
       setIsAndroidAppSelectorOpen(false);
       setDebuggingActive(true);
       
@@ -121,13 +111,19 @@ export default function Dashboard() {
   };
 
   const handleToggleAnalyticsDebugger = () => {
-    // Redirect to debugger
-    router.push(`/debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
+    navigateTo('debugger', {
+      deviceId: selectedDevice?.id,
+      packageName: selectedAndroidApp?.packageName,
+      tab: 'network'
+    });
   };
 
   const handleSplitScreenDebugger = () => {
-    // Navigate to the debugger
-    router.push(`/debugger?deviceId=${selectedDevice?.id}&packageName=${selectedAndroidApp?.packageName}&tab=network`);
+    navigateTo('debugger', {
+      deviceId: selectedDevice?.id,
+      packageName: selectedAndroidApp?.packageName,
+      tab: 'network'
+    });
   };
 
   return (
@@ -139,9 +135,12 @@ export default function Dashboard() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className={styles.mainContainer}>
-        {/* Settings icon in top right */}
         <div className={styles.settingsContainer}>
-          <button className={styles.settingsButton} aria-label="Settings">
+          <button 
+            className={styles.settingsButton} 
+            aria-label="Settings"
+            onClick={() => navigateTo('settings')}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -149,7 +148,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Center content with debug button */}
         <div className={styles.centerContent}>
           <h1 className={styles.title}>Echo Desktop</h1>
           
@@ -220,14 +218,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* App Selector Modal */}
         <AppSelector 
           isOpen={isAppSelectorOpen}
           onClose={handleCloseAppSelector}
           onSelectApp={handleSelectApp}
         />
 
-        {/* Platform Selector Modal */}
         <PlatformSelector 
           isOpen={isPlatformSelectorOpen}
           onClose={handleClosePlatformSelector}
@@ -235,7 +231,6 @@ export default function Dashboard() {
           appName={selectedApp?.name || ''}
         />
 
-        {/* Android Device Selector Modal */}
         <AndroidDeviceSelector
           isOpen={isAndroidDeviceSelectorOpen}
           onClose={handleCloseAndroidDeviceSelector}
@@ -243,7 +238,6 @@ export default function Dashboard() {
           appName={selectedApp?.name || ''}
         />
         
-        {/* Android App Selector Modal */}
         <AndroidAppSelector
           isOpen={isAndroidAppSelectorOpen}
           onClose={handleCloseAndroidAppSelector}

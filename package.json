@@ -1,6 +1,6 @@
 {
   "name": "echo-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "App Debugger",
   "main": "src/main/index.js",
   "scripts": {
@@ -11,9 +11,12 @@
     "build": "next build && npm run build:electron",
     "start": "electron .",
     "build:electron": "electron-builder",
-    "build:all": "npm run build && electron-builder -mwl"
+    "build:all": "npm run build && electron-builder -lw"
   },
-  "author": "Enlighten",
+  "author": {
+    "name": "Enlighten",
+    "email": "isaac.cochran@enlightenailabs.com"
+  },
   "license": "ISC",
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
@@ -30,11 +33,13 @@
     "nanoid": "^5.1.5",
     "next": "^15.1.0",
     "node-dns-sd": "^1.0.1",
+    "node-fetch": "^2.7.0",
     "node-media-server": "^4.0.12",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "supabase": "^2.22.6",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -75,7 +80,9 @@
       {
         "from": "public/fonts",
         "to": "fonts",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
@@ -84,21 +91,23 @@
         "dmg",
         "zip"
       ],
-      "icon": "public/icon.icns"
+      "icon": "public/icon_512x512.png"
     },
     "win": {
       "target": [
         "nsis",
         "portable"
       ],
-      "icon": "public/icon.ico"
+      "icon": "public/icon.png"
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Development"
+      "category": "Development",
+      "maintainer": "Enlighten <isaac.cochran@enlightenailabs.com>",
+      "icon": "public/icon.png"
     }
   }
 }

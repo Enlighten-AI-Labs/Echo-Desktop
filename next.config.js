@@ -40,6 +40,13 @@ const nextConfig = {
         util: require.resolve('util/'),
         stream: require.resolve('stream-browserify'),
         crypto: require.resolve('crypto-browserify'),
+        globalThis: false,
+      };
+
+      // Add alias for @supabase/node-fetch
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@supabase/node-fetch': require.resolve('node-fetch'),
       };
     }
     

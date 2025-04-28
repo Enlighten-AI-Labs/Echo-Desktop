@@ -10,6 +10,31 @@ const sharp = require('sharp');
 const { WebSocket } = require('ws');
 const { PassThrough } = require('stream');
 
+// Screenshot and frame capture configuration
+const screenshotConfig = {
+  // Frame capture settings
+  framerate: 5,               // Frames per second to capture
+  fileCheckInterval: 200,     // How often to check for file changes (ms)
+  
+  // Stability detection settings
+  stabilityCheckInterval: 5,  // Check for UI stability every N frames
+  maxTimeBetweenFrames: 500,  // Max time between frames for stability detection (ms)
+  stableFrameThreshold: 250,  // Time between frames below which UI is considered stable (ms)
+  minStabilityDuration: 1000, // Minimum time UI must be stable for (ms)
+  
+  // Screenshot settings
+  useCache: true,             // Use cached screenshot if available
+  cacheTime: 60000,           // Cache time in ms (60 seconds)
+  stabilityDelay: 1500,       // Wait time for UI stability in ms
+  captureDelay: 1000,         // Additional delay before capturing screenshot (ms)
+  screenshotTimeout: 10000,    // Maximum time to wait for a stable frame
+  quality: 90,                // JPEG quality (0-100)
+  
+  // Output settings
+  imageScale: '720:-1',       // Scale output to 720p width, maintain aspect ratio
+  imageQuality: 1             // FFmpeg output quality (lower is better)
+};
+
 // Create media directory for RTMP server if it doesn't exist
 const rtmpMediaPath = path.join(userDataPath, 'media');
 if (!fs.existsSync(rtmpMediaPath)) {
@@ -150,10 +175,10 @@ class StreamConnectionManager extends EventEmitter {
       const ffmpegProcess = ffmpeg(rtmpUrl)
         .outputOptions([
           '-f image2',       // Output as individual images
-          '-vf fps=5',       // Limit to 5 frames per second to reduce resource usage
-          '-vf scale=720:-1', // Scale to 720p width, maintain aspect ratio
+          `-vf fps=${screenshotConfig.framerate}`,      // Limit to configured frames per second
+          `-vf scale=${screenshotConfig.imageScale}`,   // Scale as configured
           '-update 1',       // Force updating the same file
-          '-q:v 1'           // High quality for screenshots
+          `-q:v ${screenshotConfig.imageQuality}`       // Quality for screenshots from config
         ])
         .output(path.join(screenshotsDir, `temp_${beaconId}.jpg`))
         .on('start', (cmd) => {
@@ -294,8 +319,8 @@ class StreamConnectionManager extends EventEmitter {
         this.frameBuffers[beaconId].shift();
       }
       
-      // Detect UI stability (but only every 5th frame to reduce processing load)
-      if (this.connections[beaconId].frameCount % 5 === 0) {
+      // Detect UI stability (only every Nth frame to reduce processing load)
+      if (this.connections[beaconId].frameCount % screenshotConfig.stabilityCheckInterval === 0) {
         await this.detectStableUI(beaconId);
       }
     } catch (error) {
@@ -320,24 +345,52 @@ class StreamConnectionManager extends EventEmitter {
       
       // Check time difference between frames - if too large, UI is likely not stable
       const timeDiff = frame2.timestamp - frame1.timestamp;
-      if (timeDiff > 500) return; // More than 500ms between frames, likely unstable
+      if (timeDiff > screenshotConfig.maxTimeBetweenFrames) {
+        // If we had stability tracking, reset it
+        if (this.connections[beaconId].stableStartTime) {
+          delete this.connections[beaconId].stableStartTime;
+        }
+        return; // Too much time between frames, likely unstable
+      }
       
       // Simple time-based heuristic - if frames are coming at regular intervals, 
       // the UI is probably stable
-      const isStable = (timeDiff < 250); // Less than 250ms between frames
+      const isCurrentlyStable = (timeDiff < screenshotConfig.stableFrameThreshold); // Less than threshold between frames
       
-      if (isStable) {
-        // Store the stable frame
-        this.stableFrames[beaconId] = {
-          data: frame2.data,
-          timestamp: frame2.timestamp
-        };
-        
-        this.emit('stable-ui', { 
-          beaconId, 
-          timestamp: frame2.timestamp
-        });
+      if (!isCurrentlyStable) {
+        // Reset stability tracking
+        if (this.connections[beaconId].stableStartTime) {
+          delete this.connections[beaconId].stableStartTime;
+        }
+        return;
       }
+      
+      // The current frame comparison is stable, now check if we've been stable for the minimum duration
+      const now = Date.now();
+      
+      // If this is the first stable frame, start tracking stability time
+      if (!this.connections[beaconId].stableStartTime) {
+        this.connections[beaconId].stableStartTime = now;
+        return; // Not stable for the minimum duration yet
+      }
+      
+      // Check if we've been stable for the minimum duration
+      const stableDuration = now - this.connections[beaconId].stableStartTime;
+      if (stableDuration < screenshotConfig.minStabilityDuration) {
+        return; // Not stable for long enough yet
+      }
+      
+      // If we get here, the UI has been stable for the minimum duration
+      // Store the stable frame
+      this.stableFrames[beaconId] = {
+        data: frame2.data,
+        timestamp: frame2.timestamp
+      };
+      
+      this.emit('stable-ui', { 
+        beaconId, 
+        timestamp: frame2.timestamp
+      });
     } catch (error) {
       console.error(`Error detecting UI stability for beacon ${beaconId}:`, error);
     }
@@ -381,7 +434,7 @@ class StreamConnectionManager extends EventEmitter {
       } catch (error) {
         console.error(`Error watching screenshot file for beacon ${beaconId}:`, error);
       }
-    }, 200); // Check every 200ms
+    }, screenshotConfig.fileCheckInterval); // Check interval from config
     
     // Store the interval so we can clear it later
     this.connections[beaconId].watchInterval = interval;
@@ -413,13 +466,16 @@ class StreamConnectionManager extends EventEmitter {
       // Process the queue if we have a stable frame or the temp file exists
       const tempFile = path.join(screenshotsDir, `temp_${beaconId}.jpg`);
       if (this.stableFrames[beaconId] || fs.existsSync(tempFile)) {
-        this.processScreenshotQueue(beaconId);
+        // Apply the additional capture delay before processing
+        setTimeout(() => {
+          this.processScreenshotQueue(beaconId);
+        }, options.captureDelay || screenshotConfig.captureDelay);
       } else {
         // If we don't have a stable frame, wait for one (with timeout)
         const timeout = setTimeout(() => {
           // Process anyway after timeout, even without stable frame
           this.processScreenshotQueue(beaconId);
-        }, options.timeout || 5000);
+        }, options.timeout || screenshotConfig.screenshotTimeout);
         
         // Save the timeout so we can clear it if we process before timeout
         this.screenshotQueue[beaconId][this.screenshotQueue[beaconId].length - 1].timeout = timeout;
@@ -466,7 +522,7 @@ class StreamConnectionManager extends EventEmitter {
         
         // Process the frame data to create a screenshot
         await sharp(frameData)
-          .jpeg({ quality: request.options.quality || 90 })
+          .jpeg({ quality: request.options.quality || screenshotConfig.quality })
           .toFile(request.outputPath);
       }
       
@@ -510,7 +566,7 @@ class StreamConnectionManager extends EventEmitter {
       // Fallback to using sharp if direct copy fails
       try {
         await sharp(frameData)
-          .jpeg({ quality: options.quality || 90 })
+          .jpeg({ quality: options.quality || screenshotConfig.quality })
           .toFile(outputPath);
         console.log(`Saved screenshot to ${outputPath} using sharp`);
       } catch (innerError) {
@@ -687,14 +743,15 @@ async function captureScreenshot(beaconId, options = {}) {
   try {
     console.log(`Capturing screenshot for beacon ${beaconId}`);
     
-    // Default options
+    // Use config for default options
     const defaultOptions = {
-      useCache: true,         // Use cached screenshot if available
-      cacheTime: 60000,       // Cache time in ms (60 seconds)
-      stabilityDelay: 3000,   // Wait time for UI stability in ms
-      timeout: 10000,         // Maximum time to wait for a stable frame
-      forceCapture: false,    // Force a new capture even if cached
-      quality: 90             // JPEG quality (0-100)
+      useCache: screenshotConfig.useCache,
+      cacheTime: screenshotConfig.cacheTime,
+      stabilityDelay: screenshotConfig.stabilityDelay,
+      captureDelay: screenshotConfig.captureDelay,
+      timeout: screenshotConfig.screenshotTimeout,
+      forceCapture: false,
+      quality: screenshotConfig.quality
     };
     
     // Merge with user options

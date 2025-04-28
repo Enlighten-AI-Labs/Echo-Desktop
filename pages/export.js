@@ -1,6 +1,5 @@
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import styles from '@/styles/Export.module.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -132,8 +131,7 @@ const JsonPreview = ({ data }) => {
   );
 };
 
-export default function ExportPage() {
-  const router = useRouter();
+export default function ExportPage({ navigateTo, params }) {
   const [apps, setApps] = useState([]);
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -179,18 +177,16 @@ export default function ExportPage() {
     }
   }, []);
 
-  // Handle query parameters
+  // Handle params
   useEffect(() => {
-    if (router.isReady) {
-      const { deviceId } = router.query;
-      if (deviceId) {
-        setExportConfig(prev => ({
-          ...prev,
-          deviceName: deviceId
-        }));
-      }
+    const { deviceId } = params || {};
+    if (deviceId) {
+      setExportConfig(prev => ({
+        ...prev,
+        deviceName: deviceId
+      }));
     }
-  }, [router.isReady, router.query]);
+  }, [params]);
 
   // Fetch apps when component mounts
   useEffect(() => {
@@ -367,7 +363,7 @@ export default function ExportPage() {
   };
 
   const handleBack = () => {
-    router.back();
+    navigateTo('debugger', { tab: 'unified' });
   };
 
   const handleExport = async () => {

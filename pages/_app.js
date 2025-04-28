@@ -9,6 +9,7 @@ import Debugger from './debugger';
 import DeviceSetup from './device-setup';
 import MitmproxyLogs from './mitmproxy-logs';
 import AppCrawler from './app-crawler';
+import Export from './export';
 import Home from './index';
 
 // Create a navigation context to make it available throughout the app
@@ -67,6 +68,8 @@ function MyApp({ Component, pageProps }) {
         return <MitmproxyLogs navigateTo={navigateTo} params={viewParams} />;
       case 'app-crawler':
         return <AppCrawler navigateTo={navigateTo} params={viewParams} />;
+      case 'export':
+        return <Export navigateTo={navigateTo} params={viewParams} />;
       default:
         return <Dashboard navigateTo={navigateTo} />;
     }

@@ -10,6 +10,7 @@ import DeviceSetup from './device-setup';
 import MitmproxyLogs from './mitmproxy-logs';
 import AppCrawler from './app-crawler';
 import Export from './export';
+import RtmpSetup from './rtmp-setup';
 import Home from './index';
 
 // Create a navigation context to make it available throughout the app
@@ -70,6 +71,8 @@ function MyApp({ Component, pageProps }) {
         return <AppCrawler navigateTo={navigateTo} params={viewParams} />;
       case 'export':
         return <Export navigateTo={navigateTo} params={viewParams} />;
+      case 'rtmp-setup':
+        return <RtmpSetup navigateTo={navigateTo} params={viewParams} />;
       default:
         return <Dashboard navigateTo={navigateTo} />;
     }

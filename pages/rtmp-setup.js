@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 import styles from '@/styles/DeviceSetup.module.css';
 
-export default function RtmpSetup() {
-  const router = useRouter();
-  const { deviceId, packageName } = router.query;
+export default function RtmpSetup({ navigateTo, params }) {
+  const { deviceId, packageName } = params || {};
   const [serverStatus, setServerStatus] = useState({ running: false });
   const [localIp, setLocalIp] = useState('Loading...');
   const [isStarting, setIsStarting] = useState(false);
@@ -775,13 +773,7 @@ export default function RtmpSetup() {
 
   const handleBack = () => {
     // Return to device setup page
-    const query = {};
-    if (deviceId) query.deviceId = deviceId;
-    if (packageName) query.packageName = packageName;
-    router.push({
-      pathname: '/device-setup',
-      query
-    });
+    navigateTo('device-setup', { deviceId, packageName });
   };
 
   // Toggle play/pause since we removed controls

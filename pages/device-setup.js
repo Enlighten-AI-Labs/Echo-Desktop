@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/pages/device-setup.module.css';
 
@@ -40,6 +40,15 @@ export default function DeviceSetupView({ navigateTo, params }) {
 
   const [isDeviceSectionCollapsed, setIsDeviceSectionCollapsed] = useState(false);
   const [isDiscoveryActive, setIsDiscoveryActive] = useState(false);
+
+  const searchInputRef = useRef(null);
+
+  // Focus search input when a device is selected
+  useEffect(() => {
+    if (selectedDevice && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [selectedDevice]);
 
   // Helper function to get local IP address if needed during timeout
   const getLocalIpAddress = async () => {
@@ -121,10 +130,6 @@ export default function DeviceSetupView({ navigateTo, params }) {
     try {
       const devices = await window.api.adb.getDevices();
       setConnectedDevices(devices);
-      // If we have devices and none are selected, select the first one
-      if (devices.length > 0 && !selectedDevice) {
-        setSelectedDevice(devices[0].id);
-      }
     } catch (error) {
       console.error('Failed to get ADB devices:', error);
       setConnectionError('Failed to get connected devices. Make sure ADB is working properly.');
@@ -268,14 +273,14 @@ export default function DeviceSetupView({ navigateTo, params }) {
   };
 
   // App selection functions
-  const fetchInstalledApps = async () => {
-    if (!selectedDevice) return;
+  const fetchInstalledApps = async (deviceId = selectedDevice) => {
+    if (!deviceId) return;
     
     setIsLoadingApps(true);
     setAppError('');
     
     try {
-      const appsList = await window.api.adb.getInstalledApps(selectedDevice);
+      const appsList = await window.api.adb.getInstalledApps(deviceId);
       setApps(appsList);
     } catch (err) {
       console.error('Error fetching installed apps:', err);
@@ -619,7 +624,8 @@ export default function DeviceSetupView({ navigateTo, params }) {
       setQrCodeData(null);
       setDiscoveryStatus(null);
     }
-    fetchInstalledApps();
+    // Pass the deviceId directly to fetchInstalledApps
+    fetchInstalledApps(deviceId);
   };
 
   // Add cleanup function for wireless pairing
@@ -798,6 +804,7 @@ export default function DeviceSetupView({ navigateTo, params }) {
                       placeholder="Search installed apps..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      ref={searchInputRef}
                     />
                     <button 
                       className={`${styles.refreshButton} ${styles.secondaryButton}`}

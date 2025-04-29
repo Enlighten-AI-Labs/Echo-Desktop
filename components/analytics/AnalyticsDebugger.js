@@ -80,6 +80,10 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   
   const intervalRef = useRef(null);
   const processedEventIds = useRef(new Set());
+  // Add a timestamp map to track when events were processed
+  const eventTimestamps = useRef(new Map());
+  // Add a cleanup interval reference
+  const cleanupIntervalRef = useRef(null);
 
   // Add this state near your other state declarations in UnifiedAnalyticsDebugger
   const [collapsedScreens, setCollapsedScreens] = useState({});
@@ -208,6 +212,32 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     return `${num1}.${num2}.${num3}`;
   };
 
+  // Add a useEffect for cleaning up old events from the processed set
+  useEffect(() => {
+    // Function to clean up old event IDs (older than 1 hour)
+    const cleanupOldEvents = () => {
+      const now = Date.now();
+      const oneHourAgo = now - (60 * 60 * 1000);
+      
+      eventTimestamps.current.forEach((timestamp, eventId) => {
+        if (timestamp < oneHourAgo) {
+          processedEventIds.current.delete(eventId);
+          eventTimestamps.current.delete(eventId);
+        }
+      });
+    };
+    
+    // Set up a cleanup interval (every 5 minutes)
+    cleanupIntervalRef.current = setInterval(cleanupOldEvents, 5 * 60 * 1000);
+    
+    // Clean up on unmount
+    return () => {
+      if (cleanupIntervalRef.current) {
+        clearInterval(cleanupIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Effect to fetch data from both sources
   useEffect(() => {
     let isMounted = true; // Add mounted check
@@ -264,16 +294,29 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
                     event.analyticsType = 'adobe';
                   }
 
+                  // Generate consistent ID first
                   event.id = generateEventId(event);
-                  event.beaconId = generateBeaconId(event);
+                  
+                  // Skip further processing if we've already seen this event
+                  if (processedEventIds.current.has(event.id)) {
+                    return null;
+                  }
+                  
+                  // Only generate beaconId if it doesn't already exist
+                  if (!event.beaconId) {
+                    event.beaconId = generateBeaconId(event);
+                  }
                   
                   return event;
-                });
+                })
+                .filter(Boolean); // Filter out null events (already processed)
 
-              // Process new logcat events
+              // Process new logcat events and track when they were processed
               parsedLogcatEvents.forEach(event => {
                 if (!processedEventIds.current.has(event.id)) {
                   processedEventIds.current.add(event.id);
+                  // Track when this event was processed
+                  eventTimestamps.current.set(event.id, Date.now());
                   if (isMounted) {
                     captureScreenshot(event.id);
                   }
@@ -323,19 +366,31 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               }
               
               if (parsedBeacon) {
+                // Generate consistent ID first
                 parsedBeacon.id = generateEventId(parsedBeacon);
-                parsedBeacon.beaconId = generateBeaconId(parsedBeacon);
+                
+                // Skip further processing if we've already seen this beacon
+                if (processedEventIds.current.has(parsedBeacon.id)) {
+                  return null;
+                }
+                
+                // Only generate beaconId if it doesn't already exist
+                if (!parsedBeacon.beaconId) {
+                  parsedBeacon.beaconId = generateBeaconId(parsedBeacon);
+                }
                 return parsedBeacon;
               }
               
               return null;
             })
-            .filter(Boolean);
+            .filter(Boolean); // Filter out null beacons (already processed)
 
-          // Process new proxy events
+          // Process new proxy events and track when they were processed
           analyticsBeacons.forEach(beacon => {
             if (!processedEventIds.current.has(beacon.id)) {
               processedEventIds.current.add(beacon.id);
+              // Track when this event was processed
+              eventTimestamps.current.set(beacon.id, Date.now());
               if (isMounted) {
                 captureScreenshot(beacon.id);
               }
@@ -357,6 +412,11 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             newEvents.forEach(e => {
               if (!existingEventsMap.has(e.id)) {
                 existingEventsMap.set(e.id, e);
+              } else {
+                // Update existing events with any new properties
+                // This is useful for events that were partially processed earlier
+                const existingEvent = existingEventsMap.get(e.id);
+                existingEventsMap.set(e.id, { ...existingEvent, ...e });
               }
             });
             
@@ -364,10 +424,14 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
             const updatedEvents = Array.from(existingEventsMap.values())
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-            // Save to localStorage
-            storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
+            // Optional: Limit the number of events to prevent memory issues
+            const maxEventsToKeep = 500;
+            const limitedEvents = updatedEvents.slice(0, maxEventsToKeep);
             
-            return updatedEvents;
+            // Save to localStorage
+            storage.setItem('analyticsEvents', JSON.stringify(limitedEvents));
+            
+            return limitedEvents;
           });
         }
 

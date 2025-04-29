@@ -122,6 +122,10 @@ export default function AnalyticsDebugger() {
 
   // Add a ref to track which beacons have been processed
   const processedBeaconIds = useRef(new Set());
+  // Add a timestamp map to track when beacons were processed
+  const beaconTimestamps = useRef(new Map());
+  // Add a cleanup interval reference
+  const cleanupIntervalRef = useRef(null);
 
   // Add copy to clipboard function
   const copyToClipboard = async (text) => {
@@ -131,6 +135,32 @@ export default function AnalyticsDebugger() {
       console.error('Failed to copy text: ', err);
     }
   };
+
+  // Add a cleanup effect for old beacons
+  useEffect(() => {
+    // Function to clean up old beacon IDs (older than 1 hour)
+    const cleanupOldBeacons = () => {
+      const now = Date.now();
+      const oneHourAgo = now - (60 * 60 * 1000);
+      
+      beaconTimestamps.current.forEach((timestamp, beaconId) => {
+        if (timestamp < oneHourAgo) {
+          processedBeaconIds.current.delete(beaconId);
+          beaconTimestamps.current.delete(beaconId);
+        }
+      });
+    };
+    
+    // Set up a cleanup interval (every 5 minutes)
+    cleanupIntervalRef.current = setInterval(cleanupOldBeacons, 5 * 60 * 1000);
+    
+    // Clean up on unmount
+    return () => {
+      if (cleanupIntervalRef.current) {
+        clearInterval(cleanupIntervalRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Function to fetch and parse traffic
@@ -175,18 +205,27 @@ export default function AnalyticsDebugger() {
               }
               
               if (parsedBeacon) {
-                // Generate beacon ID for screenshot association
-                const beaconId = generateBeaconId(parsedBeacon);
-                parsedBeacon.id = beaconId;
+                // Use existing beaconId if available, otherwise generate a new one
+                if (!parsedBeacon.beaconId) {
+                  const beaconId = generateBeaconId(parsedBeacon);
+                  parsedBeacon.id = beaconId;
+                } else {
+                  parsedBeacon.id = parsedBeacon.beaconId;
+                }
+                
+                // Skip already processed beacons
+                if (processedBeaconIds.current.has(parsedBeacon.id)) {
+                  return acc;
+                }
                 
                 // Only capture screenshot for new beacons that haven't been processed yet
-                if (!processedBeaconIds.current.has(beaconId)) {
-                  processedBeaconIds.current.add(beaconId);
-                  
-                  // Don't capture for the currently displayed beacon to avoid refreshing during viewing
-                  if (!selectedBeacon || selectedBeacon.id !== beaconId) {
-                    captureScreenshot(beaconId);
-                  }
+                processedBeaconIds.current.add(parsedBeacon.id);
+                // Track when this beacon was processed
+                beaconTimestamps.current.set(parsedBeacon.id, Date.now());
+                
+                // Don't capture for the currently displayed beacon to avoid refreshing during viewing
+                if (!selectedBeacon || selectedBeacon.id !== parsedBeacon.id) {
+                  captureScreenshot(parsedBeacon.id);
                 }
                 
                 acc.push(parsedBeacon);
@@ -195,7 +234,29 @@ export default function AnalyticsDebugger() {
             return acc;
           }, []);
 
-        setBeacons(analyticsBeacons);
+        setBeacons(prevBeacons => {
+          // Create a map of existing beacons for faster lookup
+          const existingBeaconsMap = new Map(prevBeacons.map(b => [b.id, b]));
+          
+          // Add new beacons to the map, preserving existing ones
+          analyticsBeacons.forEach(b => {
+            if (!existingBeaconsMap.has(b.id)) {
+              existingBeaconsMap.set(b.id, b);
+            } else {
+              // Update existing beacons with any new properties
+              const existingBeacon = existingBeaconsMap.get(b.id);
+              existingBeaconsMap.set(b.id, { ...existingBeacon, ...b });
+            }
+          });
+          
+          // Convert map back to array and sort by timestamp
+          const updatedBeacons = Array.from(existingBeaconsMap.values())
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          // Optional: Limit the number of beacons to prevent memory issues
+          const maxBeaconsToKeep = 200;
+          return updatedBeacons.slice(0, maxBeaconsToKeep);
+        });
       } catch (error) {
         console.error('Error fetching traffic:', error);
       }

@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../styles/components/ecommerce-cards.module.css';
+import styles from '@/styles/components/ecommerce-cards.module.css';
 
 interface CustomAttribute {
   label: string;

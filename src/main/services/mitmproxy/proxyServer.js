@@ -33,11 +33,11 @@ function startProxy() {
     const mitm = spawn(executablePath, [
       '--listen-port', '8080',  // Set the port to listen on
       '-v',                    // Standard verbosity level
-      '--flow-detail', '2',    // Medium level of flow detail
+      '--flow-detail', '4',    // Medium level of flow detail
       '--no-http2',            // Disable HTTP/2 for clearer logs
       '--anticache',           // Disable caching to see all requests
       '--set', 'block_global=false', // Don't block any requests
-      '--set', 'flow_detail=2',      // Show detailed flow information
+      '--set', 'flow_detail=4',      // Show detailed flow information
       '--set', 'termlog_verbosity=info', // Show info level logs
       '--set', 'console_eventlog=info'   // Show info level logs in console
     ]);

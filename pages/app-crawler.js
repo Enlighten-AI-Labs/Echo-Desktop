@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import styles from '@/styles/pages/app-crawler.module.css';
 import dynamic from 'next/dynamic';
-import LogEntry from '@/components/LogEntry';
+import LogEntry from '@/components/common/LogEntry';
 import { useNavigation } from './_app';
 
 // Dynamically import ReactFlow to avoid SSR issues

@@ -1,11 +1,11 @@
 import Head from 'next/head';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import AppSelector from '@/components/AppSelector';
-import PlatformSelector from '@/components/PlatformSelector';
-import AndroidDeviceSelector from '@/components/AndroidDeviceSelector';
-import AndroidAppSelector from '@/components/AndroidAppSelector';
-import AnalyticsDebugger from '@/components/AnalyticsDebugger';
+import AppSelector from '@/components/device/AppSelector';
+import PlatformSelector from '@/components/device/PlatformSelector';
+import AndroidDeviceSelector from '@/components/device/AndroidDeviceSelector';
+import AndroidAppSelector from '@/components/device/AndroidAppSelector';
+import AnalyticsDebugger from '@/components/analytics/AnalyticsDebugger';
 import styles from '@/styles/pages/dashboard.module.css';
 
 export default function DashboardView({ navigateTo }) {

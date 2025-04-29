@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'reac
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';
 import EcommerceCard from './EcommerceCard';
-import storage from '../lib/storage';
+import storage from '@/lib/storage';
 
 
 function parseGA4Beacon(url, queryParams) {

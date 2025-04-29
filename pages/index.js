@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
-import styles from '@/styles/Home.module.css';
+import styles from '@/styles/pages/home.module.css';
 import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigation } from './_app';

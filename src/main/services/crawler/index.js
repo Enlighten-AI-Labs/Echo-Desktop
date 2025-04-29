@@ -3,7 +3,7 @@
  */
 
 const appCrawler = require('./appCrawler');
-const visualState = require('./visualState');
+const visualState = require('../mitmproxy/visualState');
 const elementSelector = require('./elementSelector');
 
 module.exports = {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import styles from '@/styles/AdobeAnalyticsDebugger.module.css';
+import styles from '@/styles/components/adobe-analytics-debugger.module.css';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 
 function parseGA4Beacon(url, queryParams) {

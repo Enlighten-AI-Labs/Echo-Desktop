@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import styles from '@/styles/PlatformSelector.module.css';
+import styles from '@/styles/components/platform-selector.module.css';
 
 export default function PlatformSelector({ isOpen, onClose, onSelectPlatform, appName }) {
   const [selectedPlatform, setSelectedPlatform] = useState(null);

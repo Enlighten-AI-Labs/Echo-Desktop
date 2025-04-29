@@ -6,7 +6,7 @@ import PlatformSelector from '@/components/PlatformSelector';
 import AndroidDeviceSelector from '@/components/AndroidDeviceSelector';
 import AndroidAppSelector from '@/components/AndroidAppSelector';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
-import styles from '@/styles/Dashboard.module.css';
+import styles from '@/styles/pages/dashboard.module.css';
 
 export default function DashboardView({ navigateTo }) {
   const { user, loading } = useAuth();

@@ -1,5 +1,5 @@
-import styles from '@/styles/UnifiedAnalyticsDebugger.module.css';
-import journeyStyles from '@/styles/JourneyModal.module.css';
+import styles from '@/styles/components/unified-analytics-debugger.module.css';
+import journeyStyles from '@/styles/components/journey-modal.module.css';
 import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';

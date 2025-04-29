@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import styles from '../styles/device-setup.module.css';
+import styles from '@/styles/pages/device-setup.module.css';
 
 export default function DeviceSetupView({ navigateTo, params }) {
   const { deviceId, packageName } = params || {};

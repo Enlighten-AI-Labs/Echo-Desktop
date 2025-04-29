@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import styles from '@/styles/LogEntry.module.css';
+import styles from '@/styles/components/log-entry.module.css';
 
 // Icons for different log types
 const LogIcon = ({ type }) => {

@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
 import UnifiedAnalyticsDebugger from '@/components/UnifiedAnalyticsDebugger';
-import styles from '@/styles/Debugger.module.css';
+import styles from '@/styles/pages/debugger.module.css';
 import LogEntry from '@/components/LogEntry';
 
 // Dynamically import ReactFlow to avoid SSR issues

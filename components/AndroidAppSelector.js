@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import styles from '@/styles/AndroidAppSelector.module.css';
+import styles from '@/styles/components/android-app-selector.module.css';
 
 export default function AndroidAppSelector({ isOpen, onClose, deviceId, onSelectApp }) {
   const [apps, setApps] = useState([]);

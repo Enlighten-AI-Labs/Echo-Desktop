@@ -1,4 +1,4 @@
-import '@/styles/globals.css';
+import '@/styles/shared/globals.css';
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import Head from 'next/head';

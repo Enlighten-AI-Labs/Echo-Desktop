@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
-import styles from '@/styles/AppCrawler.module.css';
+import styles from '@/styles/pages/app-crawler.module.css';
 import dynamic from 'next/dynamic';
 import LogEntry from '@/components/LogEntry';
 import { useNavigation } from './_app';

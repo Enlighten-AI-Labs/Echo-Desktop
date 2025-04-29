@@ -2,7 +2,7 @@
  * App Crawler Core module - contains the core crawling functionality
  */
 const { prioritizeElementsByAiPrompt } = require('./elementSelector');
-const { addScreen, generateFlowchartData } = require('./visualState');
+const { addScreen, generateFlowchartData } = require('../mitmproxy/visualState');
 const { execAdbCommand } = require('../adb/deviceManager');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -254,7 +254,7 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
     crawlerLogs = [];
     
     // Clear screens
-    require('./visualState').resetScreens();
+    require('../mitmproxy/visualState').resetScreens();
     
     addCrawlerLog(`Starting app crawler for ${packageName} on device ${deviceId}`);
     
@@ -381,7 +381,7 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     const elements = parseUIElements(uiHierarchy);
     
     // Check if we've already visited this screen
-    const { screens, uniqueScreens } = require('./visualState');
+    const { screens, uniqueScreens } = require('../mitmproxy/visualState');
     const existingScreen = uniqueScreens.find(s => s.screenHash === screenHash);
     
     if (!existingScreen) {

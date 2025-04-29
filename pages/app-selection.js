@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import styles from '@/styles/AppSelection.module.css';
+import styles from '@/styles/pages/app-selection.module.css';
 
 export default function AppSelection() {
   const router = useRouter();

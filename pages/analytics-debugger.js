@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Head from 'next/head';
 import AnalyticsDebugger from '@/components/AnalyticsDebugger';
 import LogcatAnalyticsDebugger from '@/components/LogcatAnalyticsDebugger';
-import styles from '@/styles/AnalyticsDebuggerPage.module.css';
+import styles from '@/styles/pages/analytics-debugger.module.css';
 
 export default function AnalyticsDebuggerPage() {
   const router = useRouter();

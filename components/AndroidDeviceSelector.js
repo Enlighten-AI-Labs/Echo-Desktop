@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import styles from '@/styles/AndroidDeviceSelector.module.css';
+import styles from '@/styles/components/android-device-selector.module.css';
 
 export default function AndroidDeviceSelector({ isOpen, onClose, onSelectDevice, appName }) {
   const [devices, setDevices] = useState([]);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import styles from '@/styles/DeviceSetup.module.css';
+import styles from '@/styles/pages/device-setup.module.css';
 
 export default function RtmpSetup({ navigateTo, params }) {
   const { deviceId, packageName } = params || {};

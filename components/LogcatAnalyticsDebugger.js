@@ -1,4 +1,4 @@
-import styles from '@/styles/LogcatAnalyticsDebugger.module.css';
+import styles from '@/styles/components/logcat-analytics-debugger.module.css';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 

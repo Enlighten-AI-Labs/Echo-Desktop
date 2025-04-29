@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import styles from '@/styles/AppSelector.module.css';
+import styles from '@/styles/components/app-selector.module.css';
 
 export default function AppSelector({ isOpen, onClose, onSelectApp }) {
   const [apps, setApps] = useState([]);

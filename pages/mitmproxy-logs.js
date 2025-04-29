@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
-import styles from '@/styles/MitmproxyLogs.module.css';
+import styles from '@/styles/pages/mitmproxy-logs.module.css';
 
 // Component to display the server IP address
 function ServerIpDisplay() {

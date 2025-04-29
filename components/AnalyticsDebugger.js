@@ -1,4 +1,4 @@
-import styles from '@/styles/AnalyticsDebugger.module.css';
+import styles from '@/styles/components/analytics-debugger.module.css';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import AdobeAnalyticsDebugger from './AdobeAnalyticsDebugger';

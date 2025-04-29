@@ -12,6 +12,34 @@
   padding: 1.5rem 2rem;
   background-color: #262628;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
+}
+
+.rtmpButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-family: 'Travelia', sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+  margin-left: auto;
+}
+
+.rtmpButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.rtmpButton svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: var(--color-white);
 }
 
 .backButton {
@@ -56,6 +84,34 @@
   align-items: center;
   justify-content: center;
   background-color: #1a1a1c;
+}
+
+.splitView {
+  display: flex;
+  width: 100%;
+  gap: 2rem;
+  max-width: 1600px;
+}
+
+.platformSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.platformSection h2 {
+  font-family: 'Travelia Bold', sans-serif;
+  font-size: 2rem;
+  color: var(--color-white);
+  text-align: center;
+}
+
+@media (max-width: 1200px) {
+  .splitView {
+    flex-direction: column;
+  }
+  
+
 }
 
 .platformsContainer {
@@ -206,7 +262,12 @@
   font-size: 1.4rem;
   flex-shrink: 0;
   margin-right: 1.5rem;
+  transition: background-color 0.3s ease;
 }
+
+/* Active step style */
+
+
 
 .stepContent {
   flex: 1;
@@ -1359,16 +1420,17 @@
 .searchInput {
   flex: 1;
   padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-primary);
+  border: 2px solid #3a3a3c;
+  border-radius: 8px;
+  background: #323234;
+  color: #e0e0e0;
   font-size: 0.9rem;
+  transition: border-color 0.2s ease;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--accent-color);
+  border-color: #9C54AD;
 }
 
 .appsGridContainer {
@@ -1591,76 +1653,107 @@
   border: 2px solid #3a3a3c;
   border-radius: 8px;
   padding: 1rem;
-} 
+}
+
 .deviceControls {
-display: flex;
-gap: 8px;
-align-items: center;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .proxyButton {
-padding: 6px 12px;
-border-radius: 4px;
-border: 1px solid #ccc;
-background-color: #fff;
-cursor: pointer;
-font-size: 14px;
-transition: all 0.2s;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
 .proxyButton:hover {
-background-color: #f5f5f5;
+  background-color: #f5f5f5;
 }
 
 .proxyButton:disabled {
-opacity: 0.6;
-cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .proxyEnabled {
-background-color: #e6f4ea;
-border-color: #34a853;
-color: #34a853;
+  background-color: #e6f4ea;
+  border-color: #34a853;
+  color: #34a853;
 }
 
 .proxyEnabled:hover {
-background-color: #d2ebd8;
+  background-color: #d2ebd8;
 }
 
 .tabsContainer {
-display: flex;
-gap: 2px;
-margin-bottom: 20px;
-border-bottom: 1px solid #e0e0e0;
-width: 100%;
+  display: flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  width: 100%;
 }
 
 .tabButton {
-padding: 10px 20px;
-border: none;
-background: none;
-cursor: pointer;
-font-size: 16px;
-color: #666;
-position: relative;
-transition: all 0.2s;
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  position: relative;
+  transition: all 0.2s;
 }
 
 .tabButton:hover {
-color: #000;
+  color: #000;
 }
 
 .activeTab {
-color: #000;
-font-weight: 500;
+  color: #000;
+  font-weight: 500;
 }
 
 .activeTab::after {
-content: '';
-position: absolute;
-bottom: -1px;
-left: 0;
-right: 0;
-height: 2px;
-background-color: #000;
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #000;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.expandButton {
+  background: rgba(156, 84, 173, 0.1);
+  border: 1px solid rgba(156, 84, 173, 0.3);
+  color: #9C54AD;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background: rgba(156, 84, 173, 0.2);
+}
+
+.instructionsStep.collapsed .stepBody {
+  display: none;
+}
+
+.stepBody {
+  margin-top: 10px;
 } 

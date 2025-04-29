@@ -5,6 +5,9 @@ const { prioritizeElementsByAiPrompt } = require('./elementSelector');
 const { addScreen, generateFlowchartData } = require('./visualState');
 const { execAdbCommand } = require('../adb/deviceManager');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 // Crawler state
 let crawlerRunning = false;
@@ -83,15 +86,46 @@ async function getCurrentActivity(deviceId) {
  */
 async function captureUIHierarchy(deviceId) {
   try {
-    const output = await execAdbCommand(`-s ${deviceId} shell uiautomator dump /sdcard/window_dump.xml`);
-    if (!output.includes('UI hierarchy dumped to')) {
-      throw new Error('Failed to dump UI hierarchy');
+    console.log(`Dumping UI hierarchy for device ${deviceId}...`);
+    
+    // Create a temporary file on the device
+    const dumpResult = await execAdbCommand(`-s ${deviceId} shell uiautomator dump /sdcard/window_dump.xml`);
+    console.log('UIAutomator dump result:', dumpResult);
+    
+    // Check if the dump was successful - be more flexible with the check
+    // Since some devices return "hierchary" instead of "hierarchy"
+    if (!dumpResult.includes('dumped to')) {
+      throw new Error(`UIAutomator dump failed: ${dumpResult}`);
     }
     
-    const xmlData = await execAdbCommand(`-s ${deviceId} shell cat /sdcard/window_dump.xml`);
-    return xmlData;
+    // Pull the file from the device
+    const tempFile = path.join(os.tmpdir(), `window_dump_${Date.now()}.xml`);
+    await execAdbCommand(`-s ${deviceId} pull /sdcard/window_dump.xml "${tempFile}"`);
+    
+    // Check if the file exists and has content
+    if (!fs.existsSync(tempFile)) {
+      throw new Error('Failed to pull UI dump file from device');
+    }
+    
+    const stats = fs.statSync(tempFile);
+    if (stats.size === 0) {
+      throw new Error('UI dump file is empty');
+    }
+    
+    // Read the file content
+    const content = fs.readFileSync(tempFile, 'utf8');
+    
+    // Clean up
+    fs.unlinkSync(tempFile);
+    
+    if (!content || content.trim() === '') {
+      throw new Error('UI dump content is empty');
+    }
+    
+    return content;
   } catch (error) {
-    throw new Error(`Failed to capture UI hierarchy: ${error.message}`);
+    console.error('Error getting UI hierarchy:', error);
+    throw error;
   }
 }
 
@@ -106,13 +140,12 @@ async function captureScreenshot(deviceId) {
     await execAdbCommand(`-s ${deviceId} shell screencap -p /sdcard/screenshot.png`);
     
     // Pull and convert to base64
-    const screenshotPath = `/tmp/screenshot_${Date.now()}.png`;
+    const screenshotPath = path.join(os.tmpdir(), `screenshot_${Date.now()}.png`);
     await execAdbCommand(`-s ${deviceId} pull /sdcard/screenshot.png ${screenshotPath}`);
     
     // Convert to base64 for web display
-    const fs = require('fs');
     const imageBuffer = fs.readFileSync(screenshotPath);
-    const base64Image = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+    const base64Image = imageBuffer.toString('base64');
     
     // Clean up
     fs.unlinkSync(screenshotPath);
@@ -130,30 +163,60 @@ async function captureScreenshot(deviceId) {
  */
 function parseUIElements(xmlData) {
   try {
-    const elements = [];
-    // Simple regex-based parser (in a production app you'd use a proper XML parser)
-    const nodeRegex = /<node[^>]+bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"[^>]+class="([^"]+)"[^>]+text="([^"]*)"[^>]+resource-id="([^"]*)"[^>]+/g;
-    
-    let match;
-    while ((match = nodeRegex.exec(xmlData)) !== null) {
-      const [, left, top, right, bottom, className, text, resourceId] = match;
-      
-      // Calculate a unique hash for this button based on position and properties
-      const buttonPropsString = `${left}-${top}-${right}-${bottom}-${className}-${text}-${resourceId}`;
-      const buttonHash = calculateHash(buttonPropsString);
-      
-      elements.push({
-        bounds: { left, top, right, bottom },
-        class: className,
-        text: text,
-        resourceId: resourceId,
-        buttonHash
-      });
+    if (!xmlData || typeof xmlData !== 'string') {
+      console.error('Invalid XML input:', xmlData);
+      return [];
     }
     
+    const elements = [];
+    
+    // Simple regex-based parsing (in a production app you'd use a proper XML parser)
+    // This matches node elements with their attributes
+    const nodeRegex = /<node[^>]+/g;
+    let match;
+    
+    while ((match = nodeRegex.exec(xmlData)) !== null) {
+      const nodeAttributes = match[0];
+      
+      // Extract various attributes using regex
+      const classMatch = nodeAttributes.match(/class="([^"]+)"/);
+      const boundsMatch = nodeAttributes.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+      const clickableMatch = nodeAttributes.match(/clickable="([^"]+)"/);
+      const textMatch = nodeAttributes.match(/text="([^"]*)"/);
+      const resourceIdMatch = nodeAttributes.match(/resource-id="([^"]*)"/);
+      
+      // Only process nodes that have bounds
+      if (boundsMatch) {
+        const className = classMatch ? classMatch[1] : 'unknown';
+        const left = parseInt(boundsMatch[1]);
+        const top = parseInt(boundsMatch[2]);
+        const right = parseInt(boundsMatch[3]);
+        const bottom = parseInt(boundsMatch[4]);
+        const text = textMatch ? textMatch[1] : '';
+        const resourceId = resourceIdMatch ? resourceIdMatch[1] : '';
+        const clickable = clickableMatch ? clickableMatch[1] === 'true' : false;
+        
+        // Calculate a unique hash for this element
+        const elementPropsString = `${left}-${top}-${right}-${bottom}-${className}-${text}-${resourceId}`;
+        const buttonHash = calculateHash(elementPropsString);
+        
+        elements.push({
+          bounds: { left, top, right, bottom },
+          class: className,
+          text: text,
+          resourceId: resourceId,
+          clickable: clickable,
+          buttonHash
+        });
+      }
+    }
+    
+    console.log(`Parsed ${elements.length} UI elements from XML`);
     return elements;
   } catch (error) {
-    throw new Error(`Failed to parse UI elements: ${error.message}`);
+    console.error('Error parsing UI elements:', error);
+    // Return empty array instead of throwing to allow the crawler to continue
+    return [];
   }
 }
 
@@ -280,16 +343,38 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     addCrawlerLog(`Current activity: ${currentActivity}`);
     
     // Capture UI hierarchy
-    addCrawlerLog('Capturing UI hierarchy');
-    const uiHierarchy = await captureUIHierarchy(deviceId);
-    const screenHash = calculateHash(uiHierarchy);
-    addCrawlerLog(`Screen hash: ${screenHash}`);
+    let uiHierarchy, screenHash;
+    try {
+      addCrawlerLog('Capturing UI hierarchy');
+      uiHierarchy = await captureUIHierarchy(deviceId);
+      if (!uiHierarchy) {
+        throw new Error('Failed to get UI hierarchy data');
+      }
+      screenHash = calculateHash(uiHierarchy);
+      addCrawlerLog(`Screen hash: ${screenHash}`);
+    } catch (uiError) {
+      addCrawlerLog(`Error capturing UI hierarchy: ${uiError.message}`, 'error');
+      // If we can't get the UI hierarchy, we can't proceed with this screen
+      return;
+    }
     
     // Capture screenshot
-    addCrawlerLog('Capturing screenshot');
-    const screenshot = await captureScreenshot(deviceId);
-    const screenshotHash = calculateHash(screenshot);
-    addCrawlerLog(`Screenshot hash: ${screenshotHash}`);
+    let screenshot, screenshotHash;
+    try {
+      addCrawlerLog('Capturing screenshot');
+      screenshot = await captureScreenshot(deviceId);
+      if (!screenshot) {
+        addCrawlerLog('Warning: Screenshot capture returned empty data', 'warning');
+        screenshot = ''; // Use empty string as fallback
+      }
+      screenshotHash = calculateHash(screenshot || '');
+      addCrawlerLog(`Screenshot hash: ${screenshotHash}`);
+    } catch (screenError) {
+      addCrawlerLog(`Error capturing screenshot: ${screenError.message}`, 'warning');
+      // We can continue without a screenshot
+      screenshot = '';
+      screenshotHash = calculateHash('no_screenshot_' + Date.now());
+    }
     
     // Analyze UI elements
     addCrawlerLog('Analyzing UI elements');
@@ -304,7 +389,7 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       const screen = {
         id: screens.length + 1,
         timestamp: new Date().toISOString(),
-        activity: currentActivity,
+        activityName: currentActivity,
         screenHash,
         screenshotHash,
         screenshot,

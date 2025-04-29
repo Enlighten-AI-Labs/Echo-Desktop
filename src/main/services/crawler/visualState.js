@@ -40,9 +40,9 @@ function generateFlowchartData() {
   const nodes = uniqueScreens.map(screen => {
     return {
       id: screen.id.toString(),
-      label: screen.activity.split('/').pop(),
+      label: screen.activityName.split('/').pop(),
       data: {
-        activity: screen.activity,
+        activity: screen.activityName,
         screenshot: screen.screenshot,
         timestamp: screen.timestamp
       }

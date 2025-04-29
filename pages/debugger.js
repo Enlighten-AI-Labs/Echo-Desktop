@@ -2,8 +2,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import AnalyticsDebugger from '@/components/analytics/AnalyticsDebugger';
-import LogcatAnalyticsDebugger from '@/components/analytics/LogcatAnalyticsDebugger';
-import UnifiedAnalyticsDebugger from '@/components/analytics/UnifiedAnalyticsDebugger';
 import styles from '@/styles/pages/debugger.module.css';
 import LogEntry from '@/components/common/LogEntry';
 
@@ -1078,7 +1076,7 @@ export default function DebuggerView({ navigateTo, params }) {
             }}>
             
             <div className={styles.analyticsDebuggerContent}>
-                <UnifiedAnalyticsDebugger
+                <AnalyticsDebugger
                   deviceId={deviceId}
                   packageName={packageName}
                   show={true}

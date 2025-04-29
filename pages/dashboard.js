@@ -5,7 +5,6 @@ import AppSelector from '@/components/device/AppSelector';
 import PlatformSelector from '@/components/device/PlatformSelector';
 import AndroidDeviceSelector from '@/components/device/AndroidDeviceSelector';
 import AndroidAppSelector from '@/components/device/AndroidAppSelector';
-import AnalyticsDebugger from '@/components/analytics/AnalyticsDebugger';
 import styles from '@/styles/pages/dashboard.module.css';
 
 export default function DashboardView({ navigateTo }) {
@@ -122,7 +121,7 @@ export default function DashboardView({ navigateTo }) {
     navigateTo('debugger', {
       deviceId: selectedDevice?.id,
       packageName: selectedAndroidApp?.packageName,
-      tab: 'network'
+      tab: 'unified'
     });
   };
 

@@ -1,8 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import Head from 'next/head';
-import AnalyticsDebugger from '@/components/analytics/AnalyticsDebugger';
-import LogcatAnalyticsDebugger from '@/components/analytics/LogcatAnalyticsDebugger';
 import styles from '@/styles/pages/analytics-debugger.module.css';
 
 export default function AnalyticsDebuggerPage() {

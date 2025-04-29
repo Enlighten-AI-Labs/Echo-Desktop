@@ -2,9 +2,11 @@ import Head from 'next/head';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from '@/styles/pages/dashboard.module.css';
+import packageInfo from '../../package.json';
 
 export default function DashboardView({ navigateTo }) {
   const { user, loading } = useAuth();
+  const appVersion = packageInfo.version;
 
   if (!loading && !user) {
     navigateTo('login');
@@ -70,6 +72,7 @@ export default function DashboardView({ navigateTo }) {
           >
             Start Debugging
           </button>
+          <p className={styles.versionText}>v{appVersion}</p>
         </div>
       </main>
     </>

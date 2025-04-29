@@ -109,6 +109,19 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.versionText {
+  font-family: 'Doto', sans-serif;
+  font-weight: 600; /* Semi-Bold */
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
 /* Debugging status section */
 .debuggingInfo {
   background-color: rgba(60, 118, 169, 0.1); /* Blue with opacity */

@@ -336,7 +336,7 @@ export default function AppSelection() {
       const launchResult = await window.api.adb.launchApp(deviceId, selectedApp);
 
       if (!launchResult.success) {
-        throw new Error(`Failed to launch app: ${launchResult.message}`);
+        console.error('Failed to launch app:', launchResult.message);
       }
       
       setLaunchStatus({ step: 'complete', message: 'App launched successfully!' });

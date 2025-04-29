@@ -344,7 +344,7 @@ export default function DeviceSetupView({ navigateTo, params }) {
       const launchResult = await window.api.adb.launchApp(selectedDevice, selectedApp);
 
       if (!launchResult.success) {
-        throw new Error(`Failed to launch app: ${launchResult.message}`);
+        console.error('Failed to launch app:', launchResult.message);
       }
       
       setLaunchStatus({ step: 'complete', message: 'App launched successfully!' });

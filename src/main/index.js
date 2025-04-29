@@ -1,11 +1,16 @@
+/**
+ * Main entry point for the Electron main process
+ */
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const url = require('url');
-const { ensureTmpDir } = require('./modules/utils');
-const adb = require('./modules/adb');
-const mitmproxy = require('./modules/mitmproxy');
-const rtmp = require('./modules/rtmp');
-const crawler = require('./modules/crawler');
+const { ensureTmpDir } = require('./utils');
+
+// Import services
+const adbService = require('./services/adb');
+const mitmproxyService = require('./services/mitmproxy');
+const crawlerService = require('./services/crawler');
+const rtmpService = require('./modules/rtmp'); // We'll keep this as is for now
 
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow;
@@ -210,22 +215,23 @@ app.whenReady().then(async () => {
   registerFontProtocol();
   
   try {
-    // Ensure ADB is installed before creating the window
-    await adb.ensureAdbExists();
+    // Initialize the ADB service
+    await adbService.initialize();
+    console.log('ADB service initialized');
     
-    // Ensure mitmproxy is installed
-    const mitmproxyInstalled = await mitmproxy.ensureMitmproxyExists();
-    if (mitmproxyInstalled) {
-      // Start mitmproxy automatically
-      mitmproxy.startMitmproxy();
-    } else {
-      console.warn('Failed to install mitmproxy. Some features will not work.');
+    // Initialize the MitmProxy service
+    const mitmproxyInitialized = await mitmproxyService.initialize();
+    console.log('MitmProxy service initialized:', mitmproxyInitialized);
+    
+    // Auto-start MitmProxy
+    if (mitmproxyInitialized) {
+      mitmproxyService.startProxy();
     }
 
     // Auto-start RTMP server
-    rtmp.startRtmpServer();
+    rtmpService.startRtmpServer();
   } catch (error) {
-    console.error('Failed to set up dependencies:', error);
+    console.error('Failed to initialize services:', error);
   }
   
   createWindow();
@@ -243,143 +249,143 @@ app.on('activate', () => {
   }
 });
 
-// Make sure to clean up mitmproxy and RTMP server on app quit
+// Clean up before quitting
 app.on('will-quit', () => {
-  mitmproxy.stopMitmproxy();
-  rtmp.stopRtmpServer();
+  mitmproxyService.stopProxy();
+  rtmpService.stopRtmpServer();
 });
 
 // Register IPC handlers
 // ADB handlers
 ipcMain.handle('adb:getDevices', async () => {
-  return await adb.getDevices();
+  return await adbService.getDevices();
 });
 
 ipcMain.handle('adb:generateQRCode', async () => {
-  return await adb.generateQRCode();
+  return await adbService.generateQRCode();
 });
 
 ipcMain.handle('adb:generateAdbWifiQRCode', async () => {
-  return await adb.generateAdbWifiQRCode();
+  return await adbService.generateAdbWifiQRCode();
 });
 
 ipcMain.handle('adb:connectDevice', async (event, ipAddress, port, pairingCode) => {
-  return await adb.connectDevice(ipAddress, port, pairingCode);
+  return await adbService.connectDevice(ipAddress, port, pairingCode);
 });
 
 ipcMain.handle('adb:disconnectDevice', async (event, deviceId) => {
-  return await adb.disconnectDevice(deviceId);
+  return await adbService.disconnectDevice(deviceId);
 });
 
 ipcMain.handle('adb:startPairing', async () => {
-  return await adb.startPairing();
+  return await adbService.startPairing();
 });
 
 ipcMain.handle('adb:getLocalIp', async () => {
-  const { getLocalIpAddress } = require('./modules/utils');
+  const { getLocalIpAddress } = require('./utils');
   return getLocalIpAddress();
 });
 
 ipcMain.handle('adb:getInstalledApps', async (event, deviceId) => {
-  return await adb.getInstalledApps(deviceId);
+  return await adbService.getInstalledApps(deviceId);
 });
 
 ipcMain.handle('adb:launchApp', async (event, deviceId, packageName) => {
-  return await adb.launchApp(deviceId, packageName);
+  return await adbService.launchApp(deviceId, packageName);
 });
 
 ipcMain.handle('adb:executeCommand', async (event, deviceId, command) => {
-  return await adb.executeCommand(deviceId, command);
+  return await adbService.executeCommand(deviceId, command);
 });
 
 // New logcat handlers
 ipcMain.handle('adb:startLogcatCapture', async (event, deviceId, filter) => {
-  return adb.startLogcatCapture(deviceId, filter);
+  return adbService.startLogcatCapture(deviceId, filter);
 });
 
 ipcMain.handle('adb:stopLogcatCapture', async () => {
-  return adb.stopLogcatCapture();
+  return adbService.stopLogcatCapture();
 });
 
 ipcMain.handle('adb:getAnalyticsLogs', async () => {
-  return adb.getAnalyticsLogs();
+  return adbService.getAnalyticsLogs();
 });
 
 ipcMain.handle('adb:clearAnalyticsLogs', async () => {
-  return adb.clearAnalyticsLogs();
+  return adbService.clearAnalyticsLogs();
 });
 
 ipcMain.handle('adb:isLogcatRunning', async () => {
-  return adb.isLogcatRunning();
+  return adbService.isLogcatRunning();
 });
 
 // MitmProxy handlers
 ipcMain.handle('mitmproxy:status', () => {
-  return mitmproxy.getStatus();
+  return mitmproxyService.getProxyStatus();
 });
 
 ipcMain.handle('mitmproxy:startCapturing', async () => {
-  return mitmproxy.startMitmproxy();
+  return mitmproxyService.startProxy();
 });
 
 ipcMain.handle('mitmproxy:stopCapturing', () => {
-  return mitmproxy.stopMitmproxy();
+  return mitmproxyService.stopProxy();
 });
 
 ipcMain.handle('mitmproxy:getProxyIp', () => {
-  return mitmproxy.getProxyIp();
+  return mitmproxyService.getProxyIp();
 });
 
 ipcMain.handle('mitmproxy:getTraffic', () => {
-  return mitmproxy.getTraffic();
+  return mitmproxyService.getTraffic();
 });
 
 ipcMain.handle('mitmproxy:clearTraffic', () => {
-  return mitmproxy.clearTraffic();
+  return mitmproxyService.clearTraffic();
 });
 
 // RTMP server handlers
 ipcMain.handle('rtmp:status', () => {
-  return rtmp.getRtmpServerStatus();
+  return rtmpService.getRtmpServerStatus();
 });
 
 ipcMain.handle('rtmp:start', (event, customConfig) => {
-  return rtmp.startRtmpServer(customConfig);
+  return rtmpService.startRtmpServer(customConfig);
 });
 
 ipcMain.handle('rtmp:stop', () => {
-  return rtmp.stopRtmpServer();
+  return rtmpService.stopRtmpServer();
 });
 
 ipcMain.handle('rtmp:getConfig', () => {
-  return rtmp.getConfig();
+  return rtmpService.getConfig();
 });
 
 ipcMain.handle('rtmp:captureScreenshot', async (event, beaconId) => {
-  return await rtmp.captureScreenshot(beaconId);
+  return await rtmpService.captureScreenshot(beaconId);
 });
 
 ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
-  return await rtmp.getScreenshotDataUrl(fileName);
+  return await rtmpService.getScreenshotDataUrl(fileName);
 });
 
 // Crawler handlers
 ipcMain.handle('crawler:start', async (event, deviceId, packageName, settings) => {
-  return await crawler.startAppCrawling(deviceId, packageName, settings, mainWindow);
+  return await crawlerService.startAppCrawling(deviceId, packageName, settings, mainWindow);
 });
 
 ipcMain.handle('crawler:stop', async () => {
-  return crawler.stopAppCrawling(mainWindow);
+  return crawlerService.stopAppCrawling(mainWindow);
 });
 
 ipcMain.handle('crawler:status', async () => {
-  return crawler.getStatus();
+  return crawlerService.getStatus();
 });
 
 ipcMain.handle('crawler:getLogs', async () => {
-  return crawler.getLogs();
+  return crawlerService.getLogs();
 });
 
 ipcMain.handle('crawler:getFlowchartData', async () => {
-  return crawler.getFlowchartData();
+  return crawlerService.getFlowchartData();
 }); 

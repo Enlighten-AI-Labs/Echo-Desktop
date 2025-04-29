@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import styles from '@/styles/pages/export.module.css';
 import { v4 as uuidv4 } from 'uuid';
 import { parseLogcatParameters, extractItems } from '@/lib/analytics-utils';
-import storage from '../lib/storage';
+import storage from '../../lib/storage';
 
 const JsonPreview = ({ data }) => {
   const initializeExpandedSections = (obj, path = 'root') => {

@@ -4,13 +4,13 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import Head from 'next/head';
 
 // Import all main components that were previously pages
-import Dashboard from './dashboard';
-import Debugger from './debugger';
-import DeviceSetup from './device-setup';
-import MitmproxyLogs from './mitmproxy-logs';
-import AppCrawler from './app-crawler';
-import Export from './export';
-import RtmpSetup from './rtmp-setup';
+import Dashboard from './dashboard/dashboard';
+import Debugger from './analytics/debugger';
+import DeviceSetup from './device/device-setup';
+import MitmproxyLogs from './data/mitmproxy-logs';
+import AppCrawler from './analytics/app-crawler';
+import Export from './data/export';
+import RtmpSetup from './device/rtmp-setup';
 import Home from './index';
 
 // Create a navigation context to make it available throughout the app

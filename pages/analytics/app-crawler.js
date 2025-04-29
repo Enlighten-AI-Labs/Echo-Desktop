@@ -3,7 +3,7 @@ import Head from 'next/head';
 import styles from '@/styles/pages/app-crawler.module.css';
 import dynamic from 'next/dynamic';
 import LogEntry from '@/components/common/LogEntry';
-import { useNavigation } from './_app';
+import { useNavigation } from '../_app';
 
 // Dynamically import ReactFlow to avoid SSR issues
 const ReactFlow = dynamic(

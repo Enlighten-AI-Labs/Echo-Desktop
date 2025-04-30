@@ -49,9 +49,6 @@ interface EcommerceCardProps {
 const EcommerceCard: React.FC<EcommerceCardProps> = ({ data }) => {
   return (
     <div className={styles.ecommerceContainer}>
-      <div className={styles.ecommerceHeader}>
-        <h2>eCommerce</h2>
-      </div>
 
       <div className={styles.ecommerceSummary}>
         <div className={styles.summarySection}>

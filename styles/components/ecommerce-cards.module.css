@@ -25,13 +25,12 @@
 
 /* Container Styles - Scoped to eCommerce section */
 .ecommerceContainer {
-    padding: 20px;
+    margin-top: 16px;
     font-family: 'Azeret Mono', monospace;
     font-weight: 300;
     color: #262628;
     background: white;
     border-radius: 8px;
-    margin: 16px;
 }
 
 /* Header Styles */

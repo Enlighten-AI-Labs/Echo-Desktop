@@ -325,11 +325,12 @@
 
 .eventDetails {
   flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background-color: #ffffff;
   border-radius: 8px;
   margin: 0 1rem;
+  overflow: hidden;
 }
 
 .screenshotPanel {
@@ -600,7 +601,6 @@
 }
 
 .eventDetailsHeader {
-  position: sticky;
   top: 0;
   z-index: 20;
   background-color: #F0F2F5;
@@ -609,6 +609,8 @@
   align-items: center;
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
 }
 
 .eventDetailsTitle {
@@ -648,6 +650,7 @@
 }
 
 .section {
+  margin: 1rem;
   margin-bottom: 1.5rem;
   background: white;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
@@ -667,7 +670,6 @@
   cursor: pointer;
   min-height: 40px;
   margin-bottom: 0;
-  position: sticky;
   top: 0;
   z-index: 10;
 }
@@ -2472,4 +2474,10 @@ border-top-right-radius: 6px;
 .ribbon.expanded ~ .toolbar .toggleIcon,
 button[aria-expanded="true"] .toggleIcon {
   transform: rotate(180deg);
+}
+
+.eventDetailsContent {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
 }

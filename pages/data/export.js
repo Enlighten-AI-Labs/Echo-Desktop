@@ -277,6 +277,11 @@ export default function ExportPage({ navigateTo, params }) {
         screenshot_url: event.screenshot?.dataUrl || null
       };
 
+      // Add UI XML data if it exists
+      if (event.uiXml) {
+        baseEvent.ui_xml = event.uiXml;
+      }
+
       // Add ecommerce items if they exist
       if (items.length > 0) {
         baseEvent.ecommerce_items = items.map(item => ({
@@ -418,6 +423,22 @@ export default function ExportPage({ navigateTo, params }) {
 
             if (uploadError) {
               console.error(`Error uploading screenshot for event ${event.id}:`, uploadError);
+            }
+            
+            // Upload UI XML if it exists
+            if (event.ui_xml) {
+              const xmlBlob = new Blob([event.ui_xml], { type: 'application/xml' });
+              const { error: xmlUploadError } = await supabase.storage
+                .from('crawl-data')
+                .upload(`${crawl.id}/${event.id}_ui.xml`, xmlBlob, {
+                  contentType: 'application/xml',
+                  cacheControl: '3600',
+                  upsert: true
+                });
+                
+              if (xmlUploadError) {
+                console.error(`Error uploading UI XML for event ${event.id}:`, xmlUploadError);
+              }
             }
           } catch (error) {
             console.error(`Error processing screenshot for event ${event.id}:`, error);

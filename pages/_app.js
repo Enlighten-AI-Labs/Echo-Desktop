@@ -1,6 +1,7 @@
 import '@/styles/shared/globals.css';
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AnalyticsEventsProvider } from '@/contexts/AnalyticsEventsProvider';
 import Head from 'next/head';
 
 // Import all main components that were previously pages
@@ -81,15 +82,17 @@ function MyApp({ Component, pageProps }) {
   // Use the new component-based navigation approach as the default
   return (
     <AuthProvider>
-      <NavigationContext.Provider value={navigationValue}>
-        <Head>
-          <title>Echo Desktop</title>
-          <meta name="description" content="Echo Desktop Application" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/favicon.ico" />
-        </Head>
-        {renderView()}
-      </NavigationContext.Provider>
+      <AnalyticsEventsProvider>
+        <NavigationContext.Provider value={navigationValue}>
+          <Head>
+            <title>Echo Desktop</title>
+            <meta name="description" content="Echo Desktop Application" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <link rel="icon" href="/favicon.ico" />
+          </Head>
+          {renderView()}
+        </NavigationContext.Provider>
+      </AnalyticsEventsProvider>
     </AuthProvider>
   );
 }

@@ -5,6 +5,7 @@ import styles from '@/styles/pages/export.module.css';
 import { v4 as uuidv4 } from 'uuid';
 import { parseLogcatParameters, extractItems } from '@/lib/analytics-utils';
 import storage from '../../lib/storage';
+import { useAnalyticsEvents } from '@/contexts/AnalyticsEventsProvider';
 
 const JsonPreview = ({ data }) => {
   const initializeExpandedSections = (obj, path = 'root') => {
@@ -138,6 +139,7 @@ export default function ExportPage({ navigateTo, params }) {
   const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [newVersion, setNewVersion] = useState('');
   const [journeys, setJourneys] = useState([]);
+  const { events, exportEvents } = useAnalyticsEvents();
   const [exportConfig, setExportConfig] = useState({
     targetApp: '',
     targetVersion: '',
@@ -146,26 +148,18 @@ export default function ExportPage({ navigateTo, params }) {
     selectedJourneys: []
   });
   const [previewData, setPreviewData] = useState(null);
-  const [events, setEvents] = useState([]);
   const [screenshots, setScreenshots] = useState({});
 
   useEffect(() => {
-    // Load journeys and events from localStorage
+    // Load journeys from localStorage
     const savedJourneys = storage.getItem('analyticsJourneys');
-    const savedEvents = storage.getItem('analyticsEvents');
     
     if (savedJourneys) {
       setJourneys(JSON.parse(savedJourneys));
     }
-    if (savedEvents) {
-      setEvents(JSON.parse(savedEvents));
-    }
 
-    // Add event listener for storage changes
+    // Add event listener for journeys changes
     const handleStorageChange = (e) => {
-      if (e.key === 'analyticsEvents') {
-        setEvents(JSON.parse(e.newValue));
-      }
       if (e.key === 'analyticsJourneys') {
         setJourneys(JSON.parse(e.newValue));
       }
@@ -420,7 +414,7 @@ export default function ExportPage({ navigateTo, params }) {
       // Wait for all screenshot uploads to complete
       await Promise.all(screenshotUploads);
 
-      // Create a Blob with the JSON data
+      // Create a Blob with the JSON data for download
       const blob = new Blob([JSON.stringify(previewData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
@@ -439,6 +433,12 @@ export default function ExportPage({ navigateTo, params }) {
       console.error('Error exporting:', error);
       alert('Error exporting data: ' + error.message);
     }
+  };
+
+  // Add a new function to directly export all events
+  const handleExportAllEvents = () => {
+    exportEvents();
+    alert('All analytics events exported successfully!');
   };
 
   const handleCreateVersion = async () => {
@@ -780,16 +780,49 @@ export default function ExportPage({ navigateTo, params }) {
                     </div>
                   </div>
                 )}
-              </div>
 
-              <div className={styles.formActions}>
-                <button 
-                  className={styles.exportButton}
-                  onClick={handleExport}
-                  disabled={!exportConfig.targetApp || !exportConfig.targetVersion || !exportConfig.platform || !exportConfig.deviceName || exportConfig.selectedJourneys.length === 0}
-                >
-                  Export Data
-                </button>
+                <div className={styles.formGroup}>
+                  <label>Analytics Data Statistics</label>
+                  <div className={styles.statsContainer}>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Total Events</span>
+                      <span className={styles.statValue}>{events.length}</span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Journeys</span>
+                      <span className={styles.statValue}>{journeys.length}</span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <span className={styles.statLabel}>Selected Events</span>
+                      <span className={styles.statValue}>
+                        {exportConfig.selectedJourneys.length > 0 
+                          ? events.filter(event => 
+                              event.journeys?.some(journey => 
+                                exportConfig.selectedJourneys.includes(journey.id)
+                              )
+                            ).length 
+                          : 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.formActions}>
+                  <button 
+                    className={styles.exportButton}
+                    onClick={handleExport}
+                    disabled={!exportConfig.targetApp || !exportConfig.targetVersion || !exportConfig.platform || !exportConfig.deviceName || exportConfig.selectedJourneys.length === 0}
+                  >
+                    Export Selected Data
+                  </button>
+                  <button 
+                    className={styles.exportAllButton}
+                    onClick={handleExportAllEvents}
+                    disabled={events.length === 0}
+                  >
+                    Export All Events
+                  </button>
+                </div>
               </div>
             </div>
           )}

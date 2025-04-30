@@ -2205,3 +2205,39 @@ border-top-right-radius: 6px;
   border-radius: 4px;
   font-weight: 500;
 }
+
+.exportButton,
+.importButton {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 0.5rem;
+}
+
+.exportButton {
+  background-color: #3C76A9; /* Brand blue */
+  color: white;
+  border: none;
+}
+
+.exportButton:hover {
+  background-color: #2c5a84;
+}
+
+.exportButton:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.importButton {
+  background-color: #6DC19C; /* Brand green */
+  color: white;
+  border: none;
+}
+
+.importButton:hover {
+  background-color: #4fa07c;
+}

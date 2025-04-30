@@ -3,6 +3,7 @@ import journeyStyles from '@/styles/components/journey-modal.module.css';
 import { useEffect, useState, useRef, useCallback, useDeferredValue } from 'react';
 import { parseAdobeAnalyticsBeacon } from '@/lib/adobe-analytics-parser';
 import { useReact19 } from '@/contexts/React19Provider';
+import { useAnalyticsEvents } from '@/contexts/AnalyticsEventsProvider';
 import EcommerceCard from './EcommerceCard';
 import storage from '@/lib/storage';
 import { TrashIcon, ShoppingCartIcon, EditIcon } from '../icons/AnalyticsIcons';
@@ -25,9 +26,10 @@ import useScreenshots from '@/hooks/useScreenshots';
 
 export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
   const { startTransition, isPending } = useReact19();
+  const { events, addOrUpdateEvents, deleteEvent, clearEvents, exportEvents, importEvents } = useAnalyticsEvents();
   
   // State for analytics events from all sources
-  const [events, setEvents] = useState([]);
+  // const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [userSelectedEvent, setUserSelectedEvent] = useState(false);
   const [userInteracting, setUserInteracting] = useState(false);
@@ -157,7 +159,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   // Add delete event handler
   const handleDeleteEvent = (eventToDelete, e) => {
     e.stopPropagation(); // Prevent event card selection when deleting
-    setEvents(currentEvents => currentEvents.filter(event => event.id !== eventToDelete.id));
+    deleteEvent(eventToDelete.id);
     if (selectedEvent?.id === eventToDelete.id) {
       setSelectedEvent(null);
     }
@@ -404,35 +406,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
         // Only update events if we have new ones to add and component is still mounted
         if (newEvents.length > 0 && isMounted) {
-          setEvents(currentEvents => {
-            // Create a map of existing events for faster lookup
-            const existingEventsMap = new Map(currentEvents.map(e => [e.id, e]));
-            
-            // Add new events to the map, preserving existing ones
-            newEvents.forEach(e => {
-              if (!existingEventsMap.has(e.id)) {
-                existingEventsMap.set(e.id, e);
-              } else {
-                // Update existing events with any new properties
-                // This is useful for events that were partially processed earlier
-                const existingEvent = existingEventsMap.get(e.id);
-                existingEventsMap.set(e.id, { ...existingEvent, ...e });
-              }
-            });
-            
-            // Convert map back to array and sort
-            const updatedEvents = Array.from(existingEventsMap.values())
-              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            // Optional: Limit the number of events to prevent memory issues
-            const maxEventsToKeep = 500;
-            const limitedEvents = updatedEvents.slice(0, maxEventsToKeep);
-            
-            // Save to localStorage
-            storage.setItem('analyticsEvents', JSON.stringify(limitedEvents));
-            
-            return limitedEvents;
-          });
+          addOrUpdateEvents(newEvents);
         }
 
       } catch (error) {
@@ -462,21 +436,19 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     };
   }, [autoRefresh]);
 
-  // Effect to update localStorage when screenshots change
+  // Effect to update events with screenshot data
   useEffect(() => {
-    // Update events with screenshot data
-    setEvents(currentEvents => {
-      const updatedEvents = currentEvents.map(event => ({
+    if (Object.keys(screenshots).length > 0) {
+      // Create updated events with screenshot data
+      const updatedEvents = events.map(event => ({
         ...event,
         screenshot: screenshots[event.id]
       }));
       
-      // Save to localStorage
-      storage.setItem('analyticsEvents', JSON.stringify(updatedEvents));
-      
-      return updatedEvents;
-    });
-  }, [screenshots]);
+      // Update events in context
+      addOrUpdateEvents(updatedEvents);
+    }
+  }, [screenshots, events, addOrUpdateEvents]);
 
   // Effect to handle screenshot updates when selected event changes
   useEffect(() => {
@@ -519,7 +491,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   const handleClearEvents = async () => {
     try {
       await window.api.adb.clearAnalyticsLogs();
-      setEvents([]);
+      clearEvents();
       setSelectedEvent(null);
     } catch (error) {
       console.error('Error clearing events:', error);
@@ -595,23 +567,24 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     if (!selectedJourney) return;
 
     // Update events with the selected journey
-    setEvents(prevEvents => 
-      prevEvents.map(event => {
-        if (selectedEventIds.has(event.id)) {
-          const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
-          if (!existingJourneys.some(j => j.id === selectedJourney.id)) {
-            return {
-              ...event,
-              journeys: [...existingJourneys, {
-                id: selectedJourney.id,
-                name: selectedJourney.name
-              }]
-            };
-          }
+    const updatedEvents = events.map(event => {
+      if (selectedEventIds.has(event.id)) {
+        const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
+        if (!existingJourneys.some(j => j.id === selectedJourney.id)) {
+          return {
+            ...event,
+            journeys: [...existingJourneys, {
+              id: selectedJourney.id,
+              name: selectedJourney.name
+            }]
+          };
         }
-        return event;
-      })
-    );
+      }
+      return event;
+    });
+    
+    // Update events in context
+    addOrUpdateEvents(updatedEvents);
 
     // Update journey with new events
     setJourneys(prevJourneys =>
@@ -636,17 +609,18 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
 
     if (window.confirm(`Are you sure you want to remove all journey assignments from ${selectedEventIds.size} selected events?`)) {
       // Remove journey assignments from selected events
-      setEvents(prevEvents =>
-        prevEvents.map(event => {
-          if (selectedEventIds.has(event.id)) {
-            return {
-              ...event,
-              journeys: []
-            };
-          }
-          return event;
-        })
-      );
+      const updatedEvents = events.map(event => {
+        if (selectedEventIds.has(event.id)) {
+          return {
+            ...event,
+            journeys: []
+          };
+        }
+        return event;
+      });
+      
+      // Update events in context
+      addOrUpdateEvents(updatedEvents);
 
       // Remove events from all journeys
       setJourneys(prevJourneys =>
@@ -733,34 +707,35 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     }
 
     // Update events with their journey assignments
-    setEvents(prevEvents => 
-      prevEvents.map(event => {
-        if (selectedEvents.includes(event.id)) {
-          const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
-          if (selectedJourneyId) {
-            // For existing journey, update the name if it changed
-            return {
-              ...event,
-              journeys: existingJourneys.map(j => 
-                j.id === selectedJourneyId 
-                  ? { ...j, name: journeyName.trim() }
-                  : j
-              )
-            };
-          } else {
-            // For new journey, add it to the event's journeys
-            return {
-              ...event,
-              journeys: [...existingJourneys, {
-                id: Date.now(),
-                name: journeyName.trim()
-              }]
-            };
-          }
+    const updatedEvents = events.map(event => {
+      if (selectedEvents.includes(event.id)) {
+        const existingJourneys = Array.isArray(event.journeys) ? event.journeys : [];
+        if (selectedJourneyId) {
+          // For existing journey, update the name if it changed
+          return {
+            ...event,
+            journeys: existingJourneys.map(j => 
+              j.id === selectedJourneyId 
+                ? { ...j, name: journeyName.trim() }
+                : j
+            )
+          };
+        } else {
+          // For new journey, add it to the event's journeys
+          return {
+            ...event,
+            journeys: [...existingJourneys, {
+              id: Date.now(),
+              name: journeyName.trim()
+            }]
+          };
         }
-        return event;
-      })
-    );
+      }
+      return event;
+    });
+    
+    // Update events in context
+    addOrUpdateEvents(updatedEvents);
 
     handleCloseModal();
   };
@@ -800,16 +775,22 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
     
     // Update the event's journey references
-    setEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === eventId
-          ? {
-              ...event,
-              journeys: event.journeys?.filter(j => j.id !== journeyId) || []
-            }
-          : event
-      )
+    const updatedEvents = events.map(event => 
+      event.id === eventId
+        ? {
+            ...event,
+            journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+          }
+        : event
     );
+    
+    // Update events in context
+    addOrUpdateEvents(updatedEvents);
+    
+    // If this event was selected in the modal, remove it from selection
+    if (selectedEvents.includes(eventId)) {
+      setSelectedEvents(prev => prev.filter(id => id !== eventId));
+    }
   };
 
   // Function to scroll to most recent event
@@ -925,12 +906,13 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       setJourneys(prevJourneys => prevJourneys.filter(j => !selectedJourneyIds.has(j.id)));
       
       // Remove journey references from events
-      setEvents(prevEvents => 
-        prevEvents.map(event => ({
-          ...event,
-          journeys: event.journeys?.filter(j => !selectedJourneyIds.has(j.id)) || []
-        }))
-      );
+      const updatedEvents = events.map(event => ({
+        ...event,
+        journeys: event.journeys?.filter(j => !selectedJourneyIds.has(j.id)) || []
+      }));
+      
+      // Update events in context
+      addOrUpdateEvents(updatedEvents);
       
       // Clear selection
       setSelectedJourneyIds(new Set());
@@ -954,13 +936,14 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       }
       
       // Remove journey reference from all events
-      setEvents(prevEvents => 
-        prevEvents.map(event => ({
-          ...event,
-          // Remove the journey from the event's journeys array if it exists
-          journeys: event.journeys?.filter(j => j.id !== journeyId) || []
-        }))
-      );
+      const updatedEvents = events.map(event => ({
+        ...event,
+        // Remove the journey from the event's journeys array if it exists
+        journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+      }));
+      
+      // Update events in context
+      addOrUpdateEvents(updatedEvents);
     }
   };
 
@@ -977,16 +960,17 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
     );
     
     // Update the event's journey references
-    setEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === eventId
-          ? {
-              ...event,
-              journeys: event.journeys?.filter(j => j.id !== journeyId) || []
-            }
-          : event
-      )
+    const updatedEvents = events.map(event => 
+      event.id === eventId
+        ? {
+            ...event,
+            journeys: event.journeys?.filter(j => j.id !== journeyId) || []
+          }
+        : event
     );
+    
+    // Update events in context
+    addOrUpdateEvents(updatedEvents);
     
     // If this event was selected in the modal, remove it from selection
     if (selectedEvents.includes(eventId)) {
@@ -1053,6 +1037,37 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         </div>
 
         <div className={styles.toolbarRight}>
+          <button 
+            className={styles.exportButton}
+            onClick={exportEvents}
+            disabled={events.length === 0}
+          >
+            Export Events
+          </button>
+          <button 
+            className={styles.importButton}
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    const result = importEvents(event.target.result);
+                    if (!result.success) {
+                      alert(`Import failed: ${result.error}`);
+                    }
+                  };
+                  reader.readAsText(file);
+                }
+              };
+              input.click();
+            }}
+          >
+            Import Events
+          </button>
           <select 
             value={analyticsType}
             onChange={(e) => setAnalyticsType(e.target.value)}

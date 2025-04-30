@@ -76,10 +76,23 @@ const nextConfig = {
       }
     );
 
+    // Ensure custom fonts are handled
+    config.module.rules.push({
+      test: /\.(woff|woff2|eot|ttf|otf)$/,
+      use: {
+        loader: 'file-loader',
+        options: {
+          name: '[name].[ext]',
+          outputPath: 'fonts/',
+          publicPath: '/_next/static/fonts/'
+        }
+      }
+    });
+
     return config;
   },
   // Ensure pages are exported correctly
-  trailingSlash: false,
+  trailingSlash: true,
   // Configure static file serving
   assetPrefix: '.',
 };

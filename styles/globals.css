@@ -1,0 +1,92 @@
+/* Global styles */
+
+/* Font declarations */
+@font-face {
+  font-family: 'Travelia';
+  font-weight: bold;
+  font-style: normal;
+  src: url('/fonts/Travelia-Bold.ttf') format('truetype'),
+       url('/fonts/Travelia-Bold.otf') format('opentype'),
+       url('/fonts/Travelia-Bold.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Travelia';
+  font-weight: medium;
+  font-style: normal;
+  src: url('/fonts/Travelia-Medium.ttf') format('truetype'),
+       url('/fonts/Travelia-Medium.otf') format('opentype'),
+       url('/fonts/Travelia-Medium.woff') format('woff'),
+       url('/fonts/Travelia-Medium.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-weight: 300;
+  font-style: normal;
+  src: url('/fonts/AzeretMono-Light.ttf') format('truetype'),
+       url('/fonts/AzeretMono-Light.woff') format('woff'),
+       url('/fonts/AzeretMono-Light.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-weight: normal;
+  font-style: normal;
+  src: url('/fonts/AzeretMono-Regular.ttf') format('truetype'),
+       url('/fonts/AzeretMono-Regular.woff') format('woff'),
+       url('/fonts/AzeretMono-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Doto';
+  font-weight: 600;
+  font-style: normal;
+  src: url('/fonts/Doto-SemiBold.ttf') format('truetype'),
+       url('/fonts/Doto-SemiBold.woff') format('woff'),
+       url('/fonts/Doto-SemiBold.woff2') format('woff2');
+  font-display: swap;
+}
+
+:root {
+  /* Brand colors */
+  --color-black: #262628;
+  --color-purple: #9C54AD;
+  --color-red: #EB2726;
+  --color-blue: #3C76A9;
+  --color-green: #6DC19C;
+  --color-orange: #F69757;
+  --color-yellow: #FFCF4F;
+  --color-light-gray: #E9EDF3;
+  
+  /* Font families */
+  --font-travelia: 'Travelia', sans-serif;
+  --font-azeret: 'Azeret Mono', monospace;
+  --font-doto: 'Doto', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-azeret);
+  background-color: var(--color-light-gray);
+  color: var(--color-black);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-travelia);
+  font-weight: bold;
+}
+
+button, .button {
+  font-family: var(--font-travelia);
+}
+
+.footer, small {
+  font-family: var(--font-doto);
+  font-weight: 600;
+} 

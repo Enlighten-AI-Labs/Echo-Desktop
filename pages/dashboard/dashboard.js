@@ -23,11 +23,11 @@ export default function DashboardView({ navigateTo }) {
   }
 
   const handleStartDebugging = () => {
-    navigateTo('debugger', { tab: 'unified' });
+    navigateTo('device-setup', { tab: 'unified' });
   };
 
   const handleToggleAnalyticsDebugger = () => {
-    navigateTo('debugger', {
+    navigateTo('device-setup', {
       deviceId: selectedDevice?.id,
       packageName: selectedAndroidApp?.packageName,
       tab: 'network'
@@ -35,7 +35,7 @@ export default function DashboardView({ navigateTo }) {
   };
 
   const handleSplitScreenDebugger = () => {
-    navigateTo('debugger', {
+    navigateTo('device-setup', {
       deviceId: selectedDevice?.id,
       packageName: selectedAndroidApp?.packageName,
       tab: 'unified'

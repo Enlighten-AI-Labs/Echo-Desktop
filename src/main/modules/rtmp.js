@@ -6,9 +6,9 @@ const NodeMediaServer = require('node-media-server');
 const { userDataPath, getLocalIpAddress } = require('./utils');
 const { EventEmitter } = require('events');
 const ffmpeg = require('fluent-ffmpeg');
-const sharp = require('sharp');
 const { WebSocket } = require('ws');
 const { PassThrough } = require('stream');
+const Jimp = require('jimp');
 
 // Screenshot and frame capture configuration
 const screenshotConfig = {
@@ -520,10 +520,14 @@ class StreamConnectionManager extends EventEmitter {
           throw new Error('No frames available for screenshot');
         }
         
-        // Process the frame data to create a screenshot
-        await sharp(frameData)
-          .jpeg({ quality: request.options.quality || screenshotConfig.quality })
-          .toFile(request.outputPath);
+        // Process the frame data to create a screenshot using the fs module directly
+        fs.writeFileSync(request.outputPath, frameData);
+        
+        // If the quality option is set and different from default, use Jimp to process the image
+        if (request.options.quality && request.options.quality !== screenshotConfig.quality) {
+          const image = await Jimp.read(request.outputPath);
+          await image.quality(request.options.quality).writeAsync(request.outputPath);
+        }
       }
       
       // Generate timestamp and filename from the path
@@ -560,19 +564,18 @@ class StreamConnectionManager extends EventEmitter {
   async saveScreenshot(frameData, outputPath, options = {}) {
     try {
       // Just copy the file directly as it's already a JPEG
-      fs.copyFileSync(frameData, outputPath);
+      fs.writeFileSync(outputPath, frameData);
+      
+      // If quality option is provided, use Jimp to adjust quality
+      if (options.quality && options.quality !== screenshotConfig.quality) {
+        const image = await Jimp.read(outputPath);
+        await image.quality(options.quality).writeAsync(outputPath);
+      }
+      
       console.log(`Saved screenshot to ${outputPath}`);
     } catch (error) {
-      // Fallback to using sharp if direct copy fails
-      try {
-        await sharp(frameData)
-          .jpeg({ quality: options.quality || screenshotConfig.quality })
-          .toFile(outputPath);
-        console.log(`Saved screenshot to ${outputPath} using sharp`);
-      } catch (innerError) {
-        console.error('Error saving screenshot:', innerError);
-        throw innerError;
-      }
+      console.error('Error saving screenshot:', error);
+      throw error;
     }
   }
 
@@ -839,14 +842,14 @@ async function getScreenshotDataUrl(fileName) {
       };
     }
     
-    // Get image dimensions using sharp
+    // Get image dimensions using Jimp instead of sharp
     let dimensions = { width: 720, height: 720 }; // Default fallback
     
     try {
-      const metadata = await sharp(filePath).metadata();
+      const image = await Jimp.read(filePath);
       dimensions = {
-        width: metadata.width,
-        height: metadata.height
+        width: image.getWidth(),
+        height: image.getHeight()
       };
       console.log(`Image dimensions: ${dimensions.width}x${dimensions.height}`);
     } catch (e) {

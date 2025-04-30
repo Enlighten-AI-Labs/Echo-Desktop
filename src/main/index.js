@@ -5,6 +5,7 @@ const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const url = require('url');
 const { ensureTmpDir } = require('./utils');
+const fs = require('fs');
 
 // Import services
 const adbService = require('./services/adb');
@@ -22,11 +23,23 @@ ensureTmpDir();
 
 // Register custom protocol for fonts
 function registerFontProtocol() {
+  console.log('Registering font protocol handler');
+  
   protocol.registerFileProtocol('font', (request, callback) => {
     const filePath = request.url.replace('font://', '');
-    callback({
-      path: path.join(app.getAppPath(), 'public/fonts', filePath)
-    });
+    const fontPath = path.join(app.getAppPath(), 'public/fonts', filePath);
+    
+    console.log(`Font requested: ${filePath}`);
+    console.log(`Looking for font at: ${fontPath}`);
+    
+    // Check if the file exists
+    if (fs.existsSync(fontPath)) {
+      console.log(`Font found at: ${fontPath}`);
+      callback({ path: fontPath });
+    } else {
+      console.warn(`Font not found at: ${fontPath}`);
+      callback({ error: -6 }); // FILE_NOT_FOUND
+    }
   });
 }
 

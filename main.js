@@ -1162,7 +1162,73 @@ function startMitmproxy() {
     mitmProxyTraffic = [];
     
     // Determine which mitmdump path to use
-    const executablePath = global.mitmdumpPath || mitmdumpPath;
+    let executablePath = global.mitmdumpPath || mitmdumpPath;
+    
+    // If path is still null/undefined, try to find it on common locations based on platform
+    if (!executablePath) {
+      if (process.platform === 'darwin') {
+        // Try common macOS locations
+        const possiblePaths = [
+          '/usr/local/bin/mitmdump',
+          '/opt/homebrew/bin/mitmdump',
+          '/usr/bin/mitmdump'
+        ];
+        
+        for (const path of possiblePaths) {
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            console.log(`Found mitmdump at: ${executablePath}`);
+            break;
+          }
+        }
+      } else if (process.platform === 'win32') {
+        // Try Windows locations
+        const possiblePaths = [
+          path.join(process.env.APPDATA, 'Python', 'Scripts', 'mitmdump.exe'),
+          path.join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Scripts', 'mitmdump.exe')
+        ];
+        
+        for (const path of possiblePaths) {
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            console.log(`Found mitmdump at: ${executablePath}`);
+            break;
+          }
+        }
+      } else {
+        // Linux
+        const possiblePaths = [
+          '/usr/bin/mitmdump',
+          '/usr/local/bin/mitmdump',
+          path.join(require('os').homedir(), '.local/bin/mitmdump')
+        ];
+        
+        for (const path of possiblePaths) {
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            console.log(`Found mitmdump at: ${executablePath}`);
+            break;
+          }
+        }
+      }
+    }
+    
+    // If we still don't have a path, try to install mitmproxy
+    if (!executablePath) {
+      console.log('mitmdump path not found, attempting to install...');
+      try {
+        // Ensure mitmdumpPath is properly set after installation
+        const installed = await ensureMitmproxyExists();
+        if (!installed || !mitmdumpPath) {
+          throw new Error('Failed to locate or install mitmdump. Please install mitmproxy manually.');
+        }
+        executablePath = mitmdumpPath;
+      } catch (error) {
+        console.error('Error installing mitmproxy:', error);
+        throw new Error(`Failed to install mitmproxy: ${error.message}`);
+      }
+    }
+    
     console.log('Using mitmdump at:', executablePath);
     
     // Use mitmdump which is designed for console output without UI

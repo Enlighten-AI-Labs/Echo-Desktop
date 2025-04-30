@@ -11,7 +11,8 @@
     "build": "next build && npm run build:electron",
     "start": "electron .",
     "build:electron": "electron-builder",
-    "build:all": "npm run build && electron-builder -lw"
+    "build:all": "npm run build && electron-builder -lw",
+    "postinstall": "electron-builder install-app-deps"
   },
   "author": {
     "name": "Enlighten",
@@ -31,6 +32,7 @@
     "flv.js": "^1.6.2",
     "framer-motion": "^12.7.4",
     "hls.js": "^1.6.2",
+    "jimp": "^0.22.10",
     "nanoid": "^5.1.5",
     "next": "^15.1.0",
     "node-dns-sd": "^1.0.1",
@@ -40,7 +42,6 @@
     "qrcode-terminal": "^0.12.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.34.1",
     "supabase": "^2.22.6",
     "uuid": "^11.1.0"
   },

@@ -152,22 +152,36 @@ export default function ExportPage({ navigateTo, params }) {
 
   useEffect(() => {
     // Load journeys from localStorage
-    const savedJourneys = storage.getItem('analyticsJourneys');
+    const loadJourneys = () => {
+      const savedJourneys = storage.getItem('analyticsJourneys');
+      if (savedJourneys) {
+        setJourneys(JSON.parse(savedJourneys));
+      }
+    };
     
-    if (savedJourneys) {
-      setJourneys(JSON.parse(savedJourneys));
-    }
+    // Load initially
+    loadJourneys();
 
-    // Add event listener for journeys changes
+    // Add event listener for journeys changes from other tabs
     const handleStorageChange = (e) => {
       if (e.key === 'analyticsJourneys') {
         setJourneys(JSON.parse(e.newValue));
       }
     };
 
+    // Setup a custom event to listen for journey changes in the current window
+    const handleCustomJourneyChange = () => {
+      loadJourneys();
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', handleStorageChange);
-      return () => window.removeEventListener('storage', handleStorageChange);
+      window.addEventListener('journeysUpdated', handleCustomJourneyChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('journeysUpdated', handleCustomJourneyChange);
+      };
     }
   }, []);
 

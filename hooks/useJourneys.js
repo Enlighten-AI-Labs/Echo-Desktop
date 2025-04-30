@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import storage from '@/lib/storage';
 import journeyStyles from '@/styles/components/journey-modal.module.css';
 import { groupEventsByScreen } from '@/lib/beacon-utils';
@@ -40,8 +40,13 @@ export default function useJourneys(events, addOrUpdateEvents) {
   }, []);
 
   // Save journeys to localStorage whenever they change
-  useState(() => {
+  useEffect(() => {
     storage.setItem('analyticsJourneys', JSON.stringify(journeys));
+    
+    // Dispatch a custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('journeysUpdated'));
+    }
   }, [journeys]);
 
   // Journey related functions
@@ -168,6 +173,9 @@ export default function useJourneys(events, addOrUpdateEvents) {
       return;
     }
 
+    // Generate a new journey ID once for both the journey and event references
+    const newJourneyId = selectedJourneyId || Date.now();
+
     if (selectedJourneyId) {
       // Update existing journey
       setJourneys(prevJourneys => 
@@ -184,9 +192,9 @@ export default function useJourneys(events, addOrUpdateEvents) {
         })
       );
     } else {
-      // Create new journey
+      // Create new journey - use the ID we already generated
       const newJourney = {
-        id: Date.now(),
+        id: newJourneyId,
         name: journeyName.trim(),
         events: selectedEvents,
         createdAt: new Date().toISOString(),
@@ -211,11 +219,11 @@ export default function useJourneys(events, addOrUpdateEvents) {
             )
           };
         } else {
-          // For new journey, add it to the event's journeys
+          // For new journey, add it to the event's journeys - use the same ID we generated
           return {
             ...event,
             journeys: [...existingJourneys, {
-              id: Date.now(),
+              id: newJourneyId,
               name: journeyName.trim()
             }]
           };

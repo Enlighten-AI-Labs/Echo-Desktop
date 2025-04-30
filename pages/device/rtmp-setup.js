@@ -13,6 +13,7 @@ export default function RtmpSetup({ navigateTo, params }) {
   const [httpPort, setHttpPort] = useState(8000);
   const [streamKey, setStreamKey] = useState('live');
   const [isStreaming, setIsStreaming] = useState(false);
+  const isStreamingRef = useRef(false);
   const [checkStreamInterval, setCheckStreamInterval] = useState(null);
   const [lastCheckTime, setLastCheckTime] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
@@ -122,6 +123,7 @@ export default function RtmpSetup({ navigateTo, params }) {
   // Direct play button handler - force player creation
   const handleForcePlay = () => {
     setDebugInfo('Forcing player to start...\nThis will attempt direct connection regardless of detection status.');
+    isStreamingRef.current = true;
     setIsStreaming(true);
     
     // Try HLS playback first if available
@@ -206,7 +208,12 @@ export default function RtmpSetup({ navigateTo, params }) {
         
         if (response.ok || response.status === 200) {
           console.log('Stream appears to be active via HTTP-FLV check');
-          setIsStreaming(true);
+          // Update the ref first
+          isStreamingRef.current = true;
+          // Then update the state only if needed to avoid extra renders
+          if (!isStreaming) {
+            setIsStreaming(true);
+          }
           if (!flvPlayer.current && videoRef.current) {
             setupPlayer();
           }
@@ -231,8 +238,10 @@ export default function RtmpSetup({ navigateTo, params }) {
         }
         
         // If no player exists yet, force try creating it
-        if (!flvPlayer.current && !isStreaming) {
+        if (!flvPlayer.current && !isStreamingRef.current) {
           console.log('Trying player creation as fallback');
+          // Update ref first
+          isStreamingRef.current = true;
           setIsStreaming(true);
           setupPlayer();
           return;
@@ -245,14 +254,22 @@ export default function RtmpSetup({ navigateTo, params }) {
       }
       
       // If the player exists but stream isn't detected, maybe destroy it
-      if (!isStreaming && flvPlayer.current) {
+      if (!isStreamingRef.current && flvPlayer.current) {
         destroyPlayer();
       }
       
-      setIsStreaming(false);
+      // Only update state if the value is changing
+      if (isStreamingRef.current !== isStreaming) {
+        isStreamingRef.current = false;
+        setIsStreaming(false);
+      }
     } catch (error) {
       console.error('Error checking stream status:', error);
-      setIsStreaming(false);
+      // Update ref first, then state only if needed
+      isStreamingRef.current = false;
+      if (isStreaming) {
+        setIsStreaming(false);
+      }
       if (isManualCheck) {
         setDebugInfo(prev => `${prev}\nCheck error: ${error.message}`);
       }

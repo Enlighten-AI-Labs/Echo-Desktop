@@ -13,6 +13,16 @@
   --tag-bg: #f8f9fa;
   --beacon-bg: #3C76A9;
   --font-mono: 'Azeret Mono Regular', monospace;
+  --ribbon-height-collapsed: 0px;
+  --ribbon-height-expanded: 48px;
+}
+
+.toolbarContainer {
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 .toolbar {
@@ -22,34 +32,116 @@
   padding: 0.5rem 1rem;
   background-color: #ffffff;
   border-bottom: 1px solid #e9ecef;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   min-height: 48px;
+  position: relative;
+  z-index: 10; /* Higher z-index to ensure toolbar stays on top */
+}
+
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #E9EDF3;
+  border-bottom: 1px solid #d1d7e0;
+  height: auto;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: var(--ribbon-height-expanded);
+  opacity: 1;
+  box-sizing: border-box;
+  z-index: 5; /* Lower z-index for the ribbon */
+  transform-origin: top;
+  will-change: max-height, opacity, padding;
+}
+
+.ribbon.collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-bottom: none;
+  pointer-events: none;
+}
+
+.ribbon.expanded {
+  max-height: var(--ribbon-height-expanded);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ribbon .captureButton,
+.ribbon .exportButton,
+.ribbon .importButton {
+  padding: 0.5rem 1.2rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-family: 'Travelia Medium', sans-serif;
+  transition: all 0.2s ease;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ribbon .startButton {
+  background-color: #6DC19C;
+  color: white;
+}
+
+.ribbon .startButton:hover {
+  background-color: #5aad89;
+}
+
+.ribbon .stopButton {
+  background-color: #EB2726;
+  color: white;
+}
+
+.ribbon .stopButton:hover {
+  background-color: #d41f1e;
+}
+
+.ribbon .exportButton {
+  background-color: #3C76A9;
+  color: white;
+}
+
+.ribbon .exportButton:hover {
+  background-color: #325f8a;
+}
+
+.ribbon .importButton {
+  background-color: #9C54AD;
+  color: white;
+}
+
+.ribbon .importButton:hover {
+  background-color: #854493;
+}
+
+.ribbon .autoRefreshLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Azeret Mono Regular', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #d1d7e0;
+}
+
+.ribbon .autoRefreshLabel input {
+  margin: 0;
 }
 
 .toolbarLeft, .toolbarRight {
   display: flex;
   align-items: center;
   gap: 1rem;
-}
-
-.captureButton {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.startButton {
-  background-color: #6DC19C;
-  color: white;
-  border: none;
-}
-
-.stopButton {
-  background-color: #dc3545;
-  color: white;
-  border: none;
 }
 
 .clearButton {
@@ -60,6 +152,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: 'Azeret Mono Regular', sans-serif;
 }
 
 .clearButton:disabled {
@@ -107,7 +200,17 @@
   overflow: hidden;
   padding: 1rem;
   position: relative;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: height;
 }
+
+/* Since we're using position: absolute for the collapsed ribbon, 
+   we can simplify these rules */
+.toolbarContainer:has(.ribbon.expanded) ~ .content {
+  height: calc(100vh - 80px - var(--ribbon-height-expanded));
+}
+
+/* No need to adjust height for collapsed since it's positioned absolutely */
 
 .eventsList {
   flex: 0 0 375px;
@@ -2206,38 +2309,67 @@ border-top-right-radius: 6px;
   font-weight: 500;
 }
 
-.exportButton,
-.importButton {
+.exportButton:not(.ribbon .exportButton),
+.importButton:not(.ribbon .importButton) {
   padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+  border-radius: 4px;
+  background-color: white;
+  border: 1px solid #ced4da;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-right: 0.5rem;
+  transition: all 0.2s ease;
+  font-family: 'Azeret Mono Regular', sans-serif;
+  font-size: 0.9rem;
 }
 
-.exportButton {
-  background-color: #3C76A9; /* Brand blue */
-  color: white;
-  border: none;
+.exportButton:not(.ribbon .exportButton) {
+  color: #212529;
 }
 
-.exportButton:hover {
-  background-color: #2c5a84;
+.exportButton:not(.ribbon .exportButton):hover {
+  background-color: #f8f9fa;
 }
 
-.exportButton:disabled {
-  background-color: #a0a0a0;
+.exportButton:not(.ribbon .exportButton):disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.importButton {
-  background-color: #6DC19C; /* Brand green */
-  color: white;
-  border: none;
+.importButton:not(.ribbon .importButton) {
+  color: #212529;
 }
 
-.importButton:hover {
-  background-color: #4fa07c;
+.importButton:not(.ribbon .importButton):hover {
+  background-color: #f8f9fa;
+}
+
+.toggleRibbonButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  background-color: #8277a1;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Azeret Mono Regular', sans-serif;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggleRibbonButton:hover {
+  background-color: #9C54AD;
+}
+
+.toggleIcon {
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+  margin-left: 0.25rem;
+  display: inline-block;
+}
+
+.ribbon.expanded ~ .toolbar .toggleIcon,
+button[aria-expanded="true"] .toggleIcon {
+  transform: rotate(180deg);
 }

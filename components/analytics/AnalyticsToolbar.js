@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from '@/styles/components/unified-analytics-debugger.module.css';
 
 export default function AnalyticsToolbar({
@@ -26,9 +26,79 @@ export default function AnalyticsToolbar({
     setAutoRefresh
   } = filterControls;
 
+  const [ribbonExpanded, setRibbonExpanded] = useState(false);
+
   return (
-    <div className={styles.toolbar}>
-      <div className={styles.toolbarLeft}>
+    <div className={styles.toolbarContainer}>
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarLeft}>
+          <button
+            className={styles.clearButton}
+            onClick={handleClearEvents}
+            disabled={events.length === 0}
+          >
+            Clear Events
+          </button>
+          <div className={styles.filterContainer}>
+            <input
+              type="text"
+              className={styles.filterInput}
+              placeholder="Filter events..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+            <select
+              className={styles.filterTypeSelect}
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="beaconId">Beacon ID</option>
+              <option value="eventName">Event Name</option>
+              <option value="screen">Screen</option>
+            </select>
+          </div>
+          <select
+            className={styles.sourceSelect}
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+          >
+            <option value="all">All Sources</option>
+            <option value="logcat">Android Debug Bridge</option>
+            <option value="proxy">Network</option>
+          </select>
+          <button 
+            className={styles.addJourneyButton}
+            onClick={handleAddJourney}
+          >
+            <span> Journeys </span>
+          </button>
+        </div>
+
+        <div className={styles.toolbarRight}>
+          <select 
+            value={analyticsType}
+            onChange={(e) => setAnalyticsType(e.target.value)}
+            className={styles.typeSelect}
+          >
+            <option value="all">All Analytics</option>
+            <option value="google">Google Analytics</option>
+            <option value="adobe">Adobe Analytics</option>
+          </select>
+          
+          <button 
+            className={styles.toggleRibbonButton}
+            onClick={() => setRibbonExpanded(!ribbonExpanded)}
+            aria-expanded={ribbonExpanded}
+          >
+            Show Tools
+            <span className={styles.toggleIcon}>▼</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable Ribbon */}
+      <div className={`${styles.ribbon} ${ribbonExpanded ? styles.expanded : styles.collapsed}`}>
         <button
           className={`${styles.captureButton} ${isCapturingLogcat ? styles.stopButton : styles.startButton}`}
           onClick={handleToggleLogcat}
@@ -36,50 +106,6 @@ export default function AnalyticsToolbar({
         >
           {isCapturingLogcat ? 'Stop Logcat' : 'Start Logcat'}
         </button>
-        <button
-          className={styles.clearButton}
-          onClick={handleClearEvents}
-          disabled={events.length === 0}
-        >
-          Clear Events
-        </button>
-        <div className={styles.filterContainer}>
-          <input
-            type="text"
-            className={styles.filterInput}
-            placeholder="Filter events..."
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-          />
-          <select
-            className={styles.filterTypeSelect}
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="beaconId">Beacon ID</option>
-            <option value="eventName">Event Name</option>
-            <option value="screen">Screen</option>
-          </select>
-        </div>
-        <select
-          className={styles.sourceSelect}
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-        >
-          <option value="all">All Sources</option>
-          <option value="logcat">Android Debug Bridge</option>
-          <option value="proxy">Network</option>
-        </select>
-        <button 
-          className={styles.addJourneyButton}
-          onClick={handleAddJourney}
-        >
-          <span>+ Add Journey</span>
-        </button>
-      </div>
-
-      <div className={styles.toolbarRight}>
         <button 
           className={styles.exportButton}
           onClick={exportEvents}
@@ -111,16 +137,6 @@ export default function AnalyticsToolbar({
         >
           Import Events
         </button>
-        <select 
-          value={analyticsType}
-          onChange={(e) => setAnalyticsType(e.target.value)}
-          className={styles.typeSelect}
-        >
-          <option value="all">All Analytics</option>
-          <option value="google">Google Analytics</option>
-          <option value="adobe">Adobe Analytics</option>
-        </select>
-
         <label className={styles.autoRefreshLabel}>
           <input
             type="checkbox"

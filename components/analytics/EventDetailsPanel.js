@@ -12,7 +12,8 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
     parameters: true,
     eCommerce: true,
     userProperties: true,
-    rawData: false
+    rawData: false,
+    uiXml: false
   });
 
   if (!selectedEvent) {
@@ -263,6 +264,40 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
             </div>
           </div>
         </div>
+
+        {/* UI XML Section */}
+        {selectedEvent?.uiXml && (
+          <div className={styles.section}>
+            <div 
+              className={`${styles.sectionHeader} ${expandedSections.uiXml ? styles.expanded : ''}`}
+              onClick={() => setExpandedSections(prev => ({
+                ...prev,
+                uiXml: !prev.uiXml
+              }))}
+            >
+              <h3>UI XML Structure</h3>
+              <span>{expandedSections.uiXml ? '−' : '+'}</span>
+            </div>
+            <div className={styles.sectionContent}>
+              <div className={styles.rawDataContainer}>
+                <div className={styles.rawDataHeader}>
+                  <span>UI Hierarchy XML</span>
+                  <button 
+                    className={styles.copyButton}
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedEvent.uiXml);
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+                <div className={styles.rawData}>
+                  <pre>{selectedEvent.uiXml}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

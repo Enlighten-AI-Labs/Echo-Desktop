@@ -7,14 +7,16 @@ const { PATHS } = require('./installer');
 /**
  * Execute an ADB command and return a promise
  * @param {string} command ADB command to execute
+ * @param {number} timeout Timeout in milliseconds (defaults to 30000)
  * @returns {Promise<string>} Command output
  */
-function execAdbCommand(command) {
+function execAdbCommand(command, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cmd = `"${PATHS.fullAdbPath}" ${command}`;
     console.log('Executing ADB command:', cmd);
     
-    exec(cmd, (error, stdout, stderr) => {
+    // Create an object to store the child process
+    const childProcess = exec(cmd, { timeout }, (error, stdout, stderr) => {
       if (error) {
         console.error('ADB command error:', error);
         reject(error);
@@ -24,6 +26,18 @@ function execAdbCommand(command) {
         console.warn('ADB stderr:', stderr);
       }
       resolve(stdout.trim());
+    });
+    
+    // Set up a timeout handler
+    const timeoutId = setTimeout(() => {
+      console.warn(`Command timed out after ${timeout}ms: ${cmd}`);
+      childProcess.kill();
+      reject(new Error(`Command timed out after ${timeout}ms`));
+    }, timeout);
+    
+    // Clear the timeout if the command completes
+    childProcess.on('exit', () => {
+      clearTimeout(timeoutId);
     });
   });
 }

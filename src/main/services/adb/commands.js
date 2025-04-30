@@ -119,9 +119,77 @@ async function executeCommand(deviceId, command) {
   }
 }
 
+/**
+ * Capture UI hierarchy XML from a device
+ * @param {string} deviceId - The device identifier
+ * @returns {Promise<string>} The XML content or error message
+ */
+async function captureUiXml(deviceId) {
+  try {
+    console.log(`Capturing UI XML for device: ${deviceId}`);
+    
+    // Make sure ADB server is running
+    await execAdbCommand('start-server');
+    
+    // First check if the device is responsive
+    try {
+      await execAdbCommand(`-s ${deviceId} shell echo "Testing device connection"`, 5000);
+    } catch (error) {
+      console.warn(`Device might be unresponsive: ${error.message}`);
+      return `Device unresponsive: ${error.message}`;
+    }
+    
+    // Set a custom path for the dump to avoid permission issues
+    const dumpPath = "/data/local/tmp/window_dump.xml";
+    
+    try {
+      // Execute the uiautomator dump command with a timeout
+      await execAdbCommand(`-s ${deviceId} shell "uiautomator dump --compressed ${dumpPath}"`, 10000);
+      
+      // Check if the file exists before attempting to read it
+      const fileExists = await execAdbCommand(`-s ${deviceId} shell "ls ${dumpPath} 2>/dev/null || echo 'FILE_NOT_FOUND'"`, 5000);
+      
+      if (fileExists.includes('FILE_NOT_FOUND')) {
+        console.warn(`UI dump file not created at ${dumpPath}`);
+        return "UI XML capture failed: dump file not created";
+      }
+      
+      // Get the contents of the dumped file with a timeout
+      const output = await execAdbCommand(`-s ${deviceId} shell cat ${dumpPath}`, 5000);
+      
+      // Clean up the file
+      await execAdbCommand(`-s ${deviceId} shell rm ${dumpPath}`, 5000).catch(e => {
+        console.warn(`Cleanup of ${dumpPath} failed: ${e.message}`);
+      });
+      
+      if (!output || output.trim() === '') {
+        return "UI XML capture failed: empty output";
+      }
+      
+      return output;
+    } catch (error) {
+      console.error(`Error during UI XML capture: ${error.message}`);
+      
+      // Try alternative approach with dumpsys
+      try {
+        console.log("Attempting alternative UI capture with dumpsys window");
+        const windowOutput = await execAdbCommand(`-s ${deviceId} shell dumpsys window`, 10000);
+        return `UI capture with uiautomator failed. Window information:\n${windowOutput}`;
+      } catch (altError) {
+        console.error(`Alternative capture also failed: ${altError.message}`);
+        return `UI XML capture failed: ${error.message}`;
+      }
+    }
+  } catch (error) {
+    console.error('Error capturing UI XML:', error);
+    return `Error capturing UI XML: ${error.message}`;
+  }
+}
+
 module.exports = {
   execAdbCommand,
   executeCommand,
   launchApp,
-  getInstalledApps
+  getInstalledApps,
+  captureUiXml
 }; 

@@ -3,6 +3,7 @@
  */
 const { spawn } = require('child_process');
 const { execAdbCommand } = require('./deviceManager');
+const { captureUiXml } = require('./commands');
 const { PATHS } = require('./installer');
 const fs = require('fs');
 const path = require('path');
@@ -59,8 +60,10 @@ function startLogcatCapture(deviceId, filter = 'FA FA-SVC') {
     logcatProcess.stdout.on('data', (data) => {
       const output = data.toString();
       
-      // Parse logcat output for analytics events
-      parseLogcatForAnalytics(output);
+      // Parse logcat output for analytics events - handle the async function properly
+      parseLogcatForAnalytics(output, deviceId).catch(error => {
+        console.error('Error processing logcat output:', error);
+      });
     });
     
     // Handle stderr data
@@ -87,8 +90,9 @@ function startLogcatCapture(deviceId, filter = 'FA FA-SVC') {
 /**
  * Parse logcat output for analytics events
  * @param {string} output The logcat output to parse
+ * @param {string} deviceId The device identifier for UI XML capture
  */
-function parseLogcatForAnalytics(output) {
+async function parseLogcatForAnalytics(output, deviceId) {
   // Process each line from the logcat output
   const lines = output.split('\n');
   for (const line of lines) {
@@ -128,6 +132,40 @@ function parseLogcatForAnalytics(output) {
         let match;
         while ((match = keyValueRegex.exec(paramsStr)) !== null) {
           logEvent.params[match[1]] = match[2];
+        }
+      }
+      
+      // Capture UI XML for every event (with retries for reliability)
+      if (deviceId) {
+        try {
+          // Make this synchronous to ensure we get XML for each event
+          let uiXml = null;
+          let attempts = 0;
+          const maxAttempts = 3;
+          
+          while (attempts < maxAttempts && (!uiXml || uiXml.startsWith('Error') || uiXml.startsWith('UI XML capture failed'))) {
+            attempts++;
+            try {
+              console.log(`Attempt ${attempts} to capture UI XML for event ${eventName}`);
+              uiXml = await captureUiXml(deviceId);
+              
+              // Small delay between retries
+              if (attempts < maxAttempts && (!uiXml || uiXml.startsWith('Error') || uiXml.startsWith('UI XML capture failed'))) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            } catch (retryError) {
+              console.warn(`XML capture retry ${attempts} failed:`, retryError.message);
+            }
+          }
+          
+          if (uiXml && !uiXml.startsWith('Error') && !uiXml.startsWith('UI XML capture failed')) {
+            logEvent.uiXml = uiXml;
+            console.log(`Successfully captured UI XML for event ${eventName} after ${attempts} attempt(s)`);
+          } else {
+            console.warn(`Failed to capture UI XML after ${attempts} attempts for event ${eventName}`);
+          }
+        } catch (error) {
+          console.error('Error in XML capture process:', error.message);
         }
       }
       
@@ -275,7 +313,7 @@ function startNetworkCapture(deviceId) {
     // Process the output
     networkCaptureProcess.stdout.on('data', (data) => {
       const output = data.toString();
-      parseNetworkTrafficForAnalytics(output);
+      parseNetworkTrafficForAnalytics(output, deviceId);
     });
     
     networkCaptureProcess.stderr.on('data', (data) => {
@@ -315,69 +353,98 @@ function stopNetworkCapture() {
 }
 
 /**
- * Parse network traffic for analytics events
+ * Parse network traffic for analytics requests
  * @param {string} output The network traffic output to parse
+ * @param {string} deviceId The device identifier for UI XML capture
  */
-function parseNetworkTrafficForAnalytics(output) {
-  // Split the output into lines
-  const lines = output.split('\n');
-  
-  // Look for HTTP requests
-  let currentRequest = '';
-  let isCollectingRequest = false;
-  
-  for (const line of lines) {
-    // Check if this is the start of an HTTP request
-    if (line.startsWith('GET ') || line.startsWith('POST ')) {
-      // If we were collecting a request, process it
-      if (isCollectingRequest) {
-        processAnalyticsRequest(currentRequest);
-      }
+function parseNetworkTrafficForAnalytics(output, deviceId) {
+  try {
+    // Look for HTTP requests in the output
+    if (output.includes('GET /collect') || 
+        output.includes('POST /collect') || 
+        output.includes('GET /g/collect') ||
+        output.includes('POST /g/collect') ||
+        output.includes('GET /r/collect') ||
+        output.includes('POST /r/collect') ||
+        output.includes('GET /mp/collect') ||
+        output.includes('POST /mp/collect') ||
+        output.includes('/b/ss/')) {
       
-      // Start collecting a new request
-      currentRequest = line;
-      isCollectingRequest = true;
-      continue;
+      // Process the analytics request
+      processAnalyticsRequest(output, deviceId)
+        .then(event => {
+          if (event) {
+            // Add the event to the analytics logs
+            analyticsLogs.push(event);
+            console.log('Captured analytics event from network traffic:', event.eventName);
+          }
+        })
+        .catch(error => {
+          console.error('Error processing network analytics event:', error);
+        });
     }
-    
-    // If we're collecting a request, add this line
-    if (isCollectingRequest) {
-      currentRequest += '\n' + line;
-      
-      // Check if this is the end of the request (empty line)
-      if (line.trim() === '') {
-        processAnalyticsRequest(currentRequest);
-        isCollectingRequest = false;
-        currentRequest = '';
-      }
-    }
-  }
-  
-  // Process any remaining request
-  if (isCollectingRequest && currentRequest) {
-    processAnalyticsRequest(currentRequest);
+  } catch (error) {
+    console.error('Error parsing network traffic:', error);
   }
 }
 
 /**
  * Process an analytics request
  * @param {string} request The request to process
+ * @param {string} deviceId The device identifier for UI XML capture
+ * @returns {Promise<Object|null>} The processed event or null if processing failed
  */
-function processAnalyticsRequest(request) {
-  // Check if this is a Google Analytics request
-  if (isGoogleAnalyticsRequest(request)) {
-    const analyticsEvent = parseGoogleAnalyticsRequest(request);
-    if (analyticsEvent) {
-      analyticsLogs.push(analyticsEvent);
+async function processAnalyticsRequest(request, deviceId) {
+  try {
+    let event = null;
+    
+    // Check if this is a Google Analytics request
+    if (isGoogleAnalyticsRequest(request)) {
+      event = parseGoogleAnalyticsRequest(request);
     }
-  }
-  
-  // Check if this is an Adobe Analytics request
-  if (isAdobeAnalyticsRequest(request)) {
-    const analyticsEvent = parseAdobeAnalyticsRequest(request);
-    if (analyticsEvent) {
-      analyticsLogs.push(analyticsEvent);
+    // Check if this is an Adobe Analytics request
+    else if (isAdobeAnalyticsRequest(request)) {
+      event = parseAdobeAnalyticsRequest(request);
     }
+    
+    // If we have a valid event, try to capture UI XML
+    if (event && deviceId) {
+      // Capture UI XML for every event (with retries for reliability)
+      try {
+        let uiXml = null;
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (attempts < maxAttempts && (!uiXml || uiXml.startsWith('Error') || uiXml.startsWith('UI XML capture failed'))) {
+          attempts++;
+          try {
+            console.log(`Attempt ${attempts} to capture UI XML for network event ${event.eventName}`);
+            uiXml = await captureUiXml(deviceId);
+            
+            // Small delay between retries
+            if (attempts < maxAttempts && (!uiXml || uiXml.startsWith('Error') || uiXml.startsWith('UI XML capture failed'))) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } catch (retryError) {
+            console.warn(`XML capture retry ${attempts} failed:`, retryError.message);
+          }
+        }
+        
+        if (uiXml && !uiXml.startsWith('Error') && !uiXml.startsWith('UI XML capture failed')) {
+          event.uiXml = uiXml;
+          console.log(`Successfully captured UI XML for network event ${event.eventName} after ${attempts} attempt(s)`);
+        } else {
+          console.warn(`Failed to capture UI XML after ${attempts} attempts for network event ${event.eventName}`);
+        }
+      } catch (error) {
+        console.error('Error in network XML capture process:', error.message);
+      }
+    }
+    
+    return event;
+  } catch (error) {
+    console.error('Error processing analytics request:', error);
+    return null;
   }
 }
 

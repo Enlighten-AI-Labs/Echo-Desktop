@@ -817,16 +817,7 @@ export default function DebuggerView({ navigateTo, params }) {
                         />
                       </div>
                       
-                      <div className={styles.settingItem}>
-                        <label>
-                          <input 
-                            type="checkbox" 
-                            checked={crawlSettings.stayInApp}
-                            onChange={(e) => handleSettingsChange('stayInApp', e.target.checked)}
-                          />
-                          Stay within app (ignore system UI)
-                        </label>
-                      </div>
+                    
                       
                       <div className={styles.settingItem}>
                         <label>Mode</label>

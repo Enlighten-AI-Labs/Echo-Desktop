@@ -401,24 +401,22 @@ export default function DeviceSetupView({ navigateTo, params }) {
   };
 
   const handleBack = () => {
-    if (showIOSInstructions) {
-      // If showing iOS instructions, go back to platform selection
-      setShowIOSInstructions(false);
-    } else if (showAndroidInstructions) {
-      // If showing Android instructions, go back to platform selection
-      setShowAndroidInstructions(false);
-      setAndroidConnectionMethod(null);
-      setQrCodeData(null);
-      setSelectedDevice(null);
-    } else {
-      // Otherwise, return to analytics debugger with preserved parameters
-      const navigateParams = {};
-      if (deviceId) navigateParams.deviceId = deviceId;
-      if (packageName) navigateParams.packageName = packageName;
-      // Preserve the tab parameter if it exists
-      if (params?.tab) navigateParams.tab = params.tab;
-      navigateTo('debugger', navigateParams);
+    // Clean up any active processes before navigating
+    if (isDiscoveryActive) {
+      try {
+        window.api.adb.stopDeviceDiscovery?.();
+      } catch (error) {
+        console.error("Error stopping device discovery:", error);
+      }
     }
+    
+    // Always navigate back to the debugger with preserved parameters
+    const navigateParams = {};
+    if (deviceId) navigateParams.deviceId = deviceId;
+    if (packageName) navigateParams.packageName = packageName;
+    // Preserve the tab parameter if it exists
+    if (params?.tab) navigateParams.tab = params.tab;
+    navigateTo('debugger', navigateParams);
   };
 
   const handleStartCapturing = () => {

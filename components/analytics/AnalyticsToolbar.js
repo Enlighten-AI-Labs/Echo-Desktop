@@ -28,6 +28,7 @@ export default function AnalyticsToolbar({
 
   const [ribbonExpanded, setRibbonExpanded] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const searchContainerRef = useRef(null);
 
   // Close filters dropdown when clicking outside
@@ -44,13 +45,52 @@ export default function AnalyticsToolbar({
     };
   }, []);
 
+  // Function to handle the clear events confirmation
+  const confirmClearEvents = () => {
+    handleClearEvents();
+    setShowClearConfirmation(false);
+  };
+
   return (
     <div className={styles.toolbarContainer}>
+      {/* Confirmation Modal */}
+      {showClearConfirmation && (
+        <div className={styles.modalOverlay} onClick={() => setShowClearConfirmation(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Confirm Clear Events</h2>
+              <button className={styles.modalClose} onClick={() => setShowClearConfirmation(false)}>×</button>
+            </div>
+            <div className={styles.modalContent}>
+              <p>Are you sure you want to clear all captured analytics events? This action cannot be undone.</p>
+              <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
+                You will lose all current events data for this session.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button 
+                className={`${styles.modalButton} ${styles.cancelButton}`}
+                onClick={() => setShowClearConfirmation(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`${styles.modalButton} ${styles.saveButton}`}
+                style={{ backgroundColor: '#dc3545' }}
+                onClick={confirmClearEvents}
+              >
+                Clear Events
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <button
             className={styles.clearButton}
-            onClick={handleClearEvents}
+            onClick={() => setShowClearConfirmation(true)}
             disabled={events.length === 0}
           >
             Clear Events

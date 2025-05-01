@@ -61,6 +61,9 @@ async function createWindow() {
   
   // Make mainWindow globally accessible
   global.mainWindow = mainWindow;
+  
+  // Set the main window reference for debugTools
+  adbService.debugTools.setMainWindow(mainWindow);
 
   try {
     if (isDev) {

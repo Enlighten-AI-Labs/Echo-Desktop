@@ -47,5 +47,8 @@ module.exports = {
   stopNetworkCapture: debugTools.stopNetworkCapture,
   
   // Consts exports for other modules
-  PATHS: installer.PATHS
+  PATHS: installer.PATHS,
+  
+  // Direct module access for setMainWindow
+  debugTools
 }; 

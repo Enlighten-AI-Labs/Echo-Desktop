@@ -26,6 +26,66 @@ export function AnalyticsEventsProvider({ children }) {
     storage.setItem('analyticsEvents', JSON.stringify(events));
   }, [events]);
 
+  // Listen for XML update events from the main process
+  useEffect(() => {
+    // Add listener for events updated from the main process
+    const handleAnalyticsEventUpdated = (updatedEvent) => {
+      console.log('Received updated event from main process:', updatedEvent);
+      
+      if (!updatedEvent) return;
+      
+      setEvents(currentEvents => {
+        // First try to find a matching event by ID
+        let foundIndex = currentEvents.findIndex(e => e.id === updatedEvent.id);
+        
+        // If not found by ID, try matching by multiple properties
+        if (foundIndex === -1 && updatedEvent.message && updatedEvent.timestamp) {
+          foundIndex = currentEvents.findIndex(e => 
+            e.message === updatedEvent.message && 
+            e.timestamp === updatedEvent.timestamp
+          );
+        }
+        
+        // If still not found, try with rawLog
+        if (foundIndex === -1 && updatedEvent.rawLog) {
+          foundIndex = currentEvents.findIndex(e => e.rawLog === updatedEvent.rawLog);
+        }
+        
+        // If we found a matching event, update it
+        if (foundIndex !== -1) {
+          console.log('Found matching event at index:', foundIndex);
+          
+          // Create a new array to trigger a re-render
+          const updatedEvents = [...currentEvents];
+          
+          // Update the XML for the existing event
+          updatedEvents[foundIndex] = {
+            ...updatedEvents[foundIndex],
+            uiXml: updatedEvent.uiXml
+          };
+          
+          return updatedEvents;
+        }
+        
+        // If no matching event was found, just return the current events unchanged
+        console.log('No matching event found for:', updatedEvent.id);
+        return currentEvents;
+      });
+    };
+
+    // Register event listener
+    if (window.api?.adb?.onAnalyticsEventUpdated) {
+      window.api.adb.onAnalyticsEventUpdated(handleAnalyticsEventUpdated);
+    }
+
+    // Clean up the listener on unmount
+    return () => {
+      if (window.api?.adb?.removeAnalyticsEventListeners) {
+        window.api.adb.removeAnalyticsEventListeners();
+      }
+    };
+  }, []);
+
   // Add a new event or update an existing one
   const addOrUpdateEvents = (newEvents) => {
     setEvents(currentEvents => {

@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld(
       }
     },
     receive: (channel, func) => {
-      const validChannels = ['fromMain', 'adb:devicePaired'];
+      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated'];
       if (validChannels.includes(channel)) {
         // Deliberately strip event as it includes `sender` 
         ipcRenderer.on(channel, (event, ...args) => func(...args));
@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld(
     },
     
     removeListener: (channel) => {
-      const validChannels = ['fromMain', 'adb:devicePaired'];
+      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated'];
       if (validChannels.includes(channel)) {
         ipcRenderer.removeAllListeners(channel);
       }
@@ -46,7 +46,14 @@ contextBridge.exposeInMainWorld(
       stopLogcatCapture: () => ipcRenderer.invoke('adb:stopLogcatCapture'),
       getAnalyticsLogs: () => ipcRenderer.invoke('adb:getAnalyticsLogs'),
       clearAnalyticsLogs: () => ipcRenderer.invoke('adb:clearAnalyticsLogs'),
-      isLogcatRunning: () => ipcRenderer.invoke('adb:isLogcatRunning')
+      isLogcatRunning: () => ipcRenderer.invoke('adb:isLogcatRunning'),
+      // Analytics events listeners
+      onAnalyticsEventUpdated: (callback) => {
+        ipcRenderer.on('analytics-event-updated', (event, data) => callback(data));
+      },
+      removeAnalyticsEventListeners: () => {
+        ipcRenderer.removeAllListeners('analytics-event-updated');
+      }
     },
     
     // MitmProxy specific methods

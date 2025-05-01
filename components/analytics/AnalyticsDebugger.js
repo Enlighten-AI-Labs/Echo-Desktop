@@ -1,5 +1,5 @@
 import styles from '@/styles/components/unified-analytics-debugger.module.css';
-import { useEffect, useState, useRef, useDeferredValue } from 'react';
+import { useEffect, useState, useRef, useDeferredValue, useMemo } from 'react';
 import { useReact19 } from '@/contexts/React19Provider';
 import { useAnalyticsEvents } from '@/contexts/AnalyticsEventsProvider';
 import EventCard from './EventCard';
@@ -103,75 +103,25 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
   // Use deferred value for events to prevent UI blocking
   const deferredEvents = useDeferredValue(events);
   
-  // Wrapper function for the hook's functions that need the specific event
-  const handleRetakeScreenshot = () => {
-    if (!selectedEvent) return;
-    retakeScreenshot(selectedEvent.id);
-  };
+  // Move screenshot selection to a custom hook or memoized value instead of effect
+  const currentScreenshot = useMemo(() => {
+    return selectedEvent ? screenshots[selectedEvent?.id] : null;
+  }, [selectedEvent, screenshots]);
   
-  const handleDeleteScreenshot = () => {
-    if (!selectedEvent) return;
-    deleteScreenshot(selectedEvent.id);
-  };
-
-  // Add delete event handler
-  const handleDeleteEvent = (eventToDelete, e) => {
-    e.stopPropagation(); // Prevent event card selection when deleting
-    deleteEvent(eventToDelete.id);
-    if (selectedEvent?.id === eventToDelete.id) {
-      setSelectedEvent(null);
-    }
-  };
-
-  // Function to scroll to most recent event
-  const scrollToMostRecent = () => {
-    if (eventsListRef.current) {
-      eventsListRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // Modified event selection handler
-  const handleEventSelection = (event) => {
-    setSelectedEvent(event);
-    setUserSelectedEvent(true);
-  };
-
-  // Function to return to most recent event
-  const handleGoToTop = () => {
-    if (filteredEvents.length > 0) {
-      setSelectedEvent(filteredEvents[0]);
-      setUserSelectedEvent(false);
-      setUserInteracting(false);
-      scrollToMostRecent();
-    }
-  };
-
-  // Handle user interaction with panels
-  const handlePanelInteraction = () => {
-    setUserInteracting(true);
-  };
-
-  // Effect to auto-select most recent event if no user selection
+  // Replace the problematic useEffect with this one
   useEffect(() => {
-    if (filteredEvents.length > 0 && !userSelectedEvent && !userInteracting) {
-      setSelectedEvent(filteredEvents[0]);
+    // Only handle the loading of screenshot data
+    if (selectedEvent && 
+        screenshots[selectedEvent.id] && 
+        !screenshots[selectedEvent.id].dataUrl) {
+      loadScreenshotData(selectedEvent.id);
     }
-  }, [filteredEvents, userSelectedEvent, userInteracting]);
+  }, [selectedEvent, screenshots, loadScreenshotData]);
 
-  // Effect to handle screenshot updates when selected event changes
+  // Separate effect for updating the selected screenshot
   useEffect(() => {
-    if (selectedEvent) {
-      if (screenshots[selectedEvent.id] && !screenshots[selectedEvent.id].dataUrl) {
-        loadScreenshotData(selectedEvent.id);
-      }
-      setSelectedScreenshot(screenshots[selectedEvent.id]);
-    } else {
-      setSelectedScreenshot(null);
-    }
-  }, [selectedEvent, screenshots, setSelectedScreenshot, loadScreenshotData]);
+    setSelectedScreenshot(currentScreenshot);
+  }, [currentScreenshot, setSelectedScreenshot]);
 
   // Add scroll event listener to events list
   useEffect(() => {
@@ -243,6 +193,64 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       addOrUpdateEvents(updatedEvents);
     }
   }, [screenshots, events, addOrUpdateEvents]);
+
+  // Wrapper function for the hook's functions that need the specific event
+  const handleRetakeScreenshot = () => {
+    if (!selectedEvent) return;
+    retakeScreenshot(selectedEvent.id);
+  };
+  
+  const handleDeleteScreenshot = () => {
+    if (!selectedEvent) return;
+    deleteScreenshot(selectedEvent.id);
+  };
+
+  // Add delete event handler
+  const handleDeleteEvent = (eventToDelete, e) => {
+    e.stopPropagation(); // Prevent event card selection when deleting
+    deleteEvent(eventToDelete.id);
+    if (selectedEvent?.id === eventToDelete.id) {
+      setSelectedEvent(null);
+    }
+  };
+
+  // Function to scroll to most recent event
+  const scrollToMostRecent = () => {
+    if (eventsListRef.current) {
+      eventsListRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Modified event selection handler
+  const handleEventSelection = (event) => {
+    setSelectedEvent(event);
+    setUserSelectedEvent(true);
+  };
+
+  // Function to return to most recent event
+  const handleGoToTop = () => {
+    if (filteredEvents.length > 0) {
+      setSelectedEvent(filteredEvents[0]);
+      setUserSelectedEvent(false);
+      setUserInteracting(false);
+      scrollToMostRecent();
+    }
+  };
+
+  // Handle user interaction with panels
+  const handlePanelInteraction = () => {
+    setUserInteracting(true);
+  };
+
+  // Effect to auto-select most recent event if no user selection
+  useEffect(() => {
+    if (filteredEvents.length > 0 && !userSelectedEvent && !userInteracting) {
+      setSelectedEvent(filteredEvents[0]);
+    }
+  }, [filteredEvents, userSelectedEvent, userInteracting]);
 
   return (
     <div className={styles.container}>

@@ -335,6 +335,15 @@ ipcMain.handle('adb:isLogcatRunning', async () => {
   return adbService.isLogcatRunning();
 });
 
+// New touch event capture handlers
+ipcMain.handle('adb:startTouchEventCapture', async (event, deviceId) => {
+  return adbService.startTouchEventCapture(deviceId);
+});
+
+ipcMain.handle('adb:stopTouchEventCapture', async () => {
+  return adbService.stopTouchEventCapture();
+});
+
 // MitmProxy handlers
 ipcMain.handle('mitmproxy:status', () => {
   return mitmproxyService.getProxyStatus();

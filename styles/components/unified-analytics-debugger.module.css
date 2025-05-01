@@ -2497,3 +2497,78 @@ button[aria-expanded="true"] .toggleIcon {
   overflow-y: auto;
   padding-bottom: 1rem;
 }
+
+/* Add new styles for interactions at the end of the file */
+
+.interactionsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.interactionCard {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  background-color: #f9f9f9;
+}
+
+.interactionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.interactionType {
+  font-weight: bold;
+  color: #3C76A9;
+  font-size: 14px;
+}
+
+.interactionTime {
+  color: #888;
+  font-size: 13px;
+}
+
+.interactionDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.interactionCoordinates {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.coordinateField, .metricField {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.coordinateLabel, .metricLabel {
+  font-weight: 500;
+  color: #555;
+  font-size: 13px;
+}
+
+.coordinateValue, .metricValue {
+  font-family: monospace;
+  color: #333;
+  font-size: 13px;
+}
+
+.interactionMetrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed #eee;
+}

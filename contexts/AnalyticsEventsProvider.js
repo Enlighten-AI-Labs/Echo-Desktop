@@ -73,12 +73,56 @@ export function AnalyticsEventsProvider({ children }) {
       });
     };
 
-    // Register event listener
+    // Add listener for interaction events
+    const handleAnalyticsEventInteractions = (updatedEvent) => {
+      console.log('Received interaction event from main process:', updatedEvent);
+      
+      if (!updatedEvent || !updatedEvent.interactions) return;
+      
+      setEvents(currentEvents => {
+        // First try to find a matching event by ID
+        let foundIndex = currentEvents.findIndex(e => e.id === updatedEvent.id);
+        
+        // If not found by ID, try matching by event name and timestamp
+        if (foundIndex === -1 && updatedEvent.eventName && updatedEvent.timestamp) {
+          foundIndex = currentEvents.findIndex(e => 
+            e.eventName === updatedEvent.eventName && 
+            e.timestamp === updatedEvent.timestamp
+          );
+        }
+        
+        // If we found a matching event, update it
+        if (foundIndex !== -1) {
+          console.log('Found matching event for interactions at index:', foundIndex);
+          
+          // Create a new array to trigger a re-render
+          const updatedEvents = [...currentEvents];
+          
+          // Update the interactions for the existing event
+          updatedEvents[foundIndex] = {
+            ...updatedEvents[foundIndex],
+            interactions: updatedEvent.interactions
+          };
+          
+          return updatedEvents;
+        }
+        
+        // If no matching event was found, just return the current events unchanged
+        console.log('No matching event found for interactions:', updatedEvent.id);
+        return currentEvents;
+      });
+    };
+
+    // Register event listeners
     if (window.api?.adb?.onAnalyticsEventUpdated) {
       window.api.adb.onAnalyticsEventUpdated(handleAnalyticsEventUpdated);
     }
+    
+    if (window.api?.adb?.onAnalyticsEventInteractions) {
+      window.api.adb.onAnalyticsEventInteractions(handleAnalyticsEventInteractions);
+    }
 
-    // Clean up the listener on unmount
+    // Clean up the listeners on unmount
     return () => {
       if (window.api?.adb?.removeAnalyticsEventListeners) {
         window.api.adb.removeAnalyticsEventListeners();

@@ -13,7 +13,8 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
     eCommerce: true,
     userProperties: true,
     rawData: false,
-    uiXml: false
+    uiXml: false,
+    interactions: true
   });
 
   if (!selectedEvent) {
@@ -298,6 +299,63 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
             </div>
           </div>
         )}
+
+        {/* User Interactions Section */}
+        {selectedEvent?.interactions && selectedEvent.interactions.length > 0 && (
+          <div className={styles.section}>
+            <div 
+              className={`${styles.sectionHeader} ${expandedSections.interactions ? styles.expanded : ''}`}
+              onClick={() => setExpandedSections(prev => ({
+                ...prev,
+                interactions: !prev.interactions
+              }))}
+            >
+              <h3>User Interactions</h3>
+              <span>{expandedSections.interactions ? '−' : '+'}</span>
+            </div>
+            <div className={styles.sectionContent}>
+              <div className={styles.interactionsContainer}>
+                {selectedEvent.interactions.map((interaction, index) => (
+                  <div key={index} className={styles.interactionCard}>
+                    <div className={styles.interactionHeader}>
+                      <span className={styles.interactionType}>{interaction.type}</span>
+                      <span className={styles.interactionTime}>
+                        {new Date(interaction.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className={styles.interactionDetails}>
+                      <div className={styles.interactionCoordinates}>
+                        <div className={styles.coordinateField}>
+                          <span className={styles.coordinateLabel}>Start:</span>
+                          <span className={styles.coordinateValue}>
+                            X: {interaction.startX}, Y: {interaction.startY}
+                          </span>
+                        </div>
+                        <div className={styles.coordinateField}>
+                          <span className={styles.coordinateLabel}>End:</span>
+                          <span className={styles.coordinateValue}>
+                            X: {interaction.endX}, Y: {interaction.endY}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={styles.interactionMetrics}>
+                        <div className={styles.metricField}>
+                          <span className={styles.metricLabel}>Distance:</span>
+                          <span className={styles.metricValue}>{Math.round(interaction.distance)} px</span>
+                        </div>
+                        <div className={styles.metricField}>
+                          <span className={styles.metricLabel}>Duration:</span>
+                          <span className={styles.metricValue}>{interaction.duration} ms</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* End of User Interactions Section */}
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld(
       }
     },
     receive: (channel, func) => {
-      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated'];
+      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated', 'analytics-event-interactions'];
       if (validChannels.includes(channel)) {
         // Deliberately strip event as it includes `sender` 
         ipcRenderer.on(channel, (event, ...args) => func(...args));
@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld(
     },
     
     removeListener: (channel) => {
-      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated'];
+      const validChannels = ['fromMain', 'adb:devicePaired', 'analytics-event-updated', 'analytics-event-interactions'];
       if (validChannels.includes(channel)) {
         ipcRenderer.removeAllListeners(channel);
       }
@@ -47,12 +47,19 @@ contextBridge.exposeInMainWorld(
       getAnalyticsLogs: () => ipcRenderer.invoke('adb:getAnalyticsLogs'),
       clearAnalyticsLogs: () => ipcRenderer.invoke('adb:clearAnalyticsLogs'),
       isLogcatRunning: () => ipcRenderer.invoke('adb:isLogcatRunning'),
+      // Touch event capture methods
+      startTouchEventCapture: (deviceId) => ipcRenderer.invoke('adb:startTouchEventCapture', deviceId),
+      stopTouchEventCapture: () => ipcRenderer.invoke('adb:stopTouchEventCapture'),
       // Analytics events listeners
       onAnalyticsEventUpdated: (callback) => {
         ipcRenderer.on('analytics-event-updated', (event, data) => callback(data));
       },
+      onAnalyticsEventInteractions: (callback) => {
+        ipcRenderer.on('analytics-event-interactions', (event, data) => callback(data));
+      },
       removeAnalyticsEventListeners: () => {
         ipcRenderer.removeAllListeners('analytics-event-updated');
+        ipcRenderer.removeAllListeners('analytics-event-interactions');
       }
     },
     

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import journeyStyles from '@/styles/components/journey-modal.module.css';
 import { TrashIcon, EditIcon } from '../icons/AnalyticsIcons';
 
@@ -31,6 +32,66 @@ const JourneyModal = ({
   handleCreateNewJourney,
   getJourneyColor
 }) => {
+  const [modalStyle, setModalStyle] = useState({});
+
+  useEffect(() => {
+    // Handle window resize for split screen cases
+    const handleResize = () => {
+      // Apply custom positioning for the modal in split screen cases
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      // No special handling needed for regular sizes
+      if (windowWidth > 1200) {
+        setModalStyle({});
+        return;
+      }
+      
+      // For smaller screens or split screen, ensure modal fits properly
+      setModalStyle({
+        maxWidth: Math.min(1000, windowWidth * 0.85) + 'px',
+        maxHeight: (windowHeight * 0.85) + 'px',
+      });
+    };
+    
+    // Call once on mount and add listener
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Disable split screen divider when modal is shown
+  useEffect(() => {
+    if (showJourneyModal) {
+      // Find all dividers and temporarily adjust them
+      const dividers = document.querySelectorAll('[class*="divider"]');
+      dividers.forEach(divider => {
+        // Store original values to restore later
+        divider.dataset.originalZIndex = divider.style.zIndex || '';
+        divider.dataset.originalPosition = divider.style.position || '';
+        
+        // Adjust properties to prevent visual conflict with modal
+        divider.style.pointerEvents = 'none';
+        divider.style.zIndex = '1'; // Much lower than modal
+        divider.style.position = 'relative'; // Keep in stacking context
+      });
+    }
+    
+    return () => {
+      // Re-enable dividers when modal closes
+      const dividers = document.querySelectorAll('[class*="divider"]');
+      dividers.forEach(divider => {
+        // Restore original values
+        divider.style.pointerEvents = 'auto';
+        divider.style.zIndex = divider.dataset.originalZIndex || '';
+        divider.style.position = divider.dataset.originalPosition || '';
+      });
+    };
+  }, [showJourneyModal]);
+
   const handleSelectAllJourneys = () => {
     setSelectedJourneyIds(new Set(journeys.map(j => j.id)));
   };
@@ -54,9 +115,12 @@ const JourneyModal = ({
 
   if (!showJourneyModal) return null;
 
-  return (
+  // For server-side rendering compatibility
+  if (typeof document === 'undefined') return null;
+
+  return ReactDOM.createPortal(
     <div className={journeyStyles.modalOverlay} onClick={handleCloseModal}>
-      <div className={journeyStyles.modal} onClick={e => e.stopPropagation()}>
+      <div className={journeyStyles.modal} onClick={e => e.stopPropagation()} style={modalStyle}>
         <div className={journeyStyles.modalHeader}>
           <h2 className={journeyStyles.modalTitle}>Journey Management</h2>
           <div className={journeyStyles.modalActions}>
@@ -343,7 +407,8 @@ const JourneyModal = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

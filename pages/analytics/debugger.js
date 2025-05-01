@@ -731,7 +731,7 @@ export default function DebuggerView({ navigateTo, params }) {
               className={styles.viewLogsButton}
               onClick={handleViewLogs}
             >
-              View Logs
+              Network
             </button>
           </div>
         </div>

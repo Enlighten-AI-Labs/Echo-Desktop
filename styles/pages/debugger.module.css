@@ -431,6 +431,7 @@
   border-top: 1px solid #3a3a3c;
   min-height: 200px;
   overflow: hidden;
+  height: 100%;
 }
 
 .logsHeader {
@@ -466,8 +467,29 @@
   overflow-y: auto;
   background-color: #1a1a1a;
   border-radius: 4px;
-  padding: 8px;
+  padding: 12px;
   scroll-behavior: smooth;
+  max-height: 100%;
+}
+
+/* Add better scrollbar styling for logs container */
+.logsContainer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.logsContainer::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.logsContainer::-webkit-scrollbar-thumb {
+  background: #3a3a3c;
+  border-radius: 4px;
+}
+
+.logsContainer::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4c;
 }
 
 .emptyLogs {

@@ -226,8 +226,8 @@ export default function DebuggerView({ navigateTo, params }) {
         [setting]: value
       };
       
-      // If mode is changed to AI, show the prompt modal
-      if (setting === 'mode' && value === 'ai') {
+      // If mode is changed to AI, show the prompt modal if no prompt is set yet
+      if (setting === 'mode' && value === 'ai' && !prev.aiPrompt.trim()) {
         setShowAiPrompt(true);
       }
       
@@ -244,8 +244,8 @@ export default function DebuggerView({ navigateTo, params }) {
   };
   
   const handleAiPromptCancel = () => {
-    // If no prompt is set, revert to random mode
-    if (!crawlSettings.aiPrompt) {
+    // If canceling from the modal with no prompt, revert to random mode
+    if (showAiPrompt && !crawlSettings.aiPrompt.trim()) {
       setCrawlSettings(prev => ({
         ...prev,
         mode: 'random'
@@ -817,8 +817,6 @@ export default function DebuggerView({ navigateTo, params }) {
                         />
                       </div>
                       
-                    
-                      
                       <div className={styles.settingItem}>
                         <label>Mode</label>
                         <select
@@ -831,14 +829,28 @@ export default function DebuggerView({ navigateTo, params }) {
                         </select>
                       </div>
                       
-                      <div className={styles.settingItem}>
-                        <label>AI Prompt</label>
-                        <input 
-                          type="text" 
-                          value={crawlSettings.aiPrompt}
-                          onChange={(e) => handleSettingsChange('aiPrompt', e.target.value)}
-                        />
-                      </div>
+                      {crawlSettings.mode === 'ai' && (
+                        <div className={styles.settingItem}>
+                          <label>AI Prompt</label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                              type="text" 
+                              value={crawlSettings.aiPrompt}
+                              onChange={(e) => handleSettingsChange('aiPrompt', e.target.value)}
+                              placeholder="Enter instructions for the AI crawler..."
+                              style={{ flex: 1 }}
+                            />
+                            <button 
+                              className={styles.toggleButton}
+                              onClick={() => setShowAiPrompt(true)}
+                              title="Edit in larger window"
+                              style={{ flexShrink: 0 }}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className={styles.deviceInfo}>
                         <p><strong>Device ID:</strong> {deviceId || 'Not selected'}</p>

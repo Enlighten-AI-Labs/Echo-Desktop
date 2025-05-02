@@ -182,6 +182,7 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
 
 /* Header controls container for buttons and controls in the panel header */
@@ -321,10 +322,13 @@
 /* Left panel styles */
 .leftPanel {
   width: 300px;
+  min-width: 250px;
+  max-width: 350px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid #3a3a3c;
+  flex-shrink: 0;
 }
 
 .settingsPanel {
@@ -513,6 +517,7 @@
   flex-direction: column;
   padding: 16px;
   overflow: hidden;
+  min-width: 0; /* Important for flexbox overflow handling */
 }
 
 .progressBar {
@@ -963,10 +968,10 @@
 .aiProgressPanel {
   display: flex;
   flex-direction: column;
-  background-color: #f8f9fa;
+  background-color: #1e1e20;
   margin-bottom: 16px;
   border-radius: 6px;
-  border: 1px solid #e9edf3;
+  border: 1px solid #3a3a3c;
   overflow: hidden;
 }
 
@@ -988,30 +993,32 @@
 .aiTimestamp {
   font-size: 12px;
   font-family: 'Doto Semi-Bold', monospace;
+  color: #bbb;
+  margin-bottom: 12px;
 }
 
 .aiProgressEmpty {
   padding: 20px;
   text-align: center;
-  color: #666;
+  color: #bbb;
   font-style: italic;
 }
 
 .progressSection {
   padding: 12px 16px;
-  border-bottom: 1px solid #e9edf3;
+  border-bottom: 1px solid #3a3a3c;
 }
 
 .progressSection h4 {
   margin: 0 0 8px 0;
   font-family: 'Azeret Mono Regular', monospace;
   font-size: 14px;
-  color: #333;
+  color: #e0e0e0;
 }
 
 .progressBar {
   height: 24px;
-  background-color: #e9edf3;
+  background-color: #1a1a1c;
   border-radius: 4px;
   position: relative;
   overflow: hidden;
@@ -1032,38 +1039,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333;
+  color: #e0e0e0;
   font-size: 12px;
   font-family: 'Azeret Mono Regular', monospace;
-  text-shadow: 0 0 2px white;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
 .nextStepsSection, .topElementsSection {
   padding: 12px 16px;
-  border-bottom: 1px solid #e9edf3;
+  border-bottom: 1px solid #3a3a3c;
 }
 
 .nextStepsSection h4, .topElementsSection h4 {
   margin: 0 0 8px 0;
   font-family: 'Azeret Mono Regular', monospace;
   font-size: 14px;
-  color: #333;
+  color: #e0e0e0;
 }
 
 .nextStepsList {
   margin: 0;
-  padding: 0 0 0 20px;
+  padding: 0;
+  list-style: none;
 }
 
-.nextStepsList li {
-  margin-bottom: 8px;
+.nextStepItem {
+  margin-bottom: 10px;
   font-size: 13px;
-  color: #444;
+  color: #e0e0e0;
+  line-height: 1.4;
 }
 
-.nextStepsList li.currentStep {
+.stepNumber {
   font-weight: bold;
   color: #9C54AD;
+  margin-right: 6px;
+}
+
+.nextStepItem.currentStep {
+  color: #ffffff;
 }
 
 .elementList {
@@ -1075,7 +1089,7 @@
 .elementItem {
   margin-bottom: 12px;
   padding: 10px;
-  background-color: white;
+  background-color: #262628;
   border-radius: 4px;
   border-left: 3px solid #3C76A9;
 }
@@ -1102,19 +1116,21 @@
 .elementClass {
   font-size: 13px;
   font-family: 'Azeret Mono Regular', monospace;
-  color: #333;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .elementText {
   font-size: 14px;
   margin-bottom: 8px;
-  color: #333;
+  color: #e0e0e0;
   font-style: italic;
 }
 
 .elementReasoning {
   font-size: 12px;
-  color: #666;
+  color: #bbb;
   line-height: 1.4;
 }
 
@@ -1172,4 +1188,119 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* New AI Panel styles to replace the sidebar */
+.aiPanelContainer {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #3a3a3c;
+  background-color: #1e1e20;
+  overflow: hidden;
+  height: 100%;
+}
+
+.aiPanelToggle {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #262628;
+  border: none;
+  border-bottom: 1px solid #3a3a3c;
+  color: #bbb;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.aiPanelToggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.aiPanelActive {
+  color: white;
+  background-color: #3C76A9;
+}
+
+.aiPanelToggleIcon {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.aiPanelToggleText {
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.aiPanelContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.3s ease;
+}
+
+.aiPanelExpanded {
+  max-width: 280px;
+  width: 280px;
+}
+
+.aiPanelCollapsed {
+  max-width: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.aiPanelHeader {
+  padding: 10px 16px;
+  background-color: #3C76A9;
+  color: white;
+}
+
+.aiPanelHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.aiPanelBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Adjust the App Crawler content for the sidebar */
+.appCrawlerPanel {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Header AI Toggle Button */
+.headerAiToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: none;
+  border: 1px solid #555;
+  color: #bbb;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: all 0.2s ease;
+}
+
+.headerAiToggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.headerAiToggle.aiPanelActive {
+  background-color: #3C76A9;
+  color: white;
+  border-color: #3C76A9;
 } 

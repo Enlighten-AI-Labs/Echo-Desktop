@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import styles from '@/styles/pages/debugger.module.css';
 import LogEntry from '@/components/common/LogEntry';
 import { AiPromptModal } from '@/components/crawler';
+import AiAnalysisPanel from '@/components/crawler/AiAnalysisPanel';
 import dynamic from 'next/dynamic';
 
 // Dynamically import ReactFlow to avoid SSR issues
@@ -54,84 +55,6 @@ function beautifyXml(xml) {
   return result.trim();
 }
 
-// Add a new AIProgressPanel component
-const AIProgressPanel = ({ aiAnalysis }) => {
-  if (!aiAnalysis || !aiAnalysis.timestamp) {
-    return (
-      <div className={styles.aiProgressPanel}>
-        <div className={styles.aiProgressHeader}>
-          <h3>AI Analysis</h3>
-        </div>
-        <div className={styles.aiProgressEmpty}>
-          Waiting for AI analysis...
-        </div>
-      </div>
-    );
-  }
-  
-  const { progressSummary, nextSteps, topElements } = aiAnalysis;
-  
-  return (
-    <div className={styles.aiProgressPanel}>
-      <div className={styles.aiProgressHeader}>
-        <h3>AI Analysis</h3>
-        <span className={styles.aiTimestamp}>
-          {new Date(aiAnalysis.timestamp).toLocaleTimeString()}
-        </span>
-      </div>
-      
-      {progressSummary && (
-        <div className={styles.progressSection}>
-          <h4>Progress: {progressSummary.type}</h4>
-          <div className={styles.progressBar}>
-            <div 
-              className={styles.progressFill}
-              style={{ width: `${progressSummary.progressPercent}%` }}
-            />
-            <span>
-              Step {progressSummary.currentStep} of {progressSummary.totalSteps} 
-              ({progressSummary.progressPercent}%)
-            </span>
-          </div>
-        </div>
-      )}
-      
-      {nextSteps && nextSteps.length > 0 && (
-        <div className={styles.nextStepsSection}>
-          <h4>Next Steps</h4>
-          <ol className={styles.nextStepsList}>
-            {nextSteps.map((step, index) => (
-              <li key={index} className={index === 0 ? styles.currentStep : ''}>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      
-      {topElements && topElements.length > 0 && (
-        <div className={styles.topElementsSection}>
-          <h4>Recommended Elements to Click</h4>
-          <ol className={styles.elementList}>
-            {topElements.map((element, index) => (
-              <li key={index} className={styles.elementItem}>
-                <div className={styles.elementHeader}>
-                  <span className={styles.elementScore}>{element.score}</span>
-                  <span className={styles.elementClass}>{element.class}</span>
-                </div>
-                {element.text && (
-                  <div className={styles.elementText}>"{element.text}"</div>
-                )}
-                <div className={styles.elementReasoning}>{element.reasoning}</div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function AppCrawler({ deviceId, packageName, splitRatio, leftPanelCollapsed, toggleLeftPanel, rightPanelCollapsed }) {
   // App Crawler State
   const [crawlStatus, setCrawlStatus] = useState('idle'); // idle, running, completed, error
@@ -149,6 +72,7 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
   const [flowReady, setFlowReady] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showXmlPopup, setShowXmlPopup] = useState(false);
+  const [aiSidebarExpanded, setAiSidebarExpanded] = useState(false); // New state for AI sidebar
   
   const [crawlSettings, setCrawlSettings] = useState({
     maxScreens: 20,
@@ -184,8 +108,12 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
       };
       
       // If mode is changed to AI, show the prompt modal if no prompt is set yet
-      if (setting === 'mode' && value === 'ai' && !prev.aiPrompt.trim()) {
-        setShowAiPrompt(true);
+      if (setting === 'mode' && value === 'ai') {
+        if (!prev.aiPrompt.trim()) {
+          setShowAiPrompt(true);
+        }
+        // Auto-expand AI sidebar when switching to AI mode
+        setAiSidebarExpanded(true);
       }
       
       return newSettings;
@@ -553,6 +481,11 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
     }
   }, [crawlStatus]);
 
+  // Toggle AI sidebar
+  const toggleAiSidebar = () => {
+    setAiSidebarExpanded(prev => !prev);
+  };
+
   return (
     <>
       <div 
@@ -566,6 +499,26 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
         <div className={styles.panelHeader}>
           <h2>App Crawler</h2>
           <div className={styles.headerControls}>
+            {crawlSettings.mode === 'ai' && (
+              <button 
+                className={`${styles.aiPanelToggle} ${aiSidebarExpanded ? styles.aiPanelActive : ''}`}
+                onClick={toggleAiSidebar}
+                title={aiSidebarExpanded ? "Hide AI Analysis" : "Show AI Analysis"}
+              >
+                <span className={styles.aiPanelToggleIcon}>
+                  {aiSidebarExpanded ? 
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="15 6 9 12 15 18"></polyline>
+                    </svg>
+                    :
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 6 15 12 9 18"></polyline>
+                    </svg>
+                  }
+                </span>
+                <span>AI</span>
+              </button>
+            )}
             <div className={styles.crawlControls}>
               {crawlStatus === 'idle' || crawlStatus === 'completed' || crawlStatus === 'error' ? (
                 <button 
@@ -704,11 +657,6 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
                 </>
               )}
             </div>
-            
-            {/* Add AI Progress panel when in AI mode */}
-            {crawlSettings.mode === 'ai' && (
-              <AIProgressPanel aiAnalysis={aiAnalysis} />
-            )}
             
             <div className={styles.logsPanel}>
               <div className={styles.logsHeader}>
@@ -904,6 +852,15 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
               </div>
             )}
           </div>
+          
+          {/* Conditionally show AI analysis panel when in AI mode */}
+          {crawlSettings.mode === 'ai' && (
+            <AiAnalysisPanel 
+              aiAnalysis={aiAnalysis} 
+              expanded={aiSidebarExpanded}
+              onToggle={toggleAiSidebar}
+            />
+          )}
         </div>
       </div>
 

@@ -516,16 +516,16 @@ function generateNextSteps(progressData) {
   const nextSteps = [];
   
   // Current step (in progress)
-  nextSteps.push(`Current: ${steps[currentStep - 1]}`);
+  nextSteps.push(`${steps[currentStep - 1]}`);
   
   // Next step
   if (currentStep < steps.length) {
-    nextSteps.push(`Next: ${steps[currentStep]}`);
+    nextSteps.push(`${steps[currentStep]}`);
   }
   
   // Add one more future step if available
   if (currentStep + 1 < steps.length) {
-    nextSteps.push(`Then: ${steps[currentStep + 1]}`);
+    nextSteps.push(`${steps[currentStep + 1]}`);
   }
   
   return nextSteps;

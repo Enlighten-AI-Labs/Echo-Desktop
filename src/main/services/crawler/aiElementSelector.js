@@ -25,6 +25,10 @@ let latestAnalysis = {
   topElements: []
 };
 
+// Keep track of recently clicked elements to detect patterns
+const RECENT_CLICKS_MEMORY = 5;
+let recentlyClickedElements = [];
+
 // Logging function that doesn't create circular dependencies
 function log(message, type = 'info', logger = null) {
   // Always log to console
@@ -38,6 +42,78 @@ function log(message, type = 'info', logger = null) {
   if (logger && typeof logger === 'function') {
     logger(message, type);
   }
+}
+
+/**
+ * Add an element to the recently clicked tracking
+ * @param {Object} element Element that was clicked
+ */
+function trackClickedElement(element) {
+  if (!element || !element.buttonHash) return;
+  
+  // Add to the front of the array
+  recentlyClickedElements.unshift(element.buttonHash);
+  
+  // Keep only the most recent elements
+  if (recentlyClickedElements.length > RECENT_CLICKS_MEMORY) {
+    recentlyClickedElements = recentlyClickedElements.slice(0, RECENT_CLICKS_MEMORY);
+  }
+}
+
+/**
+ * Reset the recently clicked elements tracking
+ */
+function resetClickedElementsTracking() {
+  recentlyClickedElements = [];
+}
+
+/**
+ * Detect if clicking this element would create a repetitive pattern
+ * @param {Object} element Element to check
+ * @returns {Object} Pattern detection result {isPattern: boolean, patternType: string, penaltyFactor: number}
+ */
+function detectRepetitivePattern(element) {
+  if (!element || !element.buttonHash || recentlyClickedElements.length === 0) {
+    return { isPattern: false, patternType: 'none', penaltyFactor: 1 };
+  }
+  
+  const result = { 
+    isPattern: false, 
+    patternType: 'none', 
+    penaltyFactor: 1 
+  };
+  
+  // Case 1: Same button twice in a row
+  if (element.buttonHash === recentlyClickedElements[0]) {
+    result.isPattern = true;
+    result.patternType = 'immediate_repeat';
+    result.penaltyFactor = 0.2; // 80% reduction in score
+  }
+  
+  // Case 2: A-B-A pattern
+  else if (recentlyClickedElements.length >= 2 && 
+          element.buttonHash === recentlyClickedElements[1]) {
+    result.isPattern = true;
+    result.patternType = 'alternating';
+    result.penaltyFactor = 0.3; // 70% reduction in score
+  }
+  
+  // Case 3: A-B-C-A cycle (returning to a button clicked 3 steps ago)
+  else if (recentlyClickedElements.length >= 3 && 
+          element.buttonHash === recentlyClickedElements[2]) {
+    result.isPattern = true;
+    result.patternType = 'short_cycle';
+    result.penaltyFactor = 0.4; // 60% reduction in score
+  }
+  
+  // Case 4: Clicked in the last few steps but not in a specific pattern
+  else if (recentlyClickedElements.includes(element.buttonHash)) {
+    result.isPattern = true;
+    result.patternType = 'recent_repeat';
+    result.penaltyFactor = 0.5; // 50% reduction in score
+  }
+  
+  return result;
 }
 
 /**
@@ -521,10 +597,10 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
   }
   
   try {
-    log(`Analyzing ${enhancedElements.length} elements with Gemini AI using model: gemini-2.0-flash`, 'info', logger);
+    log(`Analyzing ${enhancedElements.length} elements with Gemini AI using model: gemini-2.5-flash-preview-04-17`, 'info', logger);
     
     // Create a model instance
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
     
     // Get history summary to guide decision making
     const historySummary = getHistorySummary(history);
@@ -546,6 +622,25 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       ? updatedProgressData.steps[updatedProgressData.currentStep - 1]
       : "Explore the application";
     
+    // Include information about recently clicked elements to avoid patterns
+    let recentClicksInfo = "";
+    if (recentlyClickedElements.length > 0) {
+      recentClicksInfo = "\nRECENTLY CLICKED ELEMENTS:\n";
+      recentlyClickedElements.forEach((hash, idx) => {
+        // Find elements in history with this hash
+        const matchingHistoryEntries = history.filter(entry => 
+          entry.element && entry.element.hash === hash
+        ).slice(-1);
+        
+        if (matchingHistoryEntries.length > 0) {
+          const entry = matchingHistoryEntries[0];
+          recentClicksInfo += `${idx+1}. Element: ${entry.element.class} "${entry.element.text || ''}" (hash: ${hash})\n`;
+        } else {
+          recentClicksInfo += `${idx+1}. Element hash: ${hash}\n`;
+        }
+      });
+    }
+    
     // Prepare a comprehensive prompt for Gemini with stronger focus on current step
     let userPrompt = `
     You are an AI assistant helping to test a mobile app by intelligently selecting UI elements to click.
@@ -558,17 +653,20 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     - Testing type: ${updatedProgressData.type}
     - Current step: ${updatedProgressData.currentStep} of ${updatedProgressData.steps.length}
     
-    FOCUS EXCLUSIVELY ON COMPLETING THE CURRENT STEP: "${currentStepDescription}"
-    
     ====== IMPORTANT ======
     Your ONLY objective right now is to identify elements that will help complete the current step.
-    Ignore future steps until this step is finished.
+    AVOID REPETITIVE PATTERNS: Do NOT recommend elements that:
+    - Were just clicked in the previous action
+    - Would create an alternating A-B-A pattern
+    - Would create a cycle of repeatedly visiting the same screens
+    Choose elements that move the testing forward to new screens and states.
     =====================
     
     Exploration history summary:
     - Screens visited: ${historySummary.screensVisited}
     - Elements clicked: ${historySummary.elementsClicked}
     - Most frequent activities: ${historySummary.uniqueActivities.join(', ') || 'None yet'}
+    ${recentClicksInfo}
     
     Recent actions:
     ${formattedHistory}
@@ -583,6 +681,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     - How likely clicking it will help COMPLETE THE CURRENT STEP: "${currentStepDescription}"
     - Elements that have clear text/labels matching the current step should receive highest scores
     - Elements that have been tried multiple times already should receive lower scores
+    - AVOID elements that would create repetitive patterns of interaction
     
     For each element, provide a JSON object with:
     - score: Number from 0-100
@@ -655,10 +754,28 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     // Apply scores to elements
     const scoredElements = enhancedElements.map((element, index) => {
       const elementScore = scores.find(s => s.elementIndex === index);
+      const baseScore = elementScore ? elementScore.score : 0;
+      
+      // Check for repetitive patterns and apply penalties
+      const patternCheck = detectRepetitivePattern(element);
+      let finalScore = baseScore;
+      let reasoning = elementScore ? elementScore.reasoning : 'No reasoning provided';
+      
+      // Apply pattern penalty if detected
+      if (patternCheck.isPattern) {
+        finalScore = Math.round(baseScore * patternCheck.penaltyFactor);
+        reasoning += ` (${patternCheck.patternType} pattern detected, score reduced)`;
+        
+        if (logger) {
+          logger(`Reduced score for element ${element.buttonHash} due to ${patternCheck.patternType} pattern`, 'info');
+        }
+      }
+      
       return {
         ...element,
-        aiScore: elementScore ? elementScore.score : 0,
-        aiReasoning: elementScore ? elementScore.reasoning : 'No reasoning provided'
+        aiScore: finalScore,
+        aiReasoning: reasoning,
+        patternDetected: patternCheck.isPattern ? patternCheck.patternType : null
       };
     });
     
@@ -742,6 +859,29 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
       logger
     );
     
+    // Update recently clicked elements from history
+    if (explorationHistory && explorationHistory.length > 0) {
+      // Look for the most recent click actions
+      const recentClicks = explorationHistory
+        .filter(entry => entry.action === 'click' && entry.element && entry.element.hash)
+        .slice(-RECENT_CLICKS_MEMORY);
+      
+      // Reset tracking
+      resetClickedElementsTracking();
+      
+      // Add each recent click to tracking in order (most recent first)
+      for (let i = recentClicks.length - 1; i >= 0; i--) {
+        const element = {
+          buttonHash: recentClicks[i].element.hash
+        };
+        trackClickedElement(element);
+      }
+      
+      if (recentlyClickedElements.length > 0 && logger) {
+        logger(`Tracking ${recentlyClickedElements.length} recently clicked elements to avoid repetitive patterns`, 'info');
+      }
+    }
+    
     // Use Gemini to score elements
     const scoredElements = await scoreElementsWithGemini(
       enhancedElements,
@@ -776,5 +916,7 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
 module.exports = {
   prioritizeElementsByAI,
   initGeminiAPI,
-  getLatestAnalysis
+  getLatestAnalysis,
+  trackClickedElement,
+  resetClickedElementsTracking
 };

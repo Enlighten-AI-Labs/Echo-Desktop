@@ -1,13 +1,17 @@
 /**
  * App Crawler Core module - contains the core crawling functionality
  */
-const { prioritizeElementsByAI, getLatestAnalysis } = require('./aiElementSelector');
+const aiElementSelector = require('./aiElementSelector');
 const { addScreen, generateFlowchartData } = require('../mitmproxy/visualState');
 const { execAdbCommand } = require('../adb/deviceManager');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const elementSelector = require('./elementSelector');
+const { v4: uuidv4 } = require('uuid');
+const pixelmatch = require('pixelmatch');
+const PNG = require('pngjs').PNG;
 
 // Crawler state
 let crawlerRunning = false;
@@ -300,7 +304,8 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
       stayInApp: settings.stayInApp !== false,
       ignoreElements: settings.ignoreElements || ['android.widget.ImageView'],
       maxClicksPerButton: settings.maxClicksPerButton || 3,
-      aiPrompt: settings.aiPrompt || ''
+      aiPrompt: settings.aiPrompt || '',
+      useAI: settings.useAI || false
     };
     mainWindowRef = windowRef;
     
@@ -388,6 +393,13 @@ function addToAIHistory(action, screen, element = null, result = 'success') {
   if (aiExplorationHistory.length > 50) {
     aiExplorationHistory = aiExplorationHistory.slice(-50);
   }
+  
+  // If we're clicking an element, track it in the AI element selector to prevent loops
+  if (action === 'click' && element && element.buttonHash) {
+    aiElementSelector.trackClickedElement({ 
+      buttonHash: element.buttonHash 
+    });
+  }
 }
 
 /**
@@ -395,7 +407,7 @@ function addToAIHistory(action, screen, element = null, result = 'success') {
  * @returns {Object} Latest AI analysis
  */
 function getAIAnalysisData() {
-  return getLatestAnalysis();
+  return aiElementSelector.getLatestAnalysis();
 }
 
 /**
@@ -551,6 +563,24 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       return;
     }
     
+    // Sort elements based on AI priority
+    if (crawlerSettings.useAI && crawlerSettings.aiPrompt) {
+      try {
+        // Pass the exploration history to the AI element selector
+        const prioritizedElements = await aiElementSelector.prioritizeElementsByAI(
+          elements,
+          crawlerSettings.aiPrompt,
+          currentScreen.screenshot,
+          currentScreen.xml,
+          addCrawlerLog,
+          aiExplorationHistory
+        );
+        elements = prioritizedElements;
+      } catch (error) {
+        addCrawlerLog(`Error prioritizing elements by AI: ${error.message}`, 'error');
+      }
+    }
+    
     // Divide elements into clickable vs non-clickable
     const clickedElements = [];
     const unclickedElements = [];
@@ -590,17 +620,17 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       case 'ai':
         // Use AI to prioritize elements
         addCrawlerLog('Using AI-powered element selection');
-        elementsToTry = await prioritizeElementsByAI(
+        elementsToTry = await aiElementSelector.prioritizeElementsByAI(
           interactableElements, 
           crawlerSettings.aiPrompt,
-          screenshot,
-          uiHierarchy,
+          currentScreen.screenshot,
+          currentScreen.xml,
           addCrawlerLog, // Pass the logging function to avoid circular dependencies
           aiExplorationHistory // Pass the exploration history to the AI
         );
         
         // Send AI analysis to UI
-        const aiAnalysis = getLatestAnalysis();
+        const aiAnalysis = aiElementSelector.getLatestAnalysis();
         if (mainWindowRef && mainWindowRef.webContents && aiAnalysis.timestamp) {
           try {
             mainWindowRef.webContents.send('crawler:aiAnalysis', aiAnalysis);
@@ -805,6 +835,20 @@ function onLog(callback) {
   }
 }
 
+// Reset pattern detection when starting a new test
+function resetCrawler() {
+  // Reset the crawler state variables
+  visitedScreens = {};
+  screenQueue = [];
+  clickedElements = {};
+  crawlerRunning = false;
+  crawlerPaused = false;
+  aiExplorationHistory = [];
+  
+  // Reset the pattern detection in the AI element selector
+  aiElementSelector.resetClickedElementsTracking();
+}
+
 module.exports = {
   startAppCrawling,
   stopAppCrawling,
@@ -816,5 +860,6 @@ module.exports = {
   onComplete,
   onError,
   onLog,
-  getAIAnalysisData
+  getAIAnalysisData,
+  resetCrawler
 }; 

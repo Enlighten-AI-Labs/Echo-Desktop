@@ -144,19 +144,67 @@ function initGeminiAPI(logger = null) {
  */
 async function extractElementImageSection(screenshotBase64, bounds, logger = null) {
   try {
+    // Validate bounds
+    if (!bounds || typeof bounds !== 'object') {
+      log(`Invalid bounds object: ${JSON.stringify(bounds)}`, 'error', logger);
+      return null;
+    }
+
     // Decode base64 to buffer
     const imageBuffer = Buffer.from(screenshotBase64, 'base64');
     
+    // Get image dimensions
+    const imageInfo = await sharp(imageBuffer).metadata();
+    const imageWidth = imageInfo.width;
+    const imageHeight = imageInfo.height;
+    
     // Use sharp to crop the image
     const { left, top, right, bottom } = bounds;
+    
+    // Log detailed bounds information
+    log(`Element bounds: left=${left}, top=${top}, right=${right}, bottom=${bottom}`, 'debug', logger);
+    log(`Image dimensions: width=${imageWidth}, height=${imageHeight}`, 'debug', logger);
+    
+    // Validate bounds values
+    if (typeof left !== 'number' || typeof top !== 'number' || 
+        typeof right !== 'number' || typeof bottom !== 'number') {
+      log(`Invalid bounds values: ${JSON.stringify(bounds)}`, 'error', logger);
+      return null;
+    }
+    
+    // Check if bounds are outside the image
+    if (left >= imageWidth || top >= imageHeight || right <= 0 || bottom <= 0) {
+      log(`Element bounds outside image: element=${JSON.stringify(bounds)}, image=${imageWidth}x${imageHeight}`, 'error', logger);
+      return null;
+    }
+    
     const width = right - left;
     const height = bottom - top;
+    
+    // Check for invalid dimensions
+    if (width <= 0 || height <= 0) {
+      log(`Invalid element dimensions: width=${width}, height=${height}`, 'error', logger);
+      return null;
+    }
     
     // Add some padding around the element for context (20px on each side)
     const paddedLeft = Math.max(0, left - 20);
     const paddedTop = Math.max(0, top - 20);
-    const paddedWidth = Math.min(width + 40, 2000); // Limit maximum width
-    const paddedHeight = Math.min(height + 40, 2000); // Limit maximum height
+    const paddedWidth = Math.min(width + 40, imageWidth - paddedLeft);
+    const paddedHeight = Math.min(height + 40, imageHeight - paddedTop);
+    
+    // Final validation of extraction parameters
+    if (paddedWidth <= 0 || paddedHeight <= 0) {
+      log(`Invalid padded dimensions: width=${paddedWidth}, height=${paddedHeight}`, 'error', logger);
+      return null;
+    }
+    
+    if (paddedLeft + paddedWidth > imageWidth || paddedTop + paddedHeight > imageHeight) {
+      log(`Extraction area exceeds image bounds: left=${paddedLeft}, top=${paddedTop}, width=${paddedWidth}, height=${paddedHeight}, imageWidth=${imageWidth}, imageHeight=${imageHeight}`, 'error', logger);
+      return null;
+    }
+    
+    log(`Extracting area: left=${paddedLeft}, top=${paddedTop}, width=${paddedWidth}, height=${paddedHeight}`, 'debug', logger);
     
     const croppedImageBuffer = await sharp(imageBuffer)
       .extract({
@@ -170,7 +218,7 @@ async function extractElementImageSection(screenshotBase64, bounds, logger = nul
     // Convert back to base64
     return croppedImageBuffer.toString('base64');
   } catch (error) {
-    log(`Error extracting element image section: ${error.message}`, 'error', logger);
+    log(`Error extracting element image section: ${error.message} for bounds=${JSON.stringify(bounds)}`, 'error', logger);
     return null;
   }
 }
@@ -661,7 +709,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     2. The current screen elements
     3. Your understanding of the test flow
     
-    You are ALLOWED to suggest skipping ahead if you believe:
+    You are ALLOWED to suggest skipping ahead 1-2 stepsif you believe:
     - A previous step has been completed
     - The current state allows you to work on a later step
     - The test flow would be more efficient by addressing a different step
@@ -679,7 +727,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     
     Your MAIN objective is to identify elements that will help complete the most appropriate step.
     AVOID REPETITIVE PATTERNS: Do NOT recommend elements that:
-    - Were just clicked in the previous action
+    - Were just clicked in the previous few actions
     - Would create an alternating A-B-A pattern
     - Would create a cycle of repeatedly visiting the same screens
     Choose elements that move the testing forward to new screens and states.

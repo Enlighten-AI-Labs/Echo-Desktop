@@ -3,4 +3,4 @@ description:
 globs: 
 alwaysApply: true
 ---
-Make sure to always keep the code files short, you should make an effort to keep each file under 500 lines of code when possible. Make sure to organize any new files created
+Make sure to always keep the code files short, you should make an effort to keep each file under 500 lines of code when possible, but never let files go over 1000. Make sure to organize any new files created

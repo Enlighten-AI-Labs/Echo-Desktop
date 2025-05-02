@@ -169,6 +169,7 @@ export default function DebuggerView({ navigateTo, params }) {
   const logsRef = useRef([]); // Reference to maintain logs across renders
   const [showConfig, setShowConfig] = useState(true);
   const [viewType, setViewType] = useState('grid'); // 'grid', 'list', 'flow'
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false); // New state for advanced settings
   const [flowNodes, setFlowNodes] = useState([]);
   const [flowEdges, setFlowEdges] = useState([]);
   const [flowReady, setFlowReady] = useState(false);
@@ -339,6 +340,11 @@ export default function DebuggerView({ navigateTo, params }) {
   
   const toggleConfig = () => {
     setShowConfig(prev => !prev);
+  };
+
+  // New function to toggle advanced settings
+  const toggleAdvancedSettings = () => {
+    setShowAdvancedSettings(prev => !prev);
   };
   
   const startCrawl = async () => {
@@ -886,50 +892,18 @@ export default function DebuggerView({ navigateTo, params }) {
                   {showConfig && (
                     <>
                       <div className={styles.settingItem}>
-                        <label>Max Screens to Capture</label>
-                        <input 
-                          type="number" 
-                          value={crawlSettings.maxScreens}
-                          onChange={(e) => handleSettingsChange('maxScreens', parseInt(e.target.value))}
-                          min="1"
-                          max="100"
-                        />
-                      </div>
-                      
-                      <div className={styles.settingItem}>
-                        <label>Delay Between Actions (ms)</label>
-                        <input 
-                          type="number" 
-                          value={crawlSettings.screenDelay}
-                          onChange={(e) => handleSettingsChange('screenDelay', parseInt(e.target.value))}
-                          min="500"
-                          max="5000"
-                          step="100"
-                        />
-                      </div>
-                      
-                      <div className={styles.settingItem}>
-                        <label>Back Button Delay (ms)</label>
-                        <input 
-                          type="number" 
-                          value={crawlSettings.backDelay}
-                          onChange={(e) => handleSettingsChange('backDelay', parseInt(e.target.value))}
-                          min="1000"
-                          max="10000"
-                          step="100"
-                        />
-                      </div>
-                      
-                      <div className={styles.settingItem}>
                         <label>Mode</label>
-                        <select
-                          value={crawlSettings.mode}
-                          onChange={(e) => handleSettingsChange('mode', e.target.value)}
-                        >
-                          <option value="random">Random</option>
-                          <option value="orderly">Orderly</option>
-                          <option value="ai">AI</option>
-                        </select>
+                        <div className={styles.segmentedButton}>
+                          {['random', 'orderly', 'ai'].map((mode) => (
+                            <button 
+                              key={mode}
+                              className={`${styles.segmentOption} ${crawlSettings.mode === mode ? styles.activeSegment : ''}`}
+                              onClick={() => handleSettingsChange('mode', mode)}
+                            >
+                              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       
                       {crawlSettings.mode === 'ai' && (
@@ -955,10 +929,58 @@ export default function DebuggerView({ navigateTo, params }) {
                         </div>
                       )}
                       
-                      <div className={styles.deviceInfo}>
-                        <p><strong>Device ID:</strong> {deviceId || 'Not selected'}</p>
-                        <p><strong>Package Name:</strong> {packageName || 'Not selected'}</p>
+                      <div className={styles.advancedSettingsToggle}>
+                        <button 
+                          className={styles.toggleButton}
+                          onClick={toggleAdvancedSettings}
+                        >
+                          {showAdvancedSettings ? 'Hide' : 'Show'} Advanced Settings
+                        </button>
                       </div>
+                      
+                      {showAdvancedSettings && (
+                        <div className={styles.advancedSettings}>
+                          <div className={styles.settingItem}>
+                            <label>Max Screens to Capture</label>
+                            <input 
+                              type="number" 
+                              value={crawlSettings.maxScreens}
+                              onChange={(e) => handleSettingsChange('maxScreens', parseInt(e.target.value))}
+                              min="1"
+                              max="100"
+                            />
+                          </div>
+                          
+                          <div className={styles.settingItem}>
+                            <label>Delay Between Actions (ms)</label>
+                            <input 
+                              type="number" 
+                              value={crawlSettings.screenDelay}
+                              onChange={(e) => handleSettingsChange('screenDelay', parseInt(e.target.value))}
+                              min="500"
+                              max="5000"
+                              step="100"
+                            />
+                          </div>
+                          
+                          <div className={styles.settingItem}>
+                            <label>Back Button Delay (ms)</label>
+                            <input 
+                              type="number" 
+                              value={crawlSettings.backDelay}
+                              onChange={(e) => handleSettingsChange('backDelay', parseInt(e.target.value))}
+                              min="1000"
+                              max="10000"
+                              step="100"
+                            />
+                          </div>
+                          
+                          <div className={styles.deviceInfo}>
+                            <p><strong>Device ID:</strong> {deviceId || 'Not selected'}</p>
+                            <p><strong>Package Name:</strong> {packageName || 'Not selected'}</p>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

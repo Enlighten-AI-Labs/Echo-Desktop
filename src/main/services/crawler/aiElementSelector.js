@@ -195,13 +195,104 @@ async function prepareElementsForAI(elements, screenshotBase64, uiHierarchy, log
 }
 
 /**
+ * Format history data for Gemini prompt
+ * @param {Array} history The exploration history
+ * @returns {string} Formatted history text
+ */
+function formatHistoryForPrompt(history) {
+  if (!history || history.length === 0) {
+    return "No exploration history available yet.";
+  }
+  
+  // Get the last 20 actions (most recent history) to avoid making the prompt too large
+  const recentHistory = history.slice(-20);
+  
+  // Format the history entries
+  const formattedEntries = recentHistory.map((entry, index) => {
+    const screenInfo = `Screen: ${entry.screen.activity}`;
+    const elementInfo = entry.element ? 
+      `Element: ${entry.element.class}${entry.element.text ? ` "${entry.element.text}"` : ''}` : 
+      'No element';
+    
+    return `${index + 1}. [${entry.action}] ${screenInfo} - ${elementInfo} (${entry.result})`;
+  });
+  
+  return formattedEntries.join('\n');
+}
+
+/**
+ * Create summary statistics from history
+ * @param {Array} history The exploration history
+ * @returns {Object} Summary statistics
+ */
+function getHistorySummary(history) {
+  if (!history || history.length === 0) {
+    return {
+      screensVisited: 0,
+      elementsClicked: 0,
+      uniqueActivities: [],
+      commonElementTypes: []
+    };
+  }
+  
+  // Count visited screens
+  const uniqueScreens = new Set();
+  
+  // Count activities
+  const activities = {};
+  
+  // Count clicked elements by type
+  const elementTypes = {};
+  
+  // Process history entries
+  history.forEach(entry => {
+    // Track unique screens
+    if (entry.screen && entry.screen.id) {
+      uniqueScreens.add(entry.screen.id);
+    }
+    
+    // Track activities
+    if (entry.screen && entry.screen.activity) {
+      const activity = entry.screen.activity;
+      activities[activity] = (activities[activity] || 0) + 1;
+    }
+    
+    // Track element types
+    if (entry.element && entry.element.class && entry.action === 'click') {
+      const elemType = entry.element.class;
+      elementTypes[elemType] = (elementTypes[elemType] || 0) + 1;
+    }
+  });
+  
+  // Get sorted activities by frequency
+  const sortedActivities = Object.entries(activities)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+    .slice(0, 5); // Top 5
+  
+  // Get sorted element types by frequency
+  const sortedElementTypes = Object.entries(elementTypes)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type]) => type)
+    .slice(0, 5); // Top 5
+  
+  return {
+    screensVisited: uniqueScreens.size,
+    elementsClicked: Object.values(elementTypes).reduce((sum, count) => sum + count, 0),
+    uniqueActivities: sortedActivities,
+    commonElementTypes: sortedElementTypes
+  };
+}
+
+/**
  * Use Gemini to analyze and score elements
  * @param {Array} enhancedElements Elements with added context
  * @param {string} aiPrompt User's prompt for the AI
  * @param {Function} logger Optional logging function
+ * @param {Array} history Optional exploration history
  * @returns {Promise<Array>} Elements with AI scores
  */
-async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null) {
+async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null, history = []) {
   // Check if Gemini API is initialized
   if (!genAI) {
     const initialized = initGeminiAPI(logger);
@@ -222,11 +313,26 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     // Create a model instance
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     
+    // Get history summary to guide decision making
+    const historySummary = getHistorySummary(history);
+    
+    // Format recent history for the prompt
+    const formattedHistory = formatHistoryForPrompt(history);
+    
     // Prepare a comprehensive prompt for Gemini
     let userPrompt = `
     You are an AI assistant helping to test a mobile app by intelligently selecting UI elements to click.
     
     USER INSTRUCTIONS: ${aiPrompt}
+    
+    EXPLORATION HISTORY:
+    - Screens visited: ${historySummary.screensVisited}
+    - Elements clicked: ${historySummary.elementsClicked}
+    - Most frequent activities: ${historySummary.uniqueActivities.join(', ') || 'None yet'}
+    - Most common element types: ${historySummary.commonElementTypes.join(', ') || 'None yet'}
+    
+    RECENT ACTIONS:
+    ${formattedHistory}
     
     I will provide information about clickable elements on the current screen.
     For each element, analyze:
@@ -238,6 +344,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     - How likely clicking it will help explore new screens
     - How well it matches the user's instructions
     - Whether the element appears to be a primary navigation or action item
+    - How it relates to the exploration history (prefer new paths)
     
     For each element, provide a JSON object with:
     - score: Number from 0-100
@@ -349,9 +456,10 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
  * @param {string} screenshotBase64 Current screenshot as base64
  * @param {string} uiHierarchy Current UI hierarchy as XML
  * @param {Function} logger Optional logging function
+ * @param {Array} explorationHistory Optional exploration history
  * @returns {Promise<Array>} Prioritized elements array
  */
-async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHierarchy, logger = null) {
+async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHierarchy, logger = null, explorationHistory = []) {
   try {
     // Skip AI processing if no elements or missing data
     if (!elements || elements.length === 0 || !screenshotBase64 || !uiHierarchy) {
@@ -362,6 +470,11 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
     log('🤖 Starting AI-powered element prioritization', 'info', logger);
     if (aiPrompt) {
       log(`AI Prompt: "${aiPrompt}"`, 'info', logger);
+    }
+    
+    // Log history size
+    if (explorationHistory && explorationHistory.length > 0) {
+      log(`Using exploration history with ${explorationHistory.length} entries`, 'info', logger);
     }
     
     // Prepare elements with enhanced information
@@ -376,7 +489,8 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
     const scoredElements = await scoreElementsWithGemini(
       enhancedElements,
       aiPrompt,
-      logger
+      logger,
+      explorationHistory
     );
     
     // Sort elements by AI score (highest first)

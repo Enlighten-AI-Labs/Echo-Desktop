@@ -17,6 +17,9 @@ let crawlerSettings = null;
 let crawlerLogs = [];
 let mainWindowRef = null;
 
+// AI exploration history tracker
+let aiExplorationHistory = [];
+
 /**
  * Add a log entry to the crawler logs
  * @param {string} message The log message
@@ -304,6 +307,9 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
     // Clear logs
     crawlerLogs = [];
     
+    // Reset AI exploration history
+    aiExplorationHistory = [];
+    
     // Clear screens
     require('../mitmproxy/visualState').resetScreens();
     
@@ -342,6 +348,45 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
     }
     
     return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Add an entry to the AI exploration history
+ * @param {string} action The action performed
+ * @param {Object} screen The screen state
+ * @param {Object} element The element interacted with
+ * @param {string} result The result of the action
+ */
+function addToAIHistory(action, screen, element = null, result = 'success') {
+  // Create a compact screen representation
+  const screenInfo = {
+    id: screen.id || aiExplorationHistory.length + 1,
+    activity: screen.activityName ? screen.activityName.split('.').pop() : 'unknown',
+    time: new Date().toISOString(),
+    elementCount: screen.elements ? screen.elements.length : 0
+  };
+  
+  // Create element info if provided
+  const elementInfo = element ? {
+    class: element.class,
+    text: element.text || '',
+    bounds: element.bounds,
+    hash: element.buttonHash ? element.buttonHash.substring(0, 8) : ''
+  } : null;
+  
+  // Add entry to history
+  aiExplorationHistory.push({
+    action,
+    screen: screenInfo,
+    element: elementInfo,
+    result,
+    timestamp: Date.now()
+  });
+  
+  // Keep history at a reasonable size
+  if (aiExplorationHistory.length > 50) {
+    aiExplorationHistory = aiExplorationHistory.slice(-50);
   }
 }
 
@@ -438,27 +483,32 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     const { screens, uniqueScreens } = require('../mitmproxy/visualState');
     const existingScreen = uniqueScreens.find(s => s.screenHash === screenHash);
     
+    // Create current screen object
+    const currentScreen = {
+      id: screens.length + 1,
+      timestamp: new Date().toISOString(),
+      activityName: currentActivity,
+      screenHash,
+      screenshotHash,
+      screenshot,
+      elements,
+      xml: uiHierarchy, // Store the full XML for AI analysis
+      parentScreenId: visitedScreens.length > 0 ? visitedScreens[visitedScreens.length - 1] : null
+    };
+    
     if (!existingScreen) {
       // New screen found
-      const screen = {
-        id: screens.length + 1,
-        timestamp: new Date().toISOString(),
-        activityName: currentActivity,
-        screenHash,
-        screenshotHash,
-        screenshot,
-        elements,
-        xml: uiHierarchy, // Store the full XML for AI analysis
-        parentScreenId: visitedScreens.length > 0 ? visitedScreens[visitedScreens.length - 1] : null
-      };
       
       // Add to visited screens tracking
-      const screenId = addScreen(screen);
+      const screenId = addScreen(currentScreen);
       visitedScreens = [...visitedScreens, screenId];
+      
+      // Add this screen to AI history
+      addToAIHistory('visit', currentScreen);
       
       // Notify UI of new screen with progress
       if (mainWindowRef && mainWindowRef.webContents) {
-        mainWindowRef.webContents.send('crawler:newScreen', screen);
+        mainWindowRef.webContents.send('crawler:newScreen', currentScreen);
         mainWindowRef.webContents.send('crawler:progress', {
           percentage: Math.min(100, Math.round((uniqueScreens.length / crawlerSettings.maxScreens) * 100)),
           currentScreens: uniqueScreens.length,
@@ -468,6 +518,9 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       
       addCrawlerLog(`Found new visual state: ${currentActivity.split('/').pop()}`, 'success');
     } else {
+      // Add revisit to AI history
+      addToAIHistory('revisit', currentScreen);
+      
       addCrawlerLog(`Found already visited visual state: ${currentActivity.split('/').pop()}`, 'info');
       return; // Skip this screen since we've seen it before
     }
@@ -534,7 +587,8 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
           crawlerSettings.aiPrompt,
           screenshot,
           uiHierarchy,
-          addCrawlerLog // Pass the logging function to avoid circular dependencies
+          addCrawlerLog, // Pass the logging function to avoid circular dependencies
+          aiExplorationHistory // Pass the exploration history to the AI
         );
         break;
         
@@ -553,6 +607,10 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       // Skip if we've already clicked this button too many times
       if (clickCount >= crawlerSettings.maxClicksPerButton) {
         addCrawlerLog(`Skipping button ${element.buttonHash} (clicked ${clickCount} times already)`, 'info');
+        
+        // Add skipped action to history
+        addToAIHistory('skip', currentScreen, element, 'already_clicked');
+        
         continue;
       }
       
@@ -572,6 +630,9 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         // Add to clicked elements
         clickedElements.push(element);
         
+        // Add click action to history
+        addToAIHistory('click', currentScreen, element);
+        
         // Wait for UI to update - use dynamic wait based on screen stabilization
         addCrawlerLog(`Waiting for screen to update after click (${crawlerSettings.screenDelay}ms minimum)`);
         await waitForScreenStabilization(deviceId, crawlerSettings.screenDelay);
@@ -582,6 +643,10 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         
         // Go back to previous screen, but wait longer to ensure the app has time to respond
         addCrawlerLog(`Going back to previous screen (with ${crawlerSettings.backDelay}ms delay)`);
+        
+        // Add back action to history
+        addToAIHistory('back', currentScreen);
+        
         await execAdbCommand(`-s ${deviceId} shell input keyevent 4`);  // KEYCODE_BACK
         
         // Wait longer before continuing to make sure we're back on the original screen
@@ -591,6 +656,9 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         const activityAfterBack = await getCurrentActivity(deviceId);
         if (crawlerSettings.stayInApp && !activityAfterBack.includes(packageName)) {
           addCrawlerLog(`Left the app after going back. Current activity: ${activityAfterBack}. Relaunching app...`, 'warning');
+          
+          // Record navigation out of app in history
+          addToAIHistory('exit_app', currentScreen, null, 'after_back');
           
           try {
             // Try to return to the app
@@ -603,24 +671,35 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
             const newActivity = await getCurrentActivity(deviceId);
             if (newActivity.includes(packageName)) {
               addCrawlerLog(`Successfully returned to app: ${newActivity}`, 'success');
+              addToAIHistory('relaunch_app', { activityName: newActivity }, null, 'success');
             } else {
               addCrawlerLog(`Failed to return to app ${packageName} after back action`, 'error');
+              addToAIHistory('relaunch_app', { activityName: newActivity }, null, 'failed');
               return;
             }
           } catch (error) {
             addCrawlerLog(`Error returning to app: ${error.message}`, 'error');
+            addToAIHistory('relaunch_app', { activityName: 'unknown' }, null, 'error');
             return;
           }
         }
       } catch (elementError) {
         addCrawlerLog(`Error clicking element: ${elementError.message}`, 'error');
+        
+        // Record error in history
+        addToAIHistory('click', currentScreen, element, `error: ${elementError.message}`);
+        
         continue; // Try the next element
       }
     }
     
     addCrawlerLog(`Finished exploring screen: ${currentActivity.split('/').pop()}`);
+    addToAIHistory('complete_exploration', currentScreen);
   } catch (error) {
     addCrawlerLog(`Error during crawling: ${error.message}`, 'error');
+    
+    // Record error in history
+    addToAIHistory('error', { activityName: 'unknown' }, null, error.message);
     
     // Notify UI of error
     if (mainWindowRef && mainWindowRef.webContents) {

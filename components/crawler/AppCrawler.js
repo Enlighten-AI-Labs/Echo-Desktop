@@ -690,11 +690,20 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
           <div className={styles.rightPanel}>
             {crawlStatus === 'running' && (
               <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill}
-                  style={{ width: `${crawlProgress}%` }}
-                />
-                <span>{crawlProgress}% complete</span>
+                
+                {crawlSettings.mode === 'ai' && aiAnalysis?.progressSummary ? (
+                  <>
+                    <div className={styles.progressFill} style={{ width: `${aiAnalysis.progressSummary.progressPercent}%` }}/>
+                    <span>
+                      {aiAnalysis.progressSummary.type} - {aiAnalysis.progressSummary.currentStep}/{aiAnalysis.progressSummary.totalSteps} steps - {aiAnalysis.progressSummary.progressPercent}%
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.progressFill} style={{ width: `${crawlProgress}%` }}/>
+                    <span>{crawlProgress}% complete</span>
+                  </>
+                )}
               </div>
             )}
             

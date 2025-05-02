@@ -91,6 +91,7 @@ contextBridge.exposeInMainWorld(
       getStatus: () => ipcRenderer.invoke('crawler:status'),
       getLogs: () => ipcRenderer.invoke('crawler:getLogs'),
       getFlowchartData: () => ipcRenderer.invoke('crawler:getFlowchartData'),
+      getAIAnalysis: () => ipcRenderer.invoke('crawler:getAIAnalysis'),
       
       // Event listeners
       onProgress: (callback) => {
@@ -108,12 +109,16 @@ contextBridge.exposeInMainWorld(
       onLog: (callback) => {
         ipcRenderer.on('crawler:log', (event, data) => callback(data));
       },
+      onAIAnalysis: (callback) => {
+        ipcRenderer.on('crawler:aiAnalysis', (event, data) => callback(data));
+      },
       removeAllListeners: () => {
         ipcRenderer.removeAllListeners('crawler:progress');
         ipcRenderer.removeAllListeners('crawler:newScreen');
         ipcRenderer.removeAllListeners('crawler:complete');
         ipcRenderer.removeAllListeners('crawler:error');
         ipcRenderer.removeAllListeners('crawler:log');
+        ipcRenderer.removeAllListeners('crawler:aiAnalysis');
       }
     }
   }

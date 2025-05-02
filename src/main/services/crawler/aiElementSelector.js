@@ -17,6 +17,14 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 const API_KEY = process.env.GEMINI_API_KEY;
 let genAI = null;
 
+// Store the latest AI analysis for frontend display
+let latestAnalysis = {
+  timestamp: null,
+  progressSummary: null,
+  nextSteps: [],
+  topElements: []
+};
+
 // Logging function that doesn't create circular dependencies
 function log(message, type = 'info', logger = null) {
   // Always log to console
@@ -195,6 +203,211 @@ async function prepareElementsForAI(elements, screenshotBase64, uiHierarchy, log
 }
 
 /**
+ * Get the latest AI analysis for display
+ * @returns {Object} Latest analysis data
+ */
+function getLatestAnalysis() {
+  return latestAnalysis;
+}
+
+/**
+ * Extract progress information from AI prompt
+ * @param {string} aiPrompt User's prompt
+ * @returns {Object} Progress data
+ */
+function extractProgressFromPrompt(aiPrompt) {
+  if (!aiPrompt) {
+    return {
+      type: 'unknown',
+      steps: [],
+      currentStep: 0
+    };
+  }
+  
+  // Try to parse the steps from a numbered list format
+  const lines = aiPrompt.split('\n');
+  const steps = [];
+  let promptType = 'general';
+  
+  // Extract title if in brackets
+  const titleMatch = aiPrompt.match(/^\s*\[(.*?)\]/);
+  if (titleMatch) {
+    promptType = titleMatch[1];
+  }
+  
+  // Look for numbered steps
+  for (const line of lines) {
+    // Check for numbered step pattern (1. Step description)
+    const stepMatch = line.match(/^\s*(\d+)\.\s*(.*?)$/);
+    if (stepMatch) {
+      steps.push(stepMatch[2].trim());
+    }
+  }
+  
+  return {
+    type: promptType,
+    steps: steps,
+    currentStep: 0 // Will be calculated based on history
+  };
+}
+
+/**
+ * Calculate current progress step based on history
+ * @param {Array} history Exploration history
+ * @param {Object} progressData Progress data with steps
+ * @returns {Object} Updated progress data with currentStep
+ */
+function calculateCurrentStep(history, progressData) {
+  if (!history || history.length === 0 || !progressData.steps || progressData.steps.length === 0) {
+    return progressData;
+  }
+  
+  const result = { ...progressData };
+  
+  // Start at step 1 if we have actions (not step 0)
+  let currentStep = history.length > 0 ? 1 : 0;
+  
+  // Use a decay factor to gradually reduce the likelihood of staying on early steps
+  // This helps prevent getting stuck on step 1
+  const ACTIONS_DECAY_THRESHOLD = 5; // After this many actions, start decaying early step matches
+  
+  // Extract keywords from each step
+  const stepKeywords = progressData.steps.map(step => {
+    // Extract important keywords from each step
+    const words = step.toLowerCase().split(/\s+/);
+    return words.filter(word => 
+      word.length > 3 && 
+      !['and', 'the', 'for', 'with', 'this', 'that', 'then', 'all', 'each'].includes(word)
+    );
+  });
+  
+  // Get click actions and screen visits
+  const allActions = history.filter(entry => 
+    entry.action === 'click' || entry.action === 'visit' || entry.action === 'revisit'
+  );
+  
+  // For step progress, use recent history more heavily
+  const recentActions = allActions.slice(-10);
+  
+  if (allActions.length > 0) {
+    // Track step keyword matches with confidence scores
+    const stepMatches = new Array(progressData.steps.length).fill(0);
+    
+    // Analyze each action for keyword matches to steps
+    allActions.forEach((entry, actionIndex) => {
+      // Get text from element and screen
+      const elementText = (entry.element && entry.element.text) ? 
+        entry.element.text.toLowerCase() : '';
+      
+      const screenName = (entry.screen && entry.screen.activity) ?
+        entry.screen.activity.toLowerCase() : '';
+      
+      // Decay factor reduces the weight of matches for earlier actions if we have many actions
+      // This helps us "move on" from early steps if we've performed many actions
+      const decayFactor = allActions.length > ACTIONS_DECAY_THRESHOLD ? 
+        Math.min(1, (actionIndex + 1) / allActions.length) : 1;
+      
+      // Recent actions get higher weight (recency bias)
+      const recencyBoost = actionIndex >= allActions.length - 3 ? 1.5 : 1.0;
+      
+      // Check for keyword matches against each step
+      stepKeywords.forEach((keywords, stepIndex) => {
+        // Apply diminishing returns for repeated matches to the same step
+        // This prevents us from getting stuck on early steps
+        const diminishingFactor = stepMatches[stepIndex] > 0 ? 
+          1 / (1 + Math.log(1 + stepMatches[stepIndex])) : 1;
+        
+        let matched = false;
+        // Check if any keywords match
+        keywords.forEach(keyword => {
+          if (elementText.includes(keyword) || screenName.includes(keyword)) {
+            matched = true;
+            // Add score with all modifiers applied
+            stepMatches[stepIndex] += 1 * decayFactor * recencyBoost * diminishingFactor;
+          }
+        });
+      });
+    });
+    
+    // Find the highest scoring step that's not the first one, with bonus for step sequence
+    let maxScore = stepMatches[0];
+    let maxStep = 0;
+    
+    for (let i = 1; i < stepMatches.length; i++) {
+      // Add sequential bonus - we prefer steps in order
+      const sequentialBonus = (i === maxStep + 1) ? 0.5 : 0;
+      const adjustedScore = stepMatches[i] + sequentialBonus;
+      
+      // If this step has a significant score and is higher than current max, select it
+      if (adjustedScore > 0.5 && adjustedScore >= maxScore) {
+        maxScore = adjustedScore;
+        maxStep = i;
+      }
+    }
+    
+    // Move to next step if we've performed many actions (3x the steps we have)
+    // This prevents getting stuck if step detection isn't perfect
+    if (allActions.length > progressData.steps.length * 3 && maxStep === 0) {
+      maxStep = Math.min(1, progressData.steps.length - 1);
+    }
+    
+    // Force progress after substantial activity
+    if (allActions.length > 15 && maxStep < 2 && progressData.steps.length > 2) {
+      maxStep = 2; // Move to at least step 2 after significant activity
+    }
+    
+    // Determine current step (1-based indexing for display)
+    currentStep = maxStep + 1;
+  }
+  
+  // Never exceed the total steps available
+  currentStep = Math.min(currentStep, progressData.steps.length);
+  
+  result.currentStep = currentStep;
+  return result;
+}
+
+/**
+ * Generate next steps based on progress
+ * @param {Object} progressData Progress data
+ * @returns {Array} Next steps to display
+ */
+function generateNextSteps(progressData) {
+  if (!progressData || !progressData.steps || progressData.steps.length === 0) {
+    return ["Explore the application according to the prompt"];
+  }
+  
+  const { currentStep, steps } = progressData;
+  
+  // If not started or all steps completed
+  if (currentStep === 0) {
+    return ["Start by " + steps[0].toLowerCase()];
+  }
+  
+  if (currentStep >= steps.length) {
+    return ["All steps completed", "Verify the results", "Try additional edge cases"];
+  }
+  
+  // Return current and next steps
+  const nextSteps = [];
+  
+  // Current step (in progress)
+  nextSteps.push(`Current: ${steps[currentStep - 1]}`);
+  
+  // Next step
+  if (currentStep < steps.length) {
+    nextSteps.push(`Next: ${steps[currentStep]}`);
+  }
+  
+  // Add one more future step if available
+  if (currentStep + 1 < steps.length) {
+    nextSteps.push(`Then: ${steps[currentStep + 1]}`);
+  }
+  
+  return nextSteps;
+}
+
+/**
  * Format history data for Gemini prompt
  * @param {Array} history The exploration history
  * @returns {string} Formatted history text
@@ -316,22 +529,48 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     // Get history summary to guide decision making
     const historySummary = getHistorySummary(history);
     
+    // Extract progress information from prompt
+    const progressData = extractProgressFromPrompt(aiPrompt);
+    
+    // Calculate current step based on history
+    const updatedProgressData = calculateCurrentStep(history, progressData);
+    
+    // Generate next steps based on progress
+    const nextSteps = generateNextSteps(updatedProgressData);
+    
     // Format recent history for the prompt
     const formattedHistory = formatHistoryForPrompt(history);
     
-    // Prepare a comprehensive prompt for Gemini
+    // Get the current step description
+    const currentStepDescription = updatedProgressData.currentStep > 0 && updatedProgressData.currentStep <= updatedProgressData.steps.length
+      ? updatedProgressData.steps[updatedProgressData.currentStep - 1]
+      : "Explore the application";
+    
+    // Prepare a comprehensive prompt for Gemini with stronger focus on current step
     let userPrompt = `
     You are an AI assistant helping to test a mobile app by intelligently selecting UI elements to click.
     
     USER INSTRUCTIONS: ${aiPrompt}
     
-    EXPLORATION HISTORY:
+    YOUR CURRENT TASK: ${currentStepDescription}
+    
+    CURRENT PROGRESS:
+    - Testing type: ${updatedProgressData.type}
+    - Current step: ${updatedProgressData.currentStep} of ${updatedProgressData.steps.length}
+    
+    FOCUS EXCLUSIVELY ON COMPLETING THE CURRENT STEP: "${currentStepDescription}"
+    
+    ====== IMPORTANT ======
+    Your ONLY objective right now is to identify elements that will help complete the current step.
+    Ignore future steps until this step is finished.
+    =====================
+    
+    Exploration history summary:
     - Screens visited: ${historySummary.screensVisited}
     - Elements clicked: ${historySummary.elementsClicked}
     - Most frequent activities: ${historySummary.uniqueActivities.join(', ') || 'None yet'}
-    - Most common element types: ${historySummary.commonElementTypes.join(', ') || 'None yet'}
     
-    RECENT ACTIONS:
+    Recent actions:
     ${formattedHistory}
     
     I will provide information about clickable elements on the current screen.
@@ -340,20 +579,19 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     2. OCR text from the element's region
     3. The element's XML attributes
     
-    Your task is to rank each element from 0-100 based on:
-    - How likely clicking it will help explore new screens
-    - How well it matches the user's instructions
-    - Whether the element appears to be a primary navigation or action item
-    - How it relates to the exploration history (prefer new paths)
+    Your task is to rank each element from 0-100 based SOLELY on:
+    - How likely clicking it will help COMPLETE THE CURRENT STEP: "${currentStepDescription}"
+    - Elements that have clear text/labels matching the current step should receive highest scores
+    - Elements that have been tried multiple times already should receive lower scores
     
     For each element, provide a JSON object with:
     - score: Number from 0-100
-    - reasoning: Brief explanation for your score
+    - reasoning: Brief explanation focused on how this relates to the CURRENT step
     
     RESPOND WITH VALID JSON ARRAY OF OBJECTS, ONE PER ELEMENT. Example:
     [
-      {"elementIndex": 0, "score": 85, "reasoning": "This appears to be the main login button based on OCR text 'Log In' and its prominence"},
-      {"elementIndex": 1, "score": 30, "reasoning": "This is likely just a decorative element with no text or function"}
+      {"elementIndex": 0, "score": 85, "reasoning": "This appears to be directly related to the current step"},
+      {"elementIndex": 1, "score": 30, "reasoning": "Unlikely to help with the current step"}
     ]
     `;
     
@@ -435,6 +673,25 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       const textInfo = elementText ? ` "${elementText}"` : '';
       log(`${i+1}. ${el.class}${textInfo} - Score: ${el.aiScore}`, 'info', logger);
     });
+    
+    // Store the analysis results for frontend display
+    latestAnalysis = {
+      timestamp: Date.now(),
+      progressSummary: {
+        type: updatedProgressData.type,
+        currentStep: updatedProgressData.currentStep,
+        totalSteps: updatedProgressData.steps.length,
+        progressPercent: updatedProgressData.steps.length ? 
+          Math.round((updatedProgressData.currentStep / updatedProgressData.steps.length) * 100) : 0
+      },
+      nextSteps: nextSteps,
+      topElements: topElements.map(el => ({
+        class: el.class,
+        text: el.text || el.ocrText || '',
+        score: el.aiScore,
+        reasoning: el.aiReasoning
+      }))
+    };
     
     return scoredElements;
   } catch (error) {
@@ -518,5 +775,6 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
 
 module.exports = {
   prioritizeElementsByAI,
-  initGeminiAPI
-}; 
+  initGeminiAPI,
+  getLatestAnalysis
+};

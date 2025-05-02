@@ -59,6 +59,84 @@ function beautifyXml(xml) {
 // Create a utility function for auto-collapse thresholds
 const MIN_PANEL_WIDTH = 20; // Minimum percentage width for a panel before it should auto-collapse
 
+// Add a new AIProgressPanel component
+const AIProgressPanel = ({ aiAnalysis }) => {
+  if (!aiAnalysis || !aiAnalysis.timestamp) {
+    return (
+      <div className={styles.aiProgressPanel}>
+        <div className={styles.aiProgressHeader}>
+          <h3>AI Analysis</h3>
+        </div>
+        <div className={styles.aiProgressEmpty}>
+          Waiting for AI analysis...
+        </div>
+      </div>
+    );
+  }
+  
+  const { progressSummary, nextSteps, topElements } = aiAnalysis;
+  
+  return (
+    <div className={styles.aiProgressPanel}>
+      <div className={styles.aiProgressHeader}>
+        <h3>AI Analysis</h3>
+        <span className={styles.aiTimestamp}>
+          {new Date(aiAnalysis.timestamp).toLocaleTimeString()}
+        </span>
+      </div>
+      
+      {progressSummary && (
+        <div className={styles.progressSection}>
+          <h4>Progress: {progressSummary.type}</h4>
+          <div className={styles.progressBar}>
+            <div 
+              className={styles.progressFill}
+              style={{ width: `${progressSummary.progressPercent}%` }}
+            />
+            <span>
+              Step {progressSummary.currentStep} of {progressSummary.totalSteps} 
+              ({progressSummary.progressPercent}%)
+            </span>
+          </div>
+        </div>
+      )}
+      
+      {nextSteps && nextSteps.length > 0 && (
+        <div className={styles.nextStepsSection}>
+          <h4>Next Steps</h4>
+          <ol className={styles.nextStepsList}>
+            {nextSteps.map((step, index) => (
+              <li key={index} className={index === 0 ? styles.currentStep : ''}>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      
+      {topElements && topElements.length > 0 && (
+        <div className={styles.topElementsSection}>
+          <h4>Recommended Elements to Click</h4>
+          <ol className={styles.elementList}>
+            {topElements.map((element, index) => (
+              <li key={index} className={styles.elementItem}>
+                <div className={styles.elementHeader}>
+                  <span className={styles.elementScore}>{element.score}</span>
+                  <span className={styles.elementClass}>{element.class}</span>
+                </div>
+                {element.text && (
+                  <div className={styles.elementText}>"{element.text}"</div>
+                )}
+                <div className={styles.elementReasoning}>{element.reasoning}</div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Rename to DebuggerView and accept navigateTo and params as props
 export default function DebuggerView({ navigateTo, params }) {
   // Replace router with params
@@ -115,6 +193,9 @@ export default function DebuggerView({ navigateTo, params }) {
   
   // New state for AI prompt modal
   const [showAiPrompt, setShowAiPrompt] = useState(false);
+  
+  // New state for AI analysis
+  const [aiAnalysis, setAiAnalysis] = useState(null);
   
   useEffect(() => {
     // Get query parameters when the component loads
@@ -394,7 +475,7 @@ export default function DebuggerView({ navigateTo, params }) {
     }
   }, [screens]);
   
-  // Set up event listeners for crawl progress
+  // Set up event listeners for crawler progress, etc.
   useEffect(() => {
     // Safe check for API availability
     if (typeof window === 'undefined' || !window.api || !window.api.crawler) {
@@ -454,6 +535,10 @@ export default function DebuggerView({ navigateTo, params }) {
       setLogs([...logsRef.current]);
     };
     
+    const handleAIAnalysis = (analysis) => {
+      setAiAnalysis(analysis);
+    };
+    
     // Safely subscribe to events with try/catch
     try {
       if (typeof window.api.crawler.onProgress === 'function')
@@ -470,6 +555,10 @@ export default function DebuggerView({ navigateTo, params }) {
       
       if (typeof window.api.crawler.onLog === 'function')
         window.api.crawler.onLog(handleLog);
+      
+      if (typeof window.api.crawler.onAIAnalysis === 'function')
+        window.api.crawler.onAIAnalysis(handleAIAnalysis);
+        
     } catch (error) {
       console.error('Error setting up crawler event listeners:', error);
     }
@@ -873,6 +962,11 @@ export default function DebuggerView({ navigateTo, params }) {
                     </>
                   )}
                 </div>
+                
+                {/* Add AI Progress panel when in AI mode */}
+                {crawlSettings.mode === 'ai' && (
+                  <AIProgressPanel aiAnalysis={aiAnalysis} />
+                )}
                 
                 <div className={styles.logsPanel}>
                   <div className={styles.logsHeader}>

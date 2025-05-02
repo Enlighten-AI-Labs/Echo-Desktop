@@ -413,4 +413,8 @@ ipcMain.handle('crawler:getLogs', async () => {
 
 ipcMain.handle('crawler:getFlowchartData', async () => {
   return crawlerService.getFlowchartData();
+});
+
+ipcMain.handle('crawler:getAIAnalysis', async () => {
+  return crawlerService.getAIAnalysisData();
 }); 

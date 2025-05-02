@@ -1,7 +1,7 @@
 /**
  * App Crawler Core module - contains the core crawling functionality
  */
-const { prioritizeElementsByAI } = require('./aiElementSelector');
+const { prioritizeElementsByAI, getLatestAnalysis } = require('./aiElementSelector');
 const { addScreen, generateFlowchartData } = require('../mitmproxy/visualState');
 const { execAdbCommand } = require('../adb/deviceManager');
 const crypto = require('crypto');
@@ -391,6 +391,14 @@ function addToAIHistory(action, screen, element = null, result = 'success') {
 }
 
 /**
+ * Get the AI analysis data for use in the UI
+ * @returns {Object} Latest AI analysis
+ */
+function getAIAnalysisData() {
+  return getLatestAnalysis();
+}
+
+/**
  * Explore a screen by analyzing UI and interacting with elements
  * @param {string} deviceId The device ID
  * @param {string} packageName The package name
@@ -590,6 +598,17 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
           addCrawlerLog, // Pass the logging function to avoid circular dependencies
           aiExplorationHistory // Pass the exploration history to the AI
         );
+        
+        // Send AI analysis to UI
+        const aiAnalysis = getLatestAnalysis();
+        if (mainWindowRef && mainWindowRef.webContents && aiAnalysis.timestamp) {
+          try {
+            mainWindowRef.webContents.send('crawler:aiAnalysis', aiAnalysis);
+            addCrawlerLog(`AI identified next step: ${aiAnalysis.nextSteps[0] || 'Explore the app'}`, 'info');
+          } catch (err) {
+            console.error('Error sending AI analysis to UI:', err);
+          }
+        }
         break;
         
       default:
@@ -796,5 +815,6 @@ module.exports = {
   onNewScreen,
   onComplete,
   onError,
-  onLog
+  onLog,
+  getAIAnalysisData
 }; 

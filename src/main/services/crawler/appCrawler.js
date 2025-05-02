@@ -296,7 +296,7 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
     crawlerPackageName = packageName;
     crawlerSettings = {
       maxScreens: settings.maxScreens || 20,
-      maxDepth: settings.maxDepth || 10,
+      maxDepth: settings.maxDepth || 50,
       mode: settings.mode || 'breadthFirst',
       screenDelay: settings.screenDelay || 1000,
       // Add a separate back delay that's longer than screenDelay

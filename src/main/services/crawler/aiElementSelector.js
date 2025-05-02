@@ -647,20 +647,42 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     
     USER INSTRUCTIONS: ${aiPrompt}
     
-    YOUR CURRENT TASK: ${currentStepDescription}
+    ALL STEPS IN TEST FLOW:
+    ${progressData.steps.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
     
-    CURRENT PROGRESS:
+    SYSTEM'S ASSESSMENT OF PROGRESS:
     - Testing type: ${updatedProgressData.type}
     - Current step: ${updatedProgressData.currentStep} of ${updatedProgressData.steps.length}
+    - Current step description: ${currentStepDescription}
     
-    ====== IMPORTANT ======
-    Your ONLY objective right now is to identify elements that will help complete the current step.
+    ====== IMPORTANT: STEP ASSESSMENT REQUIRED ======
+    First, assess which step you believe the testing is ACTUALLY on, based on:
+    1. The exploration history
+    2. The current screen elements
+    3. Your understanding of the test flow
+    
+    You are ALLOWED to suggest skipping ahead if you believe:
+    - A previous step has been completed
+    - The current state allows you to work on a later step
+    - The test flow would be more efficient by addressing a different step
+    
+    Provide your step assessment in this format:
+    {
+      "aiStepAssessment": {
+        "recommendedStep": <step number>,
+        "confidence": <0-100>,
+        "reasoning": "<brief explanation>",
+        "shouldSkipAhead": <true/false>
+      }
+    }
+    =====================
+    
+    Your MAIN objective is to identify elements that will help complete the most appropriate step.
     AVOID REPETITIVE PATTERNS: Do NOT recommend elements that:
     - Were just clicked in the previous action
     - Would create an alternating A-B-A pattern
     - Would create a cycle of repeatedly visiting the same screens
     Choose elements that move the testing forward to new screens and states.
-    =====================
     
     Exploration history summary:
     - Screens visited: ${historySummary.screensVisited}
@@ -678,20 +700,28 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     3. The element's XML attributes
     
     Your task is to rank each element from 0-100 based SOLELY on:
-    - How likely clicking it will help COMPLETE THE CURRENT STEP: "${currentStepDescription}"
-    - Elements that have clear text/labels matching the current step should receive highest scores
+    - How likely clicking it will help COMPLETE THE STEP YOU IDENTIFIED as most appropriate
+    - Elements that have clear text/labels matching this step should receive highest scores
     - Elements that have been tried multiple times already should receive lower scores
     - AVOID elements that would create repetitive patterns of interaction
     
     For each element, provide a JSON object with:
     - score: Number from 0-100
-    - reasoning: Brief explanation focused on how this relates to the CURRENT step
+    - reasoning: Brief explanation focused on how this relates to the step you identified
     
-    RESPOND WITH VALID JSON ARRAY OF OBJECTS, ONE PER ELEMENT. Example:
-    [
-      {"elementIndex": 0, "score": 85, "reasoning": "This appears to be directly related to the current step"},
-      {"elementIndex": 1, "score": 30, "reasoning": "Unlikely to help with the current step"}
-    ]
+    RESPOND WITH VALID JSON INCLUDING BOTH YOUR STEP ASSESSMENT AND ELEMENT SCORES:
+    {
+      "aiStepAssessment": {
+        "recommendedStep": 2,
+        "confidence": 85,
+        "reasoning": "Based on the login screen elements, step 1 appears complete",
+        "shouldSkipAhead": true
+      },
+      "elementScores": [
+        {"elementIndex": 0, "score": 85, "reasoning": "This appears to be directly related to the current step"},
+        {"elementIndex": 1, "score": 30, "reasoning": "Unlikely to help with the current step"}
+      ]
+    }
     `;
     
     // Add element data to prompt
@@ -716,12 +746,21 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     const responseText = response.text();
     
     // Parse the JSON response
-    let scores = [];
+    let parsedResponse = {
+      aiStepAssessment: {
+        recommendedStep: updatedProgressData.currentStep,
+        confidence: 100,
+        reasoning: "Using system's step assessment as fallback",
+        shouldSkipAhead: false
+      },
+      elementScores: []
+    };
+    
     try {
       // Extract JSON from the response
-      const jsonMatch = responseText.match(/\[\s*\{.*\}\s*\]/s);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        scores = JSON.parse(jsonMatch[0]);
+        parsedResponse = JSON.parse(jsonMatch[0]);
         log('Successfully parsed Gemini API response', 'info', logger);
       } else {
         throw new Error("No valid JSON found in response");
@@ -734,7 +773,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       const scoreRegex = /ELEMENT\s*(\d+).*score:\s*(\d+)/gi;
       let match;
       while ((match = scoreRegex.exec(responseText)) !== null) {
-        scores.push({
+        parsedResponse.elementScores.push({
           elementIndex: parseInt(match[1]),
           score: parseInt(match[2]),
           reasoning: 'Extracted from text (fallback)'
@@ -742,8 +781,8 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       }
       
       // If still no scores, use random scoring
-      if (scores.length === 0) {
-        scores = enhancedElements.map((_, i) => ({
+      if (parsedResponse.elementScores.length === 0) {
+        parsedResponse.elementScores = enhancedElements.map((_, i) => ({
           elementIndex: i,
           score: Math.floor(Math.random() * 100),
           reasoning: 'Random fallback score (parsing failed)'
@@ -751,9 +790,19 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       }
     }
     
+    // Log AI's step assessment
+    if (parsedResponse.aiStepAssessment) {
+      const assessment = parsedResponse.aiStepAssessment;
+      log(`AI Step Assessment: ${assessment.recommendedStep} (confidence: ${assessment.confidence}%)`, 'info', logger);
+      log(`Reasoning: ${assessment.reasoning}`, 'info', logger);
+      if (assessment.shouldSkipAhead) {
+        log(`AI recommends skipping ahead to step ${assessment.recommendedStep}`, 'success', logger);
+      }
+    }
+    
     // Apply scores to elements
     const scoredElements = enhancedElements.map((element, index) => {
-      const elementScore = scores.find(s => s.elementIndex === index);
+      const elementScore = parsedResponse.elementScores.find(s => s.elementIndex === index);
       const baseScore = elementScore ? elementScore.score : 0;
       
       // Check for repetitive patterns and apply penalties
@@ -791,17 +840,43 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       log(`${i+1}. ${el.class}${textInfo} - Score: ${el.aiScore}`, 'info', logger);
     });
     
+    // Determine which step to use based on AI assessment
+    let currentStep = updatedProgressData.currentStep;
+    let shouldUseAiStep = false;
+    
+    if (parsedResponse.aiStepAssessment && 
+        parsedResponse.aiStepAssessment.shouldSkipAhead && 
+        parsedResponse.aiStepAssessment.confidence >= 70) {
+      // Use AI's recommended step if confidence is high enough
+      currentStep = parsedResponse.aiStepAssessment.recommendedStep;
+      shouldUseAiStep = true;
+    }
+    
+    // Get the actual step description based on the determined step
+    const stepDescription = currentStep > 0 && currentStep <= progressData.steps.length
+      ? progressData.steps[currentStep - 1]
+      : "Explore the application";
+    
+    // Generate next steps based on the current step (possibly AI determined)
+    const updatedNextSteps = shouldUseAiStep 
+      ? generateNextSteps({...updatedProgressData, currentStep}) 
+      : nextSteps;
+    
     // Store the analysis results for frontend display
     latestAnalysis = {
       timestamp: Date.now(),
       progressSummary: {
         type: updatedProgressData.type,
-        currentStep: updatedProgressData.currentStep,
+        currentStep: currentStep,
         totalSteps: updatedProgressData.steps.length,
         progressPercent: updatedProgressData.steps.length ? 
-          Math.round((updatedProgressData.currentStep / updatedProgressData.steps.length) * 100) : 0
+          Math.round((currentStep / updatedProgressData.steps.length) * 100) : 0,
+        aiRecommendedStep: parsedResponse.aiStepAssessment ? parsedResponse.aiStepAssessment.recommendedStep : null,
+        aiStepConfidence: parsedResponse.aiStepAssessment ? parsedResponse.aiStepAssessment.confidence : null,
+        aiStepReasoning: parsedResponse.aiStepAssessment ? parsedResponse.aiStepAssessment.reasoning : null,
+        usingAiRecommendedStep: shouldUseAiStep
       },
-      nextSteps: nextSteps,
+      nextSteps: updatedNextSteps,
       topElements: topElements.map(el => ({
         class: el.class,
         text: el.text || el.ocrText || '',

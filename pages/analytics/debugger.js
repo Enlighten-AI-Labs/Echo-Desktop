@@ -100,6 +100,7 @@ export default function DebuggerView({ navigateTo, params }) {
   const [crawlSettings, setCrawlSettings] = useState({
     maxScreens: 20,
     screenDelay: 1000, // ms between actions
+    backDelay: 2000, // ms to wait after pressing back button
     ignoreElements: ['android.widget.ImageView'], // Element types to ignore for interaction
     stayInApp: true,
     mode: 'random', // 'random', 'orderly', or 'ai'
@@ -814,6 +815,18 @@ export default function DebuggerView({ navigateTo, params }) {
                           onChange={(e) => handleSettingsChange('screenDelay', parseInt(e.target.value))}
                           min="500"
                           max="5000"
+                          step="100"
+                        />
+                      </div>
+                      
+                      <div className={styles.settingItem}>
+                        <label>Back Button Delay (ms)</label>
+                        <input 
+                          type="number" 
+                          value={crawlSettings.backDelay}
+                          onChange={(e) => handleSettingsChange('backDelay', parseInt(e.target.value))}
+                          min="1000"
+                          max="10000"
                           step="100"
                         />
                       </div>

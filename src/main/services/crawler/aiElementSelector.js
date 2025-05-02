@@ -142,12 +142,11 @@ async function prepareElementsForAI(elements, screenshotBase64, uiHierarchy, log
   
   log(`Found ${interactableElements.length} potentially interactable elements`, 'info', logger);
   
-  // Extract XML context for each element
-  const elementNodeRegex = /<node[^>]+index="(\d+)"[^>]+\/>/g;
+  // Extract XML context for each element - process in batches to reduce logging
+  let processedCount = 0;
   
   for (let i = 0; i < interactableElements.length; i++) {
     const element = interactableElements[i];
-    log(`Processing element ${i+1}/${interactableElements.length}: ${element.class}`, 'info', logger);
     
     try {
       // Extract image section
@@ -160,7 +159,6 @@ async function prepareElementsForAI(elements, screenshotBase64, uiHierarchy, log
       // Perform OCR on the element image
       let ocrText = '';
       if (elementImageBase64) {
-        log(`Performing OCR on element ${i+1}`, 'info', logger);
         ocrText = await performOCR(elementImageBase64, logger);
       }
       
@@ -183,10 +181,15 @@ async function prepareElementsForAI(elements, screenshotBase64, uiHierarchy, log
         elementXml,
         aiScore: 0, // Will be filled in by the AI
       });
+      
+      processedCount++;
     } catch (error) {
-      log(`Error processing element ${i+1}: ${error.message}`, 'error', logger);
+      log(`Error processing element: ${error.message}`, 'error', logger);
     }
   }
+  
+  // Log completion summary instead of details for each element
+  log(`Processed ${processedCount}/${interactableElements.length} elements with OCR and XML extraction`, 'info', logger);
   
   return enhancedElements;
 }
@@ -214,7 +217,7 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
   }
   
   try {
-    log('Analyzing elements with Gemini AI', 'info', logger);
+    log(`Analyzing ${enhancedElements.length} elements with Gemini AI using model: gemini-2.0-flash`, 'info', logger);
     
     // Create a model instance
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -263,19 +266,19 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
     });
     
     // Generate content
-    log('Sending request to Gemini API', 'info', logger);
+    log('Sending request to Gemini API...', 'info', logger);
     const result = await model.generateContent(userPrompt);
     const response = await result.response;
     const responseText = response.text();
     
     // Parse the JSON response
-    log('Parsing Gemini API response', 'info', logger);
     let scores = [];
     try {
       // Extract JSON from the response
       const jsonMatch = responseText.match(/\[\s*\{.*\}\s*\]/s);
       if (jsonMatch) {
         scores = JSON.parse(jsonMatch[0]);
+        log('Successfully parsed Gemini API response', 'info', logger);
       } else {
         throw new Error("No valid JSON found in response");
       }
@@ -314,14 +317,16 @@ async function scoreElementsWithGemini(enhancedElements, aiPrompt, logger = null
       };
     });
     
-    // Log the top scoring elements
+    // Log only the top scoring elements
     const topElements = [...scoredElements]
       .sort((a, b) => b.aiScore - a.aiScore)
       .slice(0, 3);
       
-    log('Top elements selected by AI:', 'info', logger);
+    log('🔍 Top elements selected by AI:', 'success', logger);
     topElements.forEach((el, i) => {
-      log(`${i+1}. ${el.class} (Score: ${el.aiScore}): ${el.aiReasoning}`, 'info', logger);
+      const elementText = el.text || el.ocrText || '';
+      const textInfo = elementText ? ` "${elementText}"` : '';
+      log(`${i+1}. ${el.class}${textInfo} - Score: ${el.aiScore}`, 'info', logger);
     });
     
     return scoredElements;
@@ -354,7 +359,10 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
       return elements;
     }
     
-    log('Starting AI-powered element prioritization', 'info', logger);
+    log('🤖 Starting AI-powered element prioritization', 'info', logger);
+    if (aiPrompt) {
+      log(`AI Prompt: "${aiPrompt}"`, 'info', logger);
+    }
     
     // Prepare elements with enhanced information
     const enhancedElements = await prepareElementsForAI(
@@ -386,7 +394,7 @@ async function prioritizeElementsByAI(elements, aiPrompt, screenshotBase64, uiHi
         aiReasoning: el.aiReasoning
       }));
     
-    log(`AI prioritization complete, ${prioritizedElements.length} elements ranked`, 'info', logger);
+    log(`✅ AI prioritization complete, ordered ${prioritizedElements.length} elements by relevance`, 'success', logger);
     return prioritizedElements;
   } catch (error) {
     log(`Error in AI prioritization: ${error.message}`, 'error', logger);

@@ -221,6 +221,55 @@ function parseUIElements(xmlData) {
 }
 
 /**
+ * Wait for screen to fully load and stabilize
+ * @param {string} deviceId Device ID
+ * @param {number} waitTime Base wait time in ms
+ * @returns {Promise<void>}
+ */
+async function waitForScreenStabilization(deviceId, waitTime) {
+  // First wait the standard delay time
+  await new Promise(resolve => setTimeout(resolve, waitTime));
+  
+  // Capture initial screenshot hash to check for changes
+  let initialScreenshot;
+  try {
+    initialScreenshot = await captureScreenshot(deviceId);
+  } catch (error) {
+    // If we can't capture screenshot, just use the standard wait
+    return;
+  }
+  
+  const initialHash = calculateHash(initialScreenshot);
+  
+  // Wait a short time and check if screen is still changing
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  let isStable = false;
+  let attempts = 0;
+  
+  // Keep checking until screen stabilizes or max attempts reached
+  while (!isStable && attempts < 3 && crawlerRunning) {
+    try {
+      const currentScreenshot = await captureScreenshot(deviceId);
+      const currentHash = calculateHash(currentScreenshot);
+      
+      // If hashes match, screen is stable
+      if (currentHash === initialHash) {
+        isStable = true;
+      } else {
+        // Screen is still changing, wait longer and update reference hash
+        await new Promise(resolve => setTimeout(resolve, 500));
+        initialScreenshot = currentScreenshot;
+        attempts++;
+      }
+    } catch (error) {
+      // If screenshot fails, assume screen is stable
+      isStable = true;
+    }
+  }
+}
+
+/**
  * Start app crawling on the specified device
  * @param {string} deviceId The device ID
  * @param {string} packageName The package name of the app to crawl
@@ -243,6 +292,8 @@ async function startAppCrawling(deviceId, packageName, settings, windowRef) {
       maxDepth: settings.maxDepth || 10,
       mode: settings.mode || 'breadthFirst',
       screenDelay: settings.screenDelay || 1000,
+      // Add a separate back delay that's longer than screenDelay
+      backDelay: settings.backDelay || (settings.screenDelay ? settings.screenDelay * 2 : 2000),
       stayInApp: settings.stayInApp !== false,
       ignoreElements: settings.ignoreElements || ['android.widget.ImageView'],
       maxClicksPerButton: settings.maxClicksPerButton || 3,
@@ -341,6 +392,9 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     
     // Log the current activity
     addCrawlerLog(`Current activity: ${currentActivity}`);
+    
+    // Wait for the screen to fully load and stabilize
+    await waitForScreenStabilization(deviceId, 1000);
     
     // Capture UI hierarchy
     let uiHierarchy, screenHash;
@@ -480,7 +534,7 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
           crawlerSettings.aiPrompt,
           screenshot,
           uiHierarchy,
-          addCrawlerLog
+          addCrawlerLog // Pass the logging function to avoid circular dependencies
         );
         break;
         
@@ -518,18 +572,20 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         // Add to clicked elements
         clickedElements.push(element);
         
-        // Wait for UI to update
-        addCrawlerLog(`Waiting for UI to update (${crawlerSettings.screenDelay}ms)`);
-        await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
+        // Wait for UI to update - use dynamic wait based on screen stabilization
+        addCrawlerLog(`Waiting for screen to update after click (${crawlerSettings.screenDelay}ms minimum)`);
+        await waitForScreenStabilization(deviceId, crawlerSettings.screenDelay);
         
         // Recursively explore the new screen
         addCrawlerLog('Exploring new screen');
         await exploreScreen(deviceId, packageName, visitedScreens, currentDepth + 1);
         
-        // Go back to previous screen
-        addCrawlerLog('Going back to previous screen');
+        // Go back to previous screen, but wait longer to ensure the app has time to respond
+        addCrawlerLog(`Going back to previous screen (with ${crawlerSettings.backDelay}ms delay)`);
         await execAdbCommand(`-s ${deviceId} shell input keyevent 4`);  // KEYCODE_BACK
-        await new Promise(resolve => setTimeout(resolve, crawlerSettings.screenDelay));
+        
+        // Wait longer before continuing to make sure we're back on the original screen
+        await waitForScreenStabilization(deviceId, crawlerSettings.backDelay);
         
         // Verify we're still in the app after going back
         const activityAfterBack = await getCurrentActivity(deviceId);

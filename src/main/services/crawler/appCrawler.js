@@ -1,7 +1,7 @@
 /**
  * App Crawler Core module - contains the core crawling functionality
  */
-const { prioritizeElementsByAiPrompt } = require('./elementSelector');
+const { prioritizeElementsByAI } = require('./aiElementSelector');
 const { addScreen, generateFlowchartData } = require('../mitmproxy/visualState');
 const { execAdbCommand } = require('../adb/deviceManager');
 const crypto = require('crypto');
@@ -394,6 +394,7 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         screenshotHash,
         screenshot,
         elements,
+        xml: uiHierarchy, // Store the full XML for AI analysis
         parentScreenId: visitedScreens.length > 0 ? visitedScreens[visitedScreens.length - 1] : null
       };
       
@@ -461,24 +462,31 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     let elementsToTry = [];
     
     switch (crawlerSettings.mode) {
-      case 'breadthFirst':
-        // Try all unclicked elements first, then clicked elements
+      case 'random':
+        // Randomly shuffle elements
+        elementsToTry = [...interactableElements].sort(() => Math.random() - 0.5);
+        break;
+        
+      case 'orderly':
+        // Try all elements in order they appear in the UI
         elementsToTry = [...interactableElements];
         break;
         
-      case 'depthFirst':
-        // Try elements in reverse order (depth-first)
-        elementsToTry = [...interactableElements].reverse();
-        break;
-        
-      case 'aiAssisted':
-        // Use AI prompt to prioritize elements
-        elementsToTry = prioritizeElementsByAiPrompt([...interactableElements], crawlerSettings.aiPrompt);
+      case 'ai':
+        // Use AI to prioritize elements
+        addCrawlerLog('Using AI-powered element selection');
+        elementsToTry = await prioritizeElementsByAI(
+          interactableElements, 
+          crawlerSettings.aiPrompt,
+          screenshot,
+          uiHierarchy,
+          addCrawlerLog
+        );
         break;
         
       default:
-        // Default to breadth-first
-        elementsToTry = [...interactableElements];
+        // Default to random mode
+        elementsToTry = [...interactableElements].sort(() => Math.random() - 0.5);
     }
     
     // Click each element and explore resulting screens
@@ -496,7 +504,11 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       
       try {
         // Click the element
-        addCrawlerLog(`Clicking element: ${element.class} (hash: ${element.buttonHash.substring(0, 8)})`);
+        const elementInfo = element.aiReasoning ? 
+          `${element.class} (Score: ${element.aiScore}): ${element.aiReasoning}` : 
+          `${element.class} (hash: ${element.buttonHash.substring(0, 8)})`;
+        
+        addCrawlerLog(`Clicking element: ${elementInfo}`);
         const { left, top, right, bottom } = element.bounds;
         const centerX = Math.floor((parseInt(left) + parseInt(right)) / 2);
         const centerY = Math.floor((parseInt(top) + parseInt(bottom)) / 2);

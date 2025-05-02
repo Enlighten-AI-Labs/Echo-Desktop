@@ -1,14 +1,20 @@
 /**
  * Element Selector module - handles AI-based element selection
+ * This is a legacy module that forwards to the new AI implementation
  */
+const { prioritizeElementsByAI } = require('./aiElementSelector');
 
 /**
  * Prioritize elements based on AI prompt
  * @param {Array} elements List of UI elements
  * @param {string} aiPrompt AI prompt for prioritization
  * @returns {Array} Prioritized list of elements
+ * @deprecated Use prioritizeElementsByAI from aiElementSelector module instead
  */
 function prioritizeElementsByAiPrompt(elements, aiPrompt) {
+  console.log('WARNING: prioritizeElementsByAiPrompt is deprecated, using fallback implementation');
+  console.log('Please update your code to use prioritizeElementsByAI from aiElementSelector module');
+  
   // In a real implementation, this would use actual AI integration
   // For now, we'll use a simple heuristic based on the prompt text
   
@@ -114,5 +120,7 @@ function prioritizeElementsByAiPrompt(elements, aiPrompt) {
 }
 
 module.exports = {
-  prioritizeElementsByAiPrompt
+  prioritizeElementsByAiPrompt,
+  // Also export the new AI function for backward compatibility
+  prioritizeElementsByAI
 }; 

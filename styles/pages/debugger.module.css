@@ -969,11 +969,18 @@
   padding: 24px;
   border-radius: 8px;
   width: 90%;
-  max-width: 600px;
+  max-width: 700px;
+  max-height: 85vh;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .aiPromptHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
 }
 
@@ -981,12 +988,10 @@
   margin: 0;
   color: #ffffff;
   font-size: 18px;
+  font-family: 'Travelia Bold', sans-serif;
 }
 
 .aiPromptClose {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   background: none;
   border: none;
   color: #b8b8b8;
@@ -1005,7 +1010,7 @@
 
 .aiPromptTextarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 200px;
   padding: 12px;
   border: 1px solid #3c3c3c;
   border-radius: 4px;
@@ -1014,6 +1019,8 @@
   font-size: 14px;
   resize: vertical;
   margin-bottom: 16px;
+  font-family: 'Doto Semi-Bold', monospace;
+  line-height: 1.4;
 }
 
 .aiPromptTextarea:focus {
@@ -1025,6 +1032,8 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  margin-top: auto;
+  padding-top: 16px;
 }
 
 .aiPromptButton {
@@ -1034,6 +1043,7 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: 'Travelia Medium', sans-serif;
 }
 
 .aiPromptButton.cancel {
@@ -1047,11 +1057,416 @@
   color: #ffffff;
 }
 
-.aiPromptButton.save {
+.aiPromptButton.save,
+.aiPromptButton.apply {
+  background-color: #6DC19C;
+  color: #ffffff;
+}
+
+.aiPromptButton.save:hover,
+.aiPromptButton.apply:hover {
+  background-color: #5aa183;
+}
+
+.aiPromptButton.back {
+  background-color: transparent;
+  color: #b8b8b8;
+  border: 1px solid #3c3c3c;
+}
+
+.aiPromptButton.back:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.aiPromptButton.next {
   background-color: #3C76A9;
   color: #ffffff;
 }
 
-.aiPromptButton.save:hover {
+.aiPromptButton.next:hover {
   background-color: #2c5a8c;
+}
+
+.aiPromptButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Step Indicator */
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  flex: 1;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #3a3a3c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 500;
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.step span {
+  font-size: 12px;
+  color: #b8b8b8;
+  white-space: nowrap;
+  font-family: 'Azeret Mono Regular', monospace;
+}
+
+.activeStep .stepNumber {
+  background-color: #9C54AD;
+  color: #ffffff;
+}
+
+.activeStep span {
+  color: #ffffff;
+}
+
+.stepDivider {
+  flex: 1;
+  height: 2px;
+  background-color: #3a3a3c;
+  margin: 0 8px;
+  margin-bottom: 16px;
+}
+
+/* Vertical Selection Step */
+.verticalSelectionStep {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.verticalSelectionStep h2 {
+  display: none;
+}
+
+.verticalSelectionStep p {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+.verticalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.verticalItem {
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verticalItem:hover {
+  border-color: #9C54AD;
+  transform: translateY(-2px);
+}
+
+.selectedVertical {
+  border-color: #9C54AD;
+  background-color: rgba(156, 84, 173, 0.1);
+}
+
+.verticalIcon {
+  width: 48px;
+  height: 48px;
+  background-color: #3a3a3c;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.verticalIcon svg {
+  color: #9C54AD;
+}
+
+.verticalLabel {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.verticalDescription {
+  font-size: 12px;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+/* Journey Selection Step */
+.journeySelectionStep {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.journeySelectionStep h2 {
+  display: none;
+}
+
+.journeySelectionStep p {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+.journeyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journeyItem {
+  background-color: #262628;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.journeyItem:hover {
+  border-color: #3C76A9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.selectedJourney {
+  border-color: #3C76A9;
+  border-width: 2px;
+  background-color: rgba(60, 118, 169, 0.1);
+  box-shadow: 0 0 8px rgba(60, 118, 169, 0.3);
+}
+
+.selectedJourney:hover {
+  box-shadow: 0 4px 12px rgba(60, 118, 169, 0.4);
+}
+
+.journeyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.journeyName {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  font-family: 'Travelia Medium', sans-serif;
+}
+
+.viewPromptButton {
+  background-color: #3C76A9;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Doto Semi-Bold', sans-serif;
+}
+
+.viewPromptButton:hover {
+  background-color: #2c5a8c;
+}
+
+.journeyDescription {
+  font-size: 14px;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+.emptyJourneyList {
+  padding: 24px;
+  background-color: #262628;
+  border-radius: 8px;
+  text-align: center;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+/* Prompt Editor Step */
+.promptEditorStep {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.promptEditorStep h2 {
+  display: none;
+}
+
+.promptEditorStep p {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Light', sans-serif;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .verticalGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .aiPromptContent {
+    width: 95%;
+    max-height: 90vh;
+    padding: 16px;
+  }
+  
+  .step span {
+    font-size: 10px;
+  }
+}
+
+.verticalSelectionStep h3,
+.journeySelectionStep h3,
+.promptEditorStep h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-family: 'Travelia Bold', sans-serif;
+  color: #ffffff !important;
+  font-size: 20px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.aiPromptHeader h3 {
+  margin: 0;
+  color: #ffffff !important;
+  font-size: 18px;
+  font-family: 'Travelia Bold', sans-serif;
+}
+
+.journeyCheckbox {
+  display: none;
+}
+
+.journeyCheckbox input[type="checkbox"] {
+  display: none;
+}
+
+.multiJourneyPrompt {
+  background-color: #1e1e20;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.selectedJourneysHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: #ffffff;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 14px;
+}
+
+.journeyCount {
+  background-color: #3C76A9;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.selectedJourneysList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selectedJourneyItem {
+  display: flex;
+  align-items: center;
+  background-color: #262628;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #ffffff;
+  font-family: 'Doto Semi-Bold', sans-serif;
+  gap: 8px;
+}
+
+.removeJourneyButton {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.removeJourneyButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.singleJourneyHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background-color: #1e1e20;
+  border-radius: 6px;
+}
+
+.singleJourneyHeader span:first-child {
+  color: #b8b8b8;
+  font-family: 'Azeret Mono Regular', monospace;
+  font-size: 14px;
+}
+
+.singleJourneyHeader .journeyName {
+  color: #ffffff;
+  font-family: 'Travelia Medium', sans-serif;
+  font-size: 14px;
+  background-color: #3C76A9;
+  padding: 3px 10px;
+  border-radius: 4px;
 } 

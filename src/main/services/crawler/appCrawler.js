@@ -427,9 +427,21 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     // Get the current activity
     let currentActivity = await getCurrentActivity(deviceId);
     
+    // Check if crawler has been stopped
+    if (!crawlerRunning) {
+      addCrawlerLog('Crawler stopped');
+      return;
+    }
+    
     // Check if we're still in the app (if configured to stay in app)
     if (crawlerSettings.stayInApp && !currentActivity.includes(packageName)) {
       addCrawlerLog(`Current activity ${currentActivity} is outside app package ${packageName}, returning to app`, 'warning');
+      
+      // Check if crawler has been stopped before trying to return to app
+      if (!crawlerRunning) {
+        addCrawlerLog('Crawler stopped');
+        return;
+      }
       
       try {
         // Try to return to the app
@@ -437,6 +449,12 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         
         // Wait for app to start again
         await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Check if crawler has been stopped during wait
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped');
+          return;
+        }
         
         // Check if we're back in the app
         const newActivity = await getCurrentActivity(deviceId);
@@ -455,11 +473,23 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
       addCrawlerLog(`Current activity ${currentActivity} is not part of package ${packageName}, skipping`, 'info');
     }
     
+    // Check if crawler has been stopped
+    if (!crawlerRunning) {
+      addCrawlerLog('Crawler stopped');
+      return;
+    }
+    
     // Log the current activity
     addCrawlerLog(`Current activity: ${currentActivity}`);
     
     // Wait for the screen to fully load and stabilize
     await waitForScreenStabilization(deviceId, 1000);
+    
+    // Check if crawler has been stopped
+    if (!crawlerRunning) {
+      addCrawlerLog('Crawler stopped');
+      return;
+    }
     
     // Capture UI hierarchy
     let uiHierarchy, screenHash;
@@ -474,6 +504,12 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     } catch (uiError) {
       addCrawlerLog(`Error capturing UI hierarchy: ${uiError.message}`, 'error');
       // If we can't get the UI hierarchy, we can't proceed with this screen
+      return;
+    }
+    
+    // Check if crawler has been stopped
+    if (!crawlerRunning) {
+      addCrawlerLog('Crawler stopped');
       return;
     }
     
@@ -648,7 +684,10 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
     
     // Click each element and explore resulting screens
     for (const element of elementsToTry) {
-      if (!crawlerRunning) break;
+      if (!crawlerRunning) {
+        addCrawlerLog('Crawler stopped inside element loop');
+        return; // Return completely, not just break the loop
+      }
       
       // Get click count for this element from previous interactions
       const clickCount = clickedElements.filter(e => e.buttonHash === element.buttonHash).length;
@@ -676,6 +715,12 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         
         await execAdbCommand(`-s ${deviceId} shell input tap ${centerX} ${centerY}`);
         
+        // Check if crawler has been stopped
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped after clicking element');
+          return;
+        }
+        
         // Add to clicked elements
         clickedElements.push(element);
         
@@ -686,9 +731,21 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         addCrawlerLog(`Waiting for screen to update after click (${crawlerSettings.screenDelay}ms minimum)`);
         await waitForScreenStabilization(deviceId, crawlerSettings.screenDelay);
         
+        // Check if crawler has been stopped
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped after screen update');
+          return;
+        }
+        
         // Recursively explore the new screen
         addCrawlerLog('Exploring new screen');
         await exploreScreen(deviceId, packageName, visitedScreens, currentDepth + 1);
+        
+        // Check if crawler has been stopped after recursive exploration
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped after recursive exploration');
+          return;
+        }
         
         // Go back to previous screen, but wait longer to ensure the app has time to respond
         addCrawlerLog(`Going back to previous screen (with ${crawlerSettings.backDelay}ms delay)`);
@@ -698,13 +755,31 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         
         await execAdbCommand(`-s ${deviceId} shell input keyevent 4`);  // KEYCODE_BACK
         
+        // Check if crawler has been stopped
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped after back action');
+          return;
+        }
+        
         // Wait longer before continuing to make sure we're back on the original screen
         await waitForScreenStabilization(deviceId, crawlerSettings.backDelay);
+        
+        // Check if crawler has been stopped
+        if (!crawlerRunning) {
+          addCrawlerLog('Crawler stopped after back screen stabilization');
+          return;
+        }
         
         // Verify we're still in the app after going back
         const activityAfterBack = await getCurrentActivity(deviceId);
         if (crawlerSettings.stayInApp && !activityAfterBack.includes(packageName)) {
           addCrawlerLog(`Left the app after going back. Current activity: ${activityAfterBack}. Relaunching app...`, 'warning');
+          
+          // Check if crawler has been stopped
+          if (!crawlerRunning) {
+            addCrawlerLog('Crawler stopped before app relaunch');
+            return;
+          }
           
           // Record navigation out of app in history
           addToAIHistory('exit_app', currentScreen, null, 'after_back');
@@ -715,6 +790,12 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
             
             // Wait for app to start again
             await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Check if crawler has been stopped during app relaunch
+            if (!crawlerRunning) {
+              addCrawlerLog('Crawler stopped during app relaunch');
+              return;
+            }
             
             // Check if we're back in the app
             const newActivity = await getCurrentActivity(deviceId);
@@ -740,6 +821,12 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
         
         continue; // Try the next element
       }
+    }
+    
+    // Final check if crawler has been stopped
+    if (!crawlerRunning) {
+      addCrawlerLog('Crawler stopped at end of exploration');
+      return;
     }
     
     addCrawlerLog(`Finished exploring screen: ${currentActivity.split('/').pop()}`);

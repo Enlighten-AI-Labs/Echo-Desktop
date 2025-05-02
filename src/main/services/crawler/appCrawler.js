@@ -634,7 +634,8 @@ async function exploreScreen(deviceId, packageName, visitedScreens = [], current
              element.class.includes('CheckBox') || 
              element.class.includes('Switch') || 
              element.class.includes('Spinner') ||
-             element.class.includes('View') && element.resourceId.includes('btn');
+             (element.class.includes('View') && element.resourceId.includes('btn')) ||
+             element.clickable === true;
     });
     
     addCrawlerLog(`Found ${unclickedElements.length} unclicked elements and ${clickedElements.length} previously clicked elements`);

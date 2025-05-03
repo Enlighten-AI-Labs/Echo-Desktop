@@ -333,6 +333,12 @@
   overflow: hidden;
 }
 
+.eventDetails.fullWidth {
+  flex: 1;
+  max-width: none;
+  margin-right: 0;
+}
+
 .screenshotPanel {
   flex: 0 0 300px;
   display: flex;

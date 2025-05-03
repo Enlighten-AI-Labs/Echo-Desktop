@@ -55,7 +55,7 @@ function beautifyXml(xml) {
   return result.trim();
 }
 
-export default function AppCrawler({ deviceId, packageName, splitRatio, leftPanelCollapsed, toggleLeftPanel, rightPanelCollapsed }) {
+export default function AppCrawler({ deviceId, packageName, splitRatio, leftPanelCollapsed, toggleLeftPanel, rightPanelCollapsed, onStatusChange }) {
   // App Crawler State
   const [crawlStatus, setCrawlStatus] = useState('idle'); // idle, running, completed, error
   const [crawlProgress, setCrawlProgress] = useState(0);
@@ -485,6 +485,13 @@ export default function AppCrawler({ deviceId, packageName, splitRatio, leftPane
   const toggleAiSidebar = () => {
     setAiSidebarExpanded(prev => !prev);
   };
+
+  // Notify parent component when crawl status changes
+  useEffect(() => {
+    if (typeof onStatusChange === 'function') {
+      onStatusChange(crawlStatus);
+    }
+  }, [crawlStatus, onStatusChange]);
 
   return (
     <>

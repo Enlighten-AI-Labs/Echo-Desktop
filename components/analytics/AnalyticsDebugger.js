@@ -14,10 +14,13 @@ import useEventFiltering from '@/hooks/useEventFiltering';
 import useScreenshots from '@/hooks/useScreenshots';
 import { groupEventsByScreen } from '@/lib/beacon-utils';
 
-export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }) {
+export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show, crawlerStatus }) {
   if (!show) {
     return null;
   }
+
+  // Determine if screenshot panel should be hidden (when crawler is running)
+  const isScreenshotPanelHidden = crawlerStatus === 'running';
 
   const { startTransition, isPending } = useReact19();
   const { events, addOrUpdateEvents, deleteEvent, clearEvents, exportEvents, importEvents } = useAnalyticsEvents();
@@ -151,7 +154,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
       detailsPanel.addEventListener('touchstart', handlePanelInteraction);
     }
 
-    if (screenshotPanel) {
+    if (screenshotPanel && !isScreenshotPanelHidden) {
       screenshotPanel.addEventListener('mouseenter', handlePanelInteraction);
       screenshotPanel.addEventListener('touchstart', handlePanelInteraction);
     }
@@ -161,12 +164,12 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
         detailsPanel.removeEventListener('mouseenter', handlePanelInteraction);
         detailsPanel.removeEventListener('touchstart', handlePanelInteraction);
       }
-      if (screenshotPanel) {
+      if (screenshotPanel && !isScreenshotPanelHidden) {
         screenshotPanel.removeEventListener('mouseenter', handlePanelInteraction);
         screenshotPanel.removeEventListener('touchstart', handlePanelInteraction);
       }
     };
-  }, [detailsPanelRef, screenshotPanelRef]);
+  }, [detailsPanelRef, screenshotPanelRef, isScreenshotPanelHidden]);
 
   // Add resize event listeners
   useEffect(() => {
@@ -297,21 +300,26 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
           ref={detailsPanelRef}
           selectedEvent={selectedEvent}
           handleDeleteEvent={handleDeleteEvent}
+          isFullWidth={isScreenshotPanelHidden}
         />
 
-      <div className={styles.divider} onMouseDown={startResize('right')}>
-        <div className={styles.dividerHandle} />
-      </div>
+      {!isScreenshotPanelHidden && (
+        <>
+          <div className={styles.divider} onMouseDown={startResize('right')}>
+            <div className={styles.dividerHandle} />
+          </div>
 
-        <ScreenshotPanel
-          ref={screenshotPanelRef}
-          selectedEvent={selectedEvent}
-          selectedScreenshot={selectedScreenshot}
-          screenshotStatus={screenshotStatus}
-          handleRetakeScreenshot={handleRetakeScreenshot}
-          handleDeleteScreenshot={handleDeleteScreenshot}
-          rightPanelWidth={rightPanelWidth}
-        />
+          <ScreenshotPanel
+            ref={screenshotPanelRef}
+            selectedEvent={selectedEvent}
+            selectedScreenshot={selectedScreenshot}
+            screenshotStatus={screenshotStatus}
+            handleRetakeScreenshot={handleRetakeScreenshot}
+            handleDeleteScreenshot={handleDeleteScreenshot}
+            rightPanelWidth={rightPanelWidth}
+          />
+        </>
+      )}
 
         {/* Only show Latest Event button if we're not at the top and user has selected a different event */}
         {userSelectedEvent && userInteracting && filteredEvents.length > 0 && selectedEvent?.id !== filteredEvents[0].id && (

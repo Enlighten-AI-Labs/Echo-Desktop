@@ -6,7 +6,7 @@ import { isEcommerceParameter } from '@/lib/beacon-utils';
 import { parseLogcatParameters, cleanEventName } from '@/lib/ga4-analytics-parser'; 
 import EcommerceCard from './EcommerceCard';
 
-const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref) => {
+const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFullWidth }, ref) => {
   const [expandedSections, setExpandedSections] = useState({
     basicInfo: false,
     parameters: true,
@@ -19,7 +19,7 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
 
   if (!selectedEvent) {
     return (
-      <div ref={ref} className={styles.eventDetails}>
+      <div ref={ref} className={`${styles.eventDetails} ${isFullWidth ? styles.fullWidth : ''}`}>
         <div className={styles.noEventSelected}>
           <p>No event selected</p>
           <p>Select an event from the list to view details</p>
@@ -29,7 +29,7 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent }, ref)
   }
 
   return (
-    <div ref={ref} className={styles.eventDetails}>
+    <div ref={ref} className={`${styles.eventDetails} ${isFullWidth ? styles.fullWidth : ''}`}>
       <div className={styles.eventDetailsHeader}>
         <div className={styles.eventDetailsTitle}>
           {selectedEvent.eventName}

@@ -27,6 +27,9 @@ export default function DebuggerView({ navigateTo, params }) {
   
   // Track if we're in an animation transition
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Track crawler status
+  const [crawlerStatus, setCrawlerStatus] = useState('idle');
 
   useEffect(() => {
     // Get query parameters when the component loads
@@ -195,6 +198,11 @@ export default function DebuggerView({ navigateTo, params }) {
     }
   };
 
+  // Callback to handle crawler status updates
+  const handleCrawlerStatusChange = (status) => {
+    setCrawlerStatus(status);
+  };
+
   return (
     <>
       <Head>
@@ -248,6 +256,7 @@ export default function DebuggerView({ navigateTo, params }) {
             leftPanelCollapsed={leftPanelCollapsed}
             toggleLeftPanel={toggleLeftPanel}
             rightPanelCollapsed={rightPanelCollapsed}
+            onStatusChange={handleCrawlerStatusChange}
           />
           
           {/* Resizable Divider - Only show when neither panel is collapsed */}
@@ -276,6 +285,7 @@ export default function DebuggerView({ navigateTo, params }) {
                   deviceId={deviceId}
                   packageName={packageName}
                   show={true}
+                  crawlerStatus={crawlerStatus}
                 />
             </div>
           </div>

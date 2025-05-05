@@ -120,7 +120,8 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
                       <div className={styles.paramNumber}>#{index + 1}</div>
                       <div className={styles.paramName}>{key}</div>
                       <div className={styles.paramValue}>
-                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : 
+                          typeof value === 'boolean' ? String(value) : String(value)}
                       </div>
                     </div>
                   ))}

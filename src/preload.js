@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld(
       getAnalyticsLogs: () => ipcRenderer.invoke('adb:getAnalyticsLogs'),
       clearAnalyticsLogs: () => ipcRenderer.invoke('adb:clearAnalyticsLogs'),
       isLogcatRunning: () => ipcRenderer.invoke('adb:isLogcatRunning'),
+      // Batch data method
+      getBatchData: () => ipcRenderer.invoke('adb:getBatchData'),
       // Touch event capture methods
       startTouchEventCapture: (deviceId) => ipcRenderer.invoke('adb:startTouchEventCapture', deviceId),
       stopTouchEventCapture: () => ipcRenderer.invoke('adb:stopTouchEventCapture'),

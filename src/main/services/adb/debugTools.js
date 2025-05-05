@@ -156,7 +156,7 @@ async function parseLogcatForAnalytics(output, deviceId) {
     
     // Check if this is the start of a new event with "Logging event:"
     if (line.includes('Logging event:')) {
-      console.log("Logging event: " + line);
+      console.log("New Event: " + line);
       // Extract event name and potential parameters
       const nameMatch = line.match(/name=([a-zA-Z_]+)/);
       const eventName = nameMatch ? nameMatch[1] : 'Unknown Event';
@@ -230,25 +230,15 @@ async function parseLogcatForAnalytics(output, deviceId) {
     
     // Look for user property updates
     if(line.includes("Setting user property:")) {
-      const userProperty = line.split("Setting user property:")[1].split(" ")[0];
-      const userPropertyValue = line.split("Setting user property:")[1].split(" ")[1];
+      const userProperty = line.split("Setting user property:")[1].split(", ")[0];
+      const userPropertyValue = line.split("Setting user property:")[1].split(", ")[1];
       console.log("Received update to user property: " + userProperty + " with value: " + userPropertyValue);
       
       if (!currentBatchData.sharedPayload) {
         currentBatchData.sharedPayload = {};
       }
       currentBatchData.sharedPayload[userProperty] = userPropertyValue;
-      
-      // Log the user property update
-      analyticsLogs.push({
-        timestamp: new Date().toISOString(),
-        type: 'user_property',
-        property: userProperty,
-        value: userPropertyValue,
-        message: `User property updated: ${userProperty} = ${userPropertyValue}`,
-        rawLog: line
-      });
-      
+      console.log("Current batch data: " + JSON.stringify(currentBatchData));
       continue;
     }
     
@@ -1017,6 +1007,14 @@ function notifyEventUpdate(event) {
   }
 }
 
+/**
+ * Gets the current batch data including shared payload
+ * @returns {Object} The current batch data
+ */
+function getCurrentBatchData() {
+  return { ...currentBatchData };
+}
+
 module.exports = {
   startLogcatCapture,
   stopLogcatCapture,
@@ -1027,5 +1025,6 @@ module.exports = {
   stopNetworkCapture,
   startTouchEventCapture,
   stopTouchEventCapture,
-  setMainWindow
+  setMainWindow,
+  getCurrentBatchData
 }; 

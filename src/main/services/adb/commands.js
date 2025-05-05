@@ -103,7 +103,6 @@ async function executeCommand(deviceId, command) {
       fullCommand = `-s ${deviceId} ${command}`;
     }
     
-    console.log(`Executing custom ADB command: ${fullCommand}`);
     const output = await execAdbCommand(fullCommand);
     
     return {

@@ -13,7 +13,6 @@ const { PATHS } = require('./installer');
 function execAdbCommand(command, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cmd = `"${PATHS.fullAdbPath}" ${command}`;
-    console.log('Executing ADB command:', cmd);
     
     // Create an object to store the child process
     const childProcess = exec(cmd, { timeout }, (error, stdout, stderr) => {

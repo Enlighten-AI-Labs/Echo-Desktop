@@ -77,7 +77,6 @@ export default function useEventCapture({
       if (isRunning) {
         try {
           const logcatLogs = await window.api.adb.getAnalyticsLogs();
-
           if (Array.isArray(logcatLogs)) {
             const parsedLogcatEvents = logcatLogs
               .filter(log => log.message?.includes('Logging event:') || log.message?.includes('FirebaseAnalytics'))
@@ -212,6 +211,20 @@ export default function useEventCapture({
 
       // Only update events if we have new ones to add
       if (newEvents.length > 0) {
+        // Fetch batch data from backend and add to each event
+        try {
+          const batchResult = await window.api.adb.getBatchData();
+          if (batchResult.success && batchResult.batchData) {
+            newEvents = newEvents.map(event => ({
+              ...event,
+              batchData: batchResult.batchData,
+              sharedPayload: batchResult.batchData.sharedPayload || {}
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching batch data:', error);
+        }
+        
         // Use the ref instead of the prop directly
         addOrUpdateEventsRef.current(newEvents);
       }

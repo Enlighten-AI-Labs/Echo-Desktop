@@ -45,6 +45,7 @@ module.exports = {
   isLogcatRunning: debugTools.isLogcatRunning,
   startNetworkCapture: debugTools.startNetworkCapture,
   stopNetworkCapture: debugTools.stopNetworkCapture,
+  getCurrentBatchData: debugTools.getCurrentBatchData,
   
   // Consts exports for other modules
   PATHS: installer.PATHS,

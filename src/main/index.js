@@ -344,6 +344,16 @@ ipcMain.handle('adb:stopTouchEventCapture', async () => {
   return adbService.stopTouchEventCapture();
 });
 
+// Add the handler for getting batch data
+ipcMain.handle('adb:getBatchData', async () => {
+  try {
+    return { success: true, batchData: adbService.debugTools.getCurrentBatchData() };
+  } catch (error) {
+    console.error('Error getting batch data:', error);
+    return { success: false, message: error.message };
+  }
+});
+
 // MitmProxy handlers
 ipcMain.handle('mitmproxy:status', () => {
   return mitmproxyService.getProxyStatus();

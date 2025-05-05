@@ -56,7 +56,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
             }))}
           >
             <h3>Basic Information</h3>
-            <span>{expandedSections.basicInfo ? '−' : '+'}</span>
+            <div className={styles.sectionHeaderActions}>
+              <span>{expandedSections.basicInfo ? '−' : '+'}</span>
+            </div>
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.parametersTable}>
@@ -98,7 +100,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
             }))}
           >
             <h3>Parameters</h3>
-            <span>{expandedSections.parameters ? '−' : '+'}</span>
+            <div className={styles.sectionHeaderActions}>
+              <span>{expandedSections.parameters ? '−' : '+'}</span>
+            </div>
           </div>
           <div className={styles.sectionContent}>
             {(() => {
@@ -129,6 +133,46 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
             })()}
           </div>
         </div>
+
+        {/* User Properties Section */}
+        {(selectedEvent?.sharedPayload || selectedEvent?.batchData) && (
+          <div className={styles.section}>
+            <div 
+              className={`${styles.sectionHeader} ${expandedSections.userProperties ? styles.expanded : ''}`}
+              onClick={() => setExpandedSections(prev => ({
+                ...prev,
+                userProperties: !prev.userProperties
+              }))}
+            >
+              <h3>User Properties</h3>
+              <div className={styles.sectionHeaderActions}>
+                <span>{expandedSections.userProperties ? '−' : '+'}</span>
+              </div>
+            </div>
+            <div className={styles.sectionContent}>
+              {selectedEvent?.sharedPayload && Object.keys(selectedEvent.sharedPayload).length > 0 ? (
+                <div className={styles.parametersTable}>
+                  <div className={styles.parametersHeader}>
+                    <div className={styles.paramNumber}>#</div>
+                    <div className={styles.paramName}>PROPERTY NAME</div>
+                    <div className={styles.paramValue}>VALUE</div>
+                  </div>
+                  {Object.entries(selectedEvent.sharedPayload).map(([key, value], index) => (
+                    <div key={index} className={styles.parameterRow}>
+                      <div className={styles.paramNumber}>#{index + 1}</div>
+                      <div className={styles.paramName}>{key}</div>
+                      <div className={styles.paramValue}>
+                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.noData}>No user properties available for this event</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {(() => {
           // Determine if there's eCommerce data to display
@@ -162,7 +206,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
                 }))}
               >
                 <h3>eCommerce</h3>
-                <span>{expandedSections.eCommerce ? '−' : '+'}</span>
+                <div className={styles.sectionHeaderActions}>
+                  <span>{expandedSections.eCommerce ? '−' : '+'}</span>
+                </div>
               </div>
               <div className={styles.sectionContent}>
                 {(() => {
@@ -237,7 +283,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
             }))}
           >
             <h3>Raw Data</h3>
-            <span>{expandedSections.rawData ? '−' : '+'}</span>
+            <div className={styles.sectionHeaderActions}>
+              <span>{expandedSections.rawData ? '−' : '+'}</span>
+            </div>
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.rawDataContainer}>
@@ -277,7 +325,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
               }))}
             >
               <h3>UI XML Structure</h3>
-              <span>{expandedSections.uiXml ? '−' : '+'}</span>
+              <div className={styles.sectionHeaderActions}>
+                <span>{expandedSections.uiXml ? '−' : '+'}</span>
+              </div>
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.rawDataContainer}>
@@ -311,7 +361,9 @@ const EventDetailsPanel = forwardRef(({ selectedEvent, handleDeleteEvent, isFull
               }))}
             >
               <h3>User Interactions</h3>
-              <span>{expandedSections.interactions ? '−' : '+'}</span>
+              <div className={styles.sectionHeaderActions}>
+                <span>{expandedSections.interactions ? '−' : '+'}</span>
+              </div>
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.interactionsContainer}>

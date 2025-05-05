@@ -11,6 +11,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const mDnsSd = require('node-dns-sd');
 const { nanoid } = require('nanoid');
 const NodeMediaServer = require('node-media-server');
+const debugTools = require('./src/main/services/adb/debugTools');
 
 let mainWindow;
 let loadAttempts = 0;
@@ -330,7 +331,6 @@ function downloadFile(url, destination) {
 function execAdbCommand(command) {
   return new Promise((resolve, reject) => {
     const cmd = `"${fullAdbPath}" ${command}`;
-    console.log('Executing ADB command:', cmd);
     
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
@@ -1450,7 +1450,6 @@ ipcMain.handle('adb:executeCommand', async (event, deviceId, command) => {
       fullCommand = `-s ${deviceId} ${command}`;
     }
     
-    console.log(`Executing custom ADB command: ${fullCommand}`);
     const output = await execAdbCommand(fullCommand);
     
     return {
@@ -1790,45 +1789,14 @@ ipcMain.handle('rtmp:getScreenshotDataUrl', async (event, fileName) => {
   }
 });
 
-// CRAWLER FUNCTIONALITY
-
-
-// Function to add and send a log message
-
-
-// Main recursive crawling function
-
-
-// Button click tracking
-
-
-
-
-
-// Create a unique hash for a button based on its properties
-
-
-// Reset tracking when starting a new crawl session
-
-
-// Function to start app crawling
-
-// Function to stop app crawling
-
-
-// Helper function to get current activity
-
-
-// Helper function to get UI hierarchy XML
-
-
-// Helper function to create a hash of the screen based on XML content
-
-
-// Helper function to parse UI XML and find clickable elements
-
-
-// Helper function to click on a specific element by bounds
-
-
-// Register IPC handlers
+// Handle getting batch data for analytics events
+ipcMain.handle('adb:getBatchData', async () => {
+  try {
+    // Get the current batch data from debugTools
+    const batchData = debugTools.getCurrentBatchData();
+    return { success: true, batchData };
+  } catch (error) {
+    console.error('Error getting batch data:', error);
+    return { success: false, message: error.message };
+  }
+});

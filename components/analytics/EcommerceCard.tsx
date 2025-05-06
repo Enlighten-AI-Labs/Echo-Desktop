@@ -47,6 +47,13 @@ interface EcommerceCardProps {
 }
 
 const EcommerceCard: React.FC<EcommerceCardProps> = ({ data }) => {
+  // Determine the data-items value based on the number of items
+  const getItemsLayoutClass = (itemCount: number): string => {
+    if (itemCount === 1) return "1";
+    if (itemCount === 2) return "2";
+    return "3plus";
+  };
+
   return (
     <div className={styles.ecommerceContainer}>
 
@@ -75,7 +82,10 @@ const EcommerceCard: React.FC<EcommerceCardProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className={styles.ecommerceGrid}>
+      <div 
+        className={styles.ecommerceGrid} 
+        data-items={getItemsLayoutClass(data.items.length)}
+      >
         {data.items.map((item, index) => (
           <div key={`${item.item_id}-${index}`} className={styles.productCard}>
             <div className={styles.cardHeader}>

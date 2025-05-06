@@ -42,7 +42,7 @@
 }
 
 /* Brand color palette */
-:root {
+.container {
   --black: #262628;
   --purple: #9C54AD;
   --red: #EB2726;

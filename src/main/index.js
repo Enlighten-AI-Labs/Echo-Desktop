@@ -14,6 +14,14 @@ const crawlerService = require('./services/crawler');
 const rtmpService = require('./modules/rtmp'); // We'll keep this as is for now
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// Set app name to ensure "Echo" appears in dock/taskbar
+app.name = "Echo Desktop";
+// Set app icon explicitly to avoid fallback to Electron icon
+if (!isDev) {
+  app.setAppUserModelId('com.enlighten.echo-desktop');
+}
+
 let mainWindow;
 let loadAttempts = 0;
 const MAX_LOAD_ATTEMPTS = 10;
@@ -49,6 +57,8 @@ async function createWindow() {
     height: 1080,
     minWidth: 800,
     minHeight: 600,
+    title: 'Echo Desktop',
+    icon: path.join(app.getAppPath(), 'public', process.platform === 'darwin' ? 'icon_512x512.png' : 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -229,6 +239,16 @@ function loadWithRetry(url) {
 app.whenReady().then(async () => {
   // Register font protocol before creating window
   registerFontProtocol();
+  
+  // Set dock icon on macOS
+  if (process.platform === 'darwin') {
+    try {
+      const iconPath = path.join(app.getAppPath(), 'public/icon_512x512.png');
+      app.dock.setIcon(iconPath);
+    } catch (error) {
+      console.error('Failed to set dock icon:', error);
+    }
+  }
   
   try {
     // Initialize the ADB service

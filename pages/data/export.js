@@ -850,13 +850,6 @@ export default function ExportPage({ navigateTo, params }) {
                   >
                     Export Selected Data
                   </button>
-                  <button 
-                    className={styles.exportAllButton}
-                    onClick={handleExportAllEvents}
-                    disabled={events.length === 0}
-                  >
-                    Export All Events
-                  </button>
                 </div>
               </div>
             </div>

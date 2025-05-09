@@ -15,21 +15,26 @@ export default function AuthForm() {
     setMessage('');
 
     try {
+      console.log('Attempting to', isSignUp ? 'sign up' : 'sign in', 'with email:', email);
+      
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
+        console.log('Sign up response:', { data, error });
         if (error) throw error;
         setMessage('Check your email for the confirmation link');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        console.log('Sign in response:', { data, error });
         if (error) throw error;
       }
     } catch (error) {
+      console.error('Authentication error:', error);
       setMessage(error.message);
     } finally {
       setLoading(false);

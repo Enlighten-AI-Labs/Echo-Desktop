@@ -1852,6 +1852,7 @@ export default function UnifiedAnalyticsDebugger({ deviceId, packageName, show }
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={{ marginLeft: '5px' }}
             />
             Auto Refresh
           </label>

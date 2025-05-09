@@ -607,23 +607,47 @@ async function launchApp(deviceId, packageName) {
     // First ensure the ADB server is running
     await execAdbCommand('start-server');
     
-    // Get the main activity of the package
-    const activityCmd = `-s ${deviceId} shell dumpsys package ${packageName} | grep -A 1 "android.intent.action.MAIN" | grep -v "android.intent.action.MAIN" | grep -v "^--$" | head -1`;
-    const activityOutput = await execAdbCommand(activityCmd);
+    let activity = null;
     
-    let launchCommand;
-    if (activityOutput && activityOutput.includes('/')) {
-      // Extract the activity name
-      const activityMatch = activityOutput.match(/([a-zA-Z0-9\.]+\/[a-zA-Z0-9\.]+)/);
-      if (activityMatch && activityMatch[1]) {
-        const activity = activityMatch[1].trim();
-        launchCommand = `-s ${deviceId} shell am start -n ${activity}`;
-      } else {
-        // Fallback to monkey command if we can't extract the activity
-        launchCommand = `-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`;
+    // Use platform-specific commands
+    if (process.platform === 'win32') {
+      // Windows: Use JavaScript parsing
+      const activityOutput = await execAdbCommand(`-s ${deviceId} shell dumpsys package ${packageName}`);
+      
+      // Parse the output in JavaScript
+      const lines = activityOutput.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('android.intent.action.MAIN')) {
+          // Look at the next line for the activity
+          if (i + 1 < lines.length) {
+            const nextLine = lines[i + 1].trim();
+            if (nextLine && !nextLine.includes('android.intent.action.MAIN') && !nextLine.includes('--')) {
+              const match = nextLine.match(/([a-zA-Z0-9\.]+\/[a-zA-Z0-9\.]+)/);
+              if (match && match[1]) {
+                activity = match[1].trim();
+                break;
+              }
+            }
+          }
+        }
       }
     } else {
-      // Fallback to monkey command
+      // Linux/Mac: Use grep command
+      const activityCmd = `-s ${deviceId} shell dumpsys package ${packageName} | grep -A 1 "android.intent.action.MAIN" | grep -v "android.intent.action.MAIN" | grep -v "^--$" | head -1`;
+      const activityOutput = await execAdbCommand(activityCmd);
+      
+      // Extract activity from grep output
+      const match = activityOutput.match(/([a-zA-Z0-9\.]+\/[a-zA-Z0-9\.]+)/);
+      if (match && match[1]) {
+        activity = match[1].trim();
+      }
+    }
+    
+    let launchCommand;
+    if (activity) {
+      launchCommand = `-s ${deviceId} shell am start -n ${activity}`;
+    } else {
+      // Fallback to monkey command if we can't find the activity
       launchCommand = `-s ${deviceId} shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`;
     }
     
